@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
-import { Button, Input } from '@/components/ui';
+import { Button, Input, PasswordInput } from '@/components/ui';
 import Link from 'next/link';
 
 export default function LoginPage() {
@@ -48,9 +48,9 @@ export default function LoginPage() {
 
   return (
     <div className="lg:relative flex lg:flex-row flex-col min-h-screen items-center justify-center bg-slate-50 px-4">
-      <div className="lg:absolute top-8 left-8 text-2xl font-bold text-center lg:text-left w-full lg:w-auto">
+      <Link href="/" className="lg:absolute top-8 left-8 text-2xl font-bold text-center lg:text-left w-full lg:w-auto">
         RUTE<span className="text-green-600">.</span>
-      </div>
+      </Link>
       <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-8 shadow-lg mt-16 lg:mt-0">
         <h1 className="text-2xl font-bold text-center mb-2">Welcome Back</h1>
         <p className="text-center text-slate-600 mb-6">
@@ -81,8 +81,7 @@ export default function LoginPage() {
             <label className="block text-sm font-medium text-slate-700 mb-1">
               Password
             </label>
-            <Input
-              type="password"
+            <PasswordInput
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
@@ -90,7 +89,11 @@ export default function LoginPage() {
             />
           </div>
 
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button
+            type="submit"
+            className="w-full cursor-pointer"
+            disabled={loading}
+          >
             {loading ? 'Signing in...' : 'Sign In'}
           </Button>
         </form>

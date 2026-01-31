@@ -1,96 +1,128 @@
 'use client';
 
-import React from 'react';
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/context';
-import { LogOut, Menu } from 'lucide-react';
-import { Button } from '@/components/ui';
-import { cn } from '@/lib/client';
+import { usePathname } from 'next/navigation';
+import {
+  LayoutDashboard,
+  Package,
+  ShoppingCart,
+  Users,
+  Wrench,
+  TrendingUp,
+} from 'lucide-react';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarRail,
+  SidebarSeparator,
+  SidebarTrigger,
+} from '@/components/ui';
+import { NavMain, UserNav, type NavItem } from './navigation';
 
 const AdminSidebar = () => {
   const pathname = usePathname();
-  const router = useRouter();
-  const { user, signOut } = useAuth();
-  const [isOpen, setIsOpen] = React.useState(true);
 
-  const handleSignOut = async () => {
-    await signOut();
-    router.push('/admin/login');
-  };
-
-  const menuItems = [
-    { href: '/admin', label: 'Dashboard' },
-    { href: '/admin/products', label: 'Products' },
-    { href: '/admin/services', label: 'Services' },
-    { href: '/admin/orders', label: 'Orders' },
-    { href: '/admin/bookings', label: 'Bookings' },
-    { href: '/admin/users', label: 'Users' },
-    { href: '/admin/workers', label: 'Workers' },
-    { href: '/admin/settings', label: 'Settings' },
+  const navItems: NavItem[] = [
+    {
+      title: 'Dashboard',
+      url: '/admin',
+      icon: <LayoutDashboard className="size-4" />,
+      isActive: pathname === '/admin',
+    },
+    {
+      title: 'Products',
+      url: '/admin/products',
+      icon: <Package className="size-4" />,
+      isActive: pathname.startsWith('/admin/products'),
+      items: [
+        { title: 'All Products', url: '/admin/products' },
+        { title: 'Add Product', url: '/admin/products/new' },
+        { title: 'Categories', url: '/admin/products/categories' },
+      ],
+    },
+    {
+      title: 'Services',
+      url: '/admin/services',
+      icon: <Wrench className="size-4" />,
+      isActive: pathname.startsWith('/admin/services'),
+      items: [
+        { title: 'All Services', url: '/admin/services' },
+        { title: 'Add Service', url: '/admin/services/new' },
+      ],
+    },
+    {
+      title: 'Orders & Bookings',
+      url: '/admin/orders',
+      icon: <ShoppingCart className="size-4" />,
+      isActive:
+        pathname.startsWith('/admin/orders') ||
+        pathname.startsWith('/admin/bookings'),
+      items: [
+        { title: 'Orders', url: '/admin/orders' },
+        { title: 'Bookings', url: '/admin/bookings' },
+      ],
+    },
+    {
+      title: 'Users',
+      url: '/admin/users',
+      icon: <Users className="size-4" />,
+      isActive: pathname.startsWith('/admin/users'),
+      items: [
+        { title: 'All Users', url: '/admin/users' },
+        { title: 'Workers', url: '/admin/workers' },
+      ],
+    },
+    {
+      title: 'Analytics',
+      url: '/admin/analytics',
+      icon: <TrendingUp className="size-4" />,
+      isActive: pathname.startsWith('/admin/analytics'),
+      items: [
+        { title: 'Reports', url: '/admin/analytics/reports' },
+        { title: 'Revenue', url: '/admin/analytics/revenue' },
+      ],
+    },
+    // {
+    //   title: 'Settings',
+    //   url: '/admin/settings',
+    //   icon: <Settings className="size-4" />,
+    //   isActive: pathname.startsWith('/admin/settings'),
+    // },
   ];
 
   return (
-    <>
-      {/* Mobile Menu Button */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="fixed top-4 left-4 z-50 md:hidden p-2 rounded-lg hover:bg-slate-100"
-      >
-        <Menu className="w-6 h-6" />
-      </button>
-
-      {/* Sidebar */}
-      <aside
-        className={cn(
-          'fixed left-0 top-0 h-screen w-64 bg-slate-900 text-white shadow-lg transition-transform duration-300 md:translate-x-0',
-          !isOpen && '-translate-x-full',
-        )}
-      >
-        <div className="p-6 border-b border-slate-700">
-          <h1 className="text-xl font-bold">Admin Panel</h1>
-          <p className="text-sm text-slate-400 mt-1">{user?.email}</p>
+    <Sidebar collapsible="icon" variant="sidebar">
+      <SidebarHeader className="gap-2">
+        <div className="flex items-center justify-between  py-1.5">
+          <div className="flex items-center gap-2">
+            <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground text-sm font-bold">
+              R
+            </div>
+            <div className="flex flex-col overflow-hidden">
+              <span className="text-lg font-bold transition-all duration-300 group-data-[state=collapsed]:w-0 group-data-[state=collapsed]:hidden">
+                RUTE<span className="text-green-600">.</span>
+              </span>
+            </div>
+          </div>
+          <SidebarTrigger className="-mr-2 hidden" />
         </div>
+      </SidebarHeader>
 
-        <nav className="p-4 space-y-2 flex-1">
-          {menuItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                'block px-4 py-2 rounded-lg transition-colors',
-                pathname === item.href
-                  ? 'bg-blue-600 text-white'
-                  : 'text-slate-300 hover:bg-slate-800',
-              )}
-              onClick={() => setIsOpen(false)}
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+      <SidebarSeparator />
 
-        {/* Footer */}
-        <div className="p-4 border-t border-slate-700">
-          <Button
-            variant="destructive"
-            className="w-full flex items-center justify-center gap-2"
-            onClick={handleSignOut}
-          >
-            <LogOut className="w-4 h-4" />
-            Sign Out
-          </Button>
-        </div>
-      </aside>
+      <SidebarContent>
+        <NavMain items={navItems} />
+      </SidebarContent>
 
-      {/* Overlay */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
-          onClick={() => setIsOpen(false)}
-        />
-      )}
-    </>
+      <SidebarSeparator />
+
+      <SidebarFooter>
+        <UserNav />
+      </SidebarFooter>
+
+      <SidebarRail />
+    </Sidebar>
   );
 };
 

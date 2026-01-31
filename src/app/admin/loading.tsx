@@ -1,7 +1,7 @@
 import { Loading } from '@/components/common';
 
-const LoadingPage = () => {
+const AdminLoading = () => {
   return <Loading fullScreen />;
 };
 
-export default LoadingPage;
+export default AdminLoading;

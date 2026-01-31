@@ -1,37 +1,135 @@
 'use client';
 
-import React from 'react';
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui';
+import {
+  StatsCards,
+  DataTable,
+  productColumns,
+  orderColumns,
+  type Product,
+  type Order,
+} from '@/components/admin';
 
-export default function AdminDashboard() {
+// Sample data
+const sampleProducts: Product[] = [
+  {
+    id: '1',
+    name: 'Smart Home Hub',
+    price: 299.99,
+    category: 'Electronics',
+    stock: 45,
+    createdAt: '2024-01-15',
+  },
+  {
+    id: '2',
+    name: 'Plumbing Services',
+    price: 149.99,
+    category: 'Services',
+    stock: 120,
+    createdAt: '2024-01-20',
+  },
+  {
+    id: '3',
+    name: 'Electrical Wiring Kit',
+    price: 89.99,
+    category: 'Tools',
+    stock: 5,
+    createdAt: '2024-02-01',
+  },
+  {
+    id: '4',
+    name: 'Water Heater Installation',
+    price: 499.99,
+    category: 'Services',
+    stock: 8,
+    createdAt: '2024-02-05',
+  },
+];
+
+const sampleOrders: Order[] = [
+  {
+    id: 'ORD-001',
+    customer: 'John Doe',
+    total: 299.99,
+    status: 'completed',
+    date: '2024-01-15',
+  },
+  {
+    id: 'ORD-002',
+    customer: 'Jane Smith',
+    total: 149.99,
+    status: 'processing',
+    date: '2024-01-20',
+  },
+  {
+    id: 'ORD-003',
+    customer: 'Ahmed Khan',
+    total: 589.98,
+    status: 'pending',
+    date: '2024-02-01',
+  },
+  {
+    id: 'ORD-004',
+    customer: 'Sarah Wilson',
+    total: 89.99,
+    status: 'cancelled',
+    date: '2024-02-05',
+  },
+];
+
+export default function DashboardPage() {
   return (
-    <div>
-      <h1 className="text-3xl font-bold mb-8">Dashboard</h1>
+    <div className="space-y-6">
+      {/* Breadcrumb */}
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink href="/admin">Admin</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>Dashboard</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {[
-          { label: 'Total Products', value: '0', color: 'bg-blue-500' },
-          { label: 'Total Services', value: '0', color: 'bg-green-500' },
-          { label: 'Total Orders', value: '0', color: 'bg-purple-500' },
-          { label: 'Total Bookings', value: '0', color: 'bg-orange-500' },
-        ].map((stat) => (
-          <div
-            key={stat.label}
-            className="bg-white rounded-lg shadow p-6 border-l-4"
-            style={{
-              borderLeftColor: stat.color.replace('bg-', 'var(--color-'),
-            }}
-          >
-            <p className="text-slate-600 text-sm font-medium">{stat.label}</p>
-            <p className="text-3xl font-bold mt-2">{stat.value}</p>
-          </div>
-        ))}
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+        <p className="text-muted-foreground">
+          Welcome back! Here&apos;s your business overview.
+        </p>
       </div>
 
-      {/* Recent Activity */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-xl font-bold mb-4">Recent Activity</h2>
-        <p className="text-slate-600">No recent activity yet</p>
+      {/* Stats Cards */}
+      <StatsCards />
+
+      {/* Tables Grid */}
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Products Table */}
+        <div className="rounded-lg border p-4">
+          <DataTable
+            columns={productColumns}
+            data={sampleProducts.slice(0, 3)}
+            title="Recent Products"
+          />
+        </div>
+
+        {/* Orders Table */}
+        <div className="rounded-lg border p-4">
+          <DataTable
+            columns={orderColumns}
+            data={sampleOrders.slice(0, 3)}
+            title="Recent Orders"
+          />
+        </div>
       </div>
     </div>
   );
