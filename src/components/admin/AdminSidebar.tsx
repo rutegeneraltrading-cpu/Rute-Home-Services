@@ -38,7 +38,6 @@ const AdminSidebar = () => {
       items: [
         { title: 'All Products', url: '/admin/products' },
         { title: 'Add Product', url: '/admin/products/new' },
-        { title: 'Categories', url: '/admin/products/categories' },
       ],
     },
     {
@@ -79,16 +78,10 @@ const AdminSidebar = () => {
       icon: <TrendingUp className="size-4" />,
       isActive: pathname.startsWith('/admin/analytics'),
       items: [
-        { title: 'Reports', url: '/admin/analytics/reports' },
-        { title: 'Revenue', url: '/admin/analytics/revenue' },
+        { title: 'Reports', url: '/admin/reports' },
+        { title: 'Revenue', url: '/admin/revenue' },
       ],
     },
-    // {
-    //   title: 'Settings',
-    //   url: '/admin/settings',
-    //   icon: <Settings className="size-4" />,
-    //   isActive: pathname.startsWith('/admin/settings'),
-    // },
   ];
 
   return (

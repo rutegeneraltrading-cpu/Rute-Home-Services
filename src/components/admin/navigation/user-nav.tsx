@@ -1,26 +1,50 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useGetMe } from '@/lib/api/auth.query';
-import { useSignOut } from '@/lib/api/auth.mutation';
+import { useGetMe, useSignOut } from '@/lib/client/api';
 import { LogOut, UserRoundPen } from 'lucide-react';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
   Avatar,
   AvatarImage,
+  DropdownMenu,
   AvatarFallback,
+  DropdownMenuItem,
+  DropdownMenuGroup,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuSeparator,
 } from '@/components/ui';
 
 export function UserNav() {
   const router = useRouter();
   const { data: user, isLoading } = useGetMe();
   const signOutMutation = useSignOut();
+
+  // If no user or still loading, show placeholder
+  if (!user && isLoading) {
+    return (
+      <div className="flex w-full items-center gap-2 rounded-md py-2 px-2 text-sm">
+        <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />
+        <div className="flex flex-col gap-2 flex-1">
+          <div className="h-3 w-20 bg-muted rounded animate-pulse" />
+          <div className="h-2 w-32 bg-muted rounded animate-pulse" />
+        </div>
+      </div>
+    );
+  }
+
+  // If no user and not loading, show default
+  if (!user) {
+    return (
+      <div className="flex w-full items-center gap-2 rounded-md py-2 px-2 text-sm text-muted-foreground">
+        <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-semibold">
+          U
+        </div>
+        <div className="text-xs">Not signed in</div>
+      </div>
+    );
+  }
 
   const handleSignOut = async () => {
     try {
@@ -32,7 +56,7 @@ export function UserNav() {
   };
 
   const initials =
-    user?.email?.split('@')[0].split('').slice(0, 2).join('').toUpperCase() ||
+    user.email?.split('@')[0].split('').slice(0, 2).join('').toUpperCase() ||
     'U';
 
   return (
@@ -54,14 +78,10 @@ export function UserNav() {
           )}
           <div className="flex flex-col flex-1 text-left overflow-hidden transition-all duration-300 group-data-[state=collapsed]:w-0 group-data-[state=collapsed]:opacity-0">
             <span className="text-xs font-semibold text-foreground whitespace-nowrap">
-              {user?.name || (
-                <span className="h-4 w-24 bg-muted rounded animate-pulse inline-block" />
-              )}
+              {user.name || 'User'}
             </span>
             <span className="text-xs text-muted-foreground truncate whitespace-nowrap">
-              {user?.email || (
-                <span className="h-3 w-32 bg-muted rounded animate-pulse inline-block" />
-              )}
+              {user.email || ''}
             </span>
           </div>
         </button>
@@ -82,10 +102,10 @@ export function UserNav() {
             )}
             <div className="flex flex-col space-y-1">
               <p className="text-sm font-medium leading-none">
-                {user?.name || 'Loading...'}
+                {user.name || 'User'}
               </p>
               <p className="text-xs leading-none text-muted-foreground">
-                {user?.email || ''}
+                {user.email || ''}
               </p>
             </div>
           </div>

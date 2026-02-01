@@ -5,6 +5,8 @@ import { usePathname } from 'next/navigation';
 import { AdminSidebar, ProtectedLayout } from '@/components/admin';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui';
 
+export const dynamic = 'force-dynamic';
+
 export default function AdminLayout({
   children,
 }: {
@@ -21,6 +23,8 @@ export default function AdminLayout({
       { path: '/admin/bookings', title: 'Bookings' },
       { path: '/admin/users', title: 'Users' },
       { path: '/admin/workers', title: 'Workers' },
+      { path: '/admin/reports', title: 'Reports' },
+      { path: '/admin/revenue', title: 'Revenue' },
       { path: '/admin/profile', title: 'Profile' },
     ];
 

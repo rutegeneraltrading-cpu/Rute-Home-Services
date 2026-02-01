@@ -1,7 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
-// For server-side operations with user context (cookies)
 export async function createClient() {
   const cookieStore = await cookies();
 
@@ -18,22 +17,16 @@ export async function createClient() {
             cookiesToSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, options),
             );
-          } catch {
-            // The `setAll` method was called from a Server Component.
-            // This can be ignored if you have middleware refreshing
-            // user sessions.
-          }
+          } catch {}
         },
       },
     },
   );
 }
 
-// For admin operations bypassing RLS (use carefully!)
 export async function createAdminClient() {
   const cookieStore = await cookies();
 
-  // Use service role key for admin operations
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!serviceRoleKey) {

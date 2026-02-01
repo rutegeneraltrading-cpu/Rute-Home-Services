@@ -1,12 +1,12 @@
 'use server';
 
 import { createClient } from '@/lib/supabase';
-import { User } from '@/lib/types';
+import type { AuthUser } from '@/lib/client/api';
 
 export async function signInUser(
   email: string,
   password: string,
-): Promise<User> {
+): Promise<AuthUser> {
   const supabase = await createClient();
 
   const { error, data } = await supabase.auth.signInWithPassword({
@@ -32,7 +32,6 @@ export async function signInUser(
     avatar_url: userData.avatar_url,
     role: userData.role,
     created_at: userData.created_at,
-    updated_at: userData.updated_at,
   };
 }
 
@@ -40,7 +39,7 @@ export async function signUpUser(
   email: string,
   password: string,
   name: string,
-): Promise<User> {
+): Promise<AuthUser> {
   const supabase = await createClient();
 
   // Sign up with user metadata
@@ -91,7 +90,6 @@ export async function signUpUser(
       avatar_url: newProfile.avatar_url,
       role: newProfile.role,
       created_at: newProfile.created_at,
-      updated_at: newProfile.updated_at,
     };
   }
 
@@ -102,7 +100,6 @@ export async function signUpUser(
     avatar_url: userData.avatar_url,
     role: userData.role,
     created_at: userData.created_at,
-    updated_at: userData.updated_at,
   };
 }
 
@@ -113,7 +110,7 @@ export async function signOutUser(): Promise<void> {
   if (error) throw error;
 }
 
-export async function getCurrentUser(): Promise<User | null> {
+export async function getCurrentUser(): Promise<AuthUser | null> {
   const supabase = await createClient();
 
   const {
@@ -138,6 +135,5 @@ export async function getCurrentUser(): Promise<User | null> {
     avatar_url: userData.avatar_url,
     role: userData.role,
     created_at: userData.created_at,
-    updated_at: userData.updated_at,
   };
 }

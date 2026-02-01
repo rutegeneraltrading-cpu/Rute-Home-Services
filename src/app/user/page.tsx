@@ -1,8 +1,10 @@
 'use client';
-import { Button } from '@/components/ui';
-import { useSignOut } from '@/lib/api/auth.mutation';
-import { LogOut } from 'lucide-react';
+
 import { useRouter } from 'next/navigation';
+import { LogOut } from 'lucide-react';
+import { Button } from '@/components/ui';
+import { useSignOut } from '@/lib/client/api';
+
 
 const User = () => {
   const signOutMutation = useSignOut();

@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { ChevronRight, ChevronDown } from 'lucide-react';
-import { useState } from 'react';
-import { useMediaQuery } from '@/lib/hooks';
+import { useState, useEffect } from 'react';
+import { useMediaQuery } from '@/lib/client/hooks';
 import {
   SidebarMenu,
   SidebarMenuButton,
@@ -36,6 +36,11 @@ interface NavMainProps {
 export function NavMain({ items }: NavMainProps) {
   const isLargeScreen = useMediaQuery('(min-width: 1024px)'); // lg breakpoint
 
+  // Track which items user has manually toggled
+  const [manuallyToggledItems, setManuallyToggledItems] = useState<Set<string>>(
+    new Set(),
+  );
+
   // Initialize based on screen size
   const [openItems, setOpenItems] = useState<Set<string>>(
     () =>
@@ -47,29 +52,33 @@ export function NavMain({ items }: NavMainProps) {
       ),
   );
 
-  // When screen size changes, update open items
-  const shouldAutoOpen = isLargeScreen;
-  const currentOpen = Array.from(openItems).sort().join(',');
-  const shouldOpen = items
-    .filter((item) => item.items && item.items.length > 0)
-    .filter(() => shouldAutoOpen)
-    .map((item) => item.title)
-    .sort()
-    .join(',');
+  // When screen size changes, only update items that weren't manually toggled
+  useEffect(() => {
+    setOpenItems((prev) => {
+      const next = new Set(prev);
+      const itemsWithSubItems = items
+        .filter((item) => item.items && item.items.length > 0)
+        .map((item) => item.title);
 
-  if (shouldAutoOpen && currentOpen !== shouldOpen) {
-    setOpenItems(
-      new Set(
-        items
-          .filter((item) => item.items && item.items.length > 0)
-          .map((item) => item.title),
-      ),
-    );
-  } else if (!shouldAutoOpen && currentOpen !== '') {
-    setOpenItems(new Set());
-  }
+      itemsWithSubItems.forEach((title) => {
+        // Only update if user hasn't manually toggled this item
+        if (!manuallyToggledItems.has(title)) {
+          if (isLargeScreen) {
+            next.add(title);
+          } else {
+            next.delete(title);
+          }
+        }
+      });
+
+      return next;
+    });
+  }, [isLargeScreen, manuallyToggledItems, items]);
 
   const setItemOpen = (title: string, open: boolean) => {
+    // Mark this item as manually toggled
+    setManuallyToggledItems((prev) => new Set(prev).add(title));
+
     setOpenItems((prev) => {
       const next = new Set(prev);
       if (open) {

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createClient, createAdminClient } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
   try {
@@ -50,7 +49,7 @@ export async function POST(request: NextRequest) {
     await new Promise((resolve) => setTimeout(resolve, 1500));
 
     // 4. FETCH AUTO-CREATED PROFILE (using admin client to bypass RLS)
-    const adminClient = createAdminClient();
+    const adminClient = await createAdminClient();
     const { data: profile, error: profileError } = await adminClient
       .from('profiles')
       .select('*')

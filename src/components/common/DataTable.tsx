@@ -1,15 +1,15 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
+  flexRender,
+  SortingState,
   useReactTable,
   getCoreRowModel,
   getSortedRowModel,
+  ColumnFiltersState,
   getFilteredRowModel,
   getPaginationRowModel,
-  flexRender,
-  SortingState,
-  ColumnFiltersState,
 } from '@tanstack/react-table';
 import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -29,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { DataTableConfig } from '@/lib/types/table';
+import { DataTableConfig } from '@/lib/types';
 
 interface DataTableProps<T extends Record<string, any>> {
   config: DataTableConfig<T>;
