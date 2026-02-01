@@ -45,11 +45,7 @@ const SignupPage = () => {
         router.push('/user');
       }
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message || 'Sign up failed');
-      } else {
-        setError('Sign up failed');
-      }
+      console.error('Sign up failed:', err);
     }
   };
 

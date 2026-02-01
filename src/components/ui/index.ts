@@ -1,9 +1,12 @@
 import { Button } from './button';
 import { Input } from './input';
+import { Label } from './label';
 import { PasswordInput } from './password-input';
 import { Separator } from './separator';
 import { Skeleton } from './skeleton';
 import { Avatar, AvatarImage, AvatarFallback } from './avatar';
+import { Toaster } from './toaster';
+import { useToast } from './use-toast';
 import {
   Sheet,
   SheetClose,
@@ -121,6 +124,7 @@ import {
 export {
   Button,
   Input,
+  Label,
   PasswordInput,
   Separator,
   Skeleton,
@@ -219,4 +223,6 @@ export {
   Avatar,
   AvatarImage,
   AvatarFallback,
+  Toaster,
+  useToast,
 };

@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { toast } from '@/components/ui/use-toast';
 
 interface FetchOptions extends RequestInit {
   timeout?: number;
@@ -29,6 +30,7 @@ class HTTPClient {
       const response = await fetch(fullURL, {
         ...fetchOptions,
         signal: controller.signal,
+        credentials: 'include', // Always send cookies for auth
         headers: {
           'Content-Type': 'application/json',
           ...fetchOptions.headers,
@@ -55,7 +57,11 @@ class HTTPClient {
         const now = Date.now();
         if (now - lastNetworkErrorTime >= NETWORK_ERROR_DEBOUNCE_MS) {
           lastNetworkErrorTime = now;
-          // This will be caught in mutation/query onError handlers
+          toast({
+            variant: 'destructive',
+            title: 'Network Error',
+            description: 'Please check your internet connection.',
+          });
         }
         throw new Error('Network error. Please check your connection.');
       }

@@ -1,4 +1,4 @@
-import { httpClient } from '@/lib/client/http/client';
+import { httpClient } from '@/lib/client/http';
 
 export interface CreateUserDTO {
   email: string;

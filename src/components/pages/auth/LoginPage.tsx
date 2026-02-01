@@ -11,11 +11,9 @@ export default function LoginPage() {
   const signInMutation = useSignIn();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
 
     try {
       const response = await signInMutation.mutateAsync({ email, password });
@@ -28,11 +26,7 @@ export default function LoginPage() {
         router.push('/user');
       }
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message || 'Login failed');
-      } else {
-        setError('Login failed');
-      }
+      console.error('Login failed:', err);
     }
   };
 
@@ -51,12 +45,6 @@ export default function LoginPage() {
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-              {error}
-            </div>
-          )}
-
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
               Email

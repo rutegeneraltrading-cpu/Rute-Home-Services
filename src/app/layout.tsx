@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { QueryProvider } from '@/lib/client/providers';
+import { Toaster } from '@/components/ui';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -16,6 +17,7 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <QueryProvider>{children}</QueryProvider>
+        <Toaster />
       </body>
     </html>
   );

@@ -1,5 +1,5 @@
 import { httpClient } from '@/lib/client/http';
-import { AuthUser, SignInDTO, SignUpDTO } from '@/lib/types/auth';
+import { AuthUser, SignInDTO, SignUpDTO } from '@/lib/types';
 
 const BASE_URL = '/api/auth';
 
@@ -21,8 +21,3 @@ export const signOutApi = (): Promise<void> =>
 // GET - Get current user
 export const getMeApi = (): Promise<AuthUser> =>
   httpClient.get(`${BASE_URL}/me`);
-
-// PUT - Update profile
-export const updateProfileApi = (
-  data: Partial<AuthUser>,
-): Promise<{ user: AuthUser }> => httpClient.put(`${BASE_URL}/profile`, data);

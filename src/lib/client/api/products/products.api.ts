@@ -3,7 +3,7 @@
  * No React Query logic, just HTTP requests
  */
 
-import { httpClient } from '@/lib/client/http/client';
+import { httpClient } from '@/lib/client/http';
 
 const BASE_URL = '/api/products';
 
