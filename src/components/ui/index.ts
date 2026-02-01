@@ -3,6 +3,7 @@ import { Input } from './input';
 import { PasswordInput } from './password-input';
 import { Separator } from './separator';
 import { Skeleton } from './skeleton';
+import { Avatar, AvatarImage, AvatarFallback } from './avatar';
 import {
   Sheet,
   SheetClose,
@@ -215,4 +216,7 @@ export {
   SelectSeparator,
   SelectScrollUpButton,
   SelectScrollDownButton,
+  Avatar,
+  AvatarImage,
+  AvatarFallback,
 };

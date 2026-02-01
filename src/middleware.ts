@@ -13,46 +13,75 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Public routes that don't require authentication
+  // Public routes
   const publicRoutes = ['/login', '/signup', '/'];
   const isPublicRoute =
     publicRoutes.includes(pathname) ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api');
 
-  // If user is not authenticated and trying to access protected route
-  if (!user && !isPublicRoute) {
+  // ============================================
+  // UNAUTHENTICATED USERS
+  // ============================================
+  if (!user) {
+    // Allow public routes
+    if (isPublicRoute) {
+      return NextResponse.next();
+    }
+    // Redirect to login if accessing protected route
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // If user is authenticated, fetch their role from database
-  if (user) {
-    const { data: userData } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('auth_id', user.id)
-      .single();
+  // ============================================
+  // AUTHENTICATED USERS - GET ROLE
+  // ============================================
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('auth_id', user.id)
+    .single();
 
-    const userRole = userData?.role;
+  const userRole = profile?.role;
 
-    // Redirect authenticated users away from login/signup
-    if (pathname === '/login' || pathname === '/signup') {
-      if (userRole === 'admin') {
-        return NextResponse.redirect(new URL('/admin', request.url));
-      } else {
-        return NextResponse.redirect(new URL('/user', request.url));
-      }
-    }
+  if (!userRole) {
+    console.warn('User has no role assigned:', user.id);
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
 
-    // Protect admin routes
-    if (pathname.startsWith('/admin') && userRole !== 'admin') {
+  // ============================================
+  // ROLE-BASED ROUTING
+  // ============================================
+
+  // Authenticated users should not access /login or /signup
+  if (pathname === '/login' || pathname === '/signup') {
+    if (userRole === 'admin') {
+      return NextResponse.redirect(new URL('/admin', request.url));
+    } else {
       return NextResponse.redirect(new URL('/user', request.url));
     }
+  }
 
-    // Protect user routes (optional: prevent admin from accessing user dashboard)
-    // if (pathname.startsWith('/user') && userRole === 'admin') {
-    //   return NextResponse.redirect(new URL('/admin', request.url));
-    // }
+  // ADMIN ONLY: /admin routes
+  if (pathname.startsWith('/admin')) {
+    if (userRole !== 'admin') {
+      return NextResponse.redirect(new URL('/user', request.url));
+    }
+  }
+
+  // USER/WORKER ONLY: /user routes
+  if (pathname.startsWith('/user')) {
+    if (userRole === 'admin') {
+      return NextResponse.redirect(new URL('/admin', request.url));
+    }
+  }
+
+  // ROOT: redirect to appropriate dashboard
+  if (pathname === '/') {
+    if (userRole === 'admin') {
+      return NextResponse.redirect(new URL('/admin', request.url));
+    } else {
+      return NextResponse.redirect(new URL('/user', request.url));
+    }
   }
 
   return NextResponse.next();
@@ -60,13 +89,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

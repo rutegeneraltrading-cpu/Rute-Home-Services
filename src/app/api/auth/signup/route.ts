@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export async function POST(request: NextRequest) {
   try {
     const { email, password, name } = await request.json();
 
-    // Validation
+    // 1. VALIDATE INPUT
     if (!email || !password || !name) {
       return NextResponse.json(
         { error: 'Email, password, and name are required' },
@@ -22,53 +23,59 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient();
 
-    // Sign up with user metadata
-    const { error, data } = await supabase.auth.signUp({
+    // 2. SIGN UP USER WITH SUPABASE AUTH
+    const { error: authError, data: authData } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
           full_name: name,
-          display_name: name,
         },
       },
     });
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+    if (authError) {
+      return NextResponse.json({ error: authError.message }, { status: 400 });
     }
 
-    if (!data.user) {
+    if (!authData.user) {
       return NextResponse.json(
         { error: 'Failed to create user' },
         { status: 500 },
       );
     }
 
-    // Wait for trigger to create profile
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    // 3. WAIT FOR TRIGGER TO CREATE PROFILE
+    // Supabase trigger automatically creates profile on auth user creation
+    await new Promise((resolve) => setTimeout(resolve, 1500));
 
-    // Fetch the auto-created profile
-    const { data: userData, error: userError } = await supabase
+    // 4. FETCH AUTO-CREATED PROFILE (using admin client to bypass RLS)
+    const adminClient = createAdminClient();
+    const { data: profile, error: profileError } = await adminClient
       .from('profiles')
       .select('*')
-      .eq('auth_id', data.user.id)
+      .eq('auth_id', authData.user.id)
       .single();
 
-    if (userError) {
-      return NextResponse.json({ error: userError.message }, { status: 500 });
+    if (profileError) {
+      console.error('Profile fetch error:', profileError);
+      return NextResponse.json(
+        { error: 'Profile creation failed. Please try again.' },
+        { status: 400 },
+      );
     }
 
+    // 5. RETURN USER DATA
     return NextResponse.json(
       {
         user: {
-          id: userData.auth_id,
-          email: userData.email,
-          name: userData.full_name,
-          role: userData.role,
-          avatar_url: userData.avatar_url,
-          created_at: userData.created_at,
-          updated_at: userData.updated_at,
+          id: profile.auth_id,
+          email: profile.email,
+          name: profile.full_name,
+          role: profile.role,
+          avatar_url: profile.avatar_url || null,
+          created_at: profile.created_at,
+          updated_at: profile.updated_at,
         },
       },
       { status: 201 },

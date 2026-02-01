@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { ChevronRight, ChevronDown } from 'lucide-react';
 import { useState } from 'react';
+import { useMediaQuery } from '@/lib/hooks';
 import {
   SidebarMenu,
   SidebarMenuButton,
@@ -33,16 +34,51 @@ interface NavMainProps {
 }
 
 export function NavMain({ items }: NavMainProps) {
-  const [openItems, setOpenItems] = useState<Set<string>>(new Set());
+  const isLargeScreen = useMediaQuery('(min-width: 1024px)'); // lg breakpoint
 
-  const toggleItem = (title: string) => {
-    const newOpen = new Set(openItems);
-    if (newOpen.has(title)) {
-      newOpen.delete(title);
-    } else {
-      newOpen.add(title);
-    }
-    setOpenItems(newOpen);
+  // Initialize based on screen size
+  const [openItems, setOpenItems] = useState<Set<string>>(
+    () =>
+      new Set(
+        items
+          .filter((item) => item.items && item.items.length > 0)
+          .filter(() => isLargeScreen) // Only open on lg+ screens
+          .map((item) => item.title),
+      ),
+  );
+
+  // When screen size changes, update open items
+  const shouldAutoOpen = isLargeScreen;
+  const currentOpen = Array.from(openItems).sort().join(',');
+  const shouldOpen = items
+    .filter((item) => item.items && item.items.length > 0)
+    .filter(() => shouldAutoOpen)
+    .map((item) => item.title)
+    .sort()
+    .join(',');
+
+  if (shouldAutoOpen && currentOpen !== shouldOpen) {
+    setOpenItems(
+      new Set(
+        items
+          .filter((item) => item.items && item.items.length > 0)
+          .map((item) => item.title),
+      ),
+    );
+  } else if (!shouldAutoOpen && currentOpen !== '') {
+    setOpenItems(new Set());
+  }
+
+  const setItemOpen = (title: string, open: boolean) => {
+    setOpenItems((prev) => {
+      const next = new Set(prev);
+      if (open) {
+        next.add(title);
+      } else {
+        next.delete(title);
+      }
+      return next;
+    });
   };
 
   return (
@@ -72,7 +108,7 @@ export function NavMain({ items }: NavMainProps) {
           <Collapsible
             key={item.title}
             open={isOpen}
-            onOpenChange={() => toggleItem(item.title)}
+            onOpenChange={(open) => setItemOpen(item.title, open)}
             asChild
           >
             <SidebarMenuItem>
