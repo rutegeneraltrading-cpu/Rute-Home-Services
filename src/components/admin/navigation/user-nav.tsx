@@ -1,7 +1,8 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/context';
+import { useGetMe } from '@/lib/api/auth.query';
+import { useSignOut } from '@/lib/api/auth.mutation';
 import { LogOut, UserRoundPen } from 'lucide-react';
 import {
   DropdownMenu,
@@ -18,11 +19,16 @@ import {
 
 export function UserNav() {
   const router = useRouter();
-  const { user, signOut } = useAuth();
+  const { data: user, isLoading } = useGetMe();
+  const signOutMutation = useSignOut();
 
   const handleSignOut = async () => {
-    await signOut();
-    router.push('/login');
+    try {
+      await signOutMutation.mutateAsync();
+      router.push('/login');
+    } catch (error) {
+      console.error('Sign out error:', error);
+    }
   };
 
   const initials =
@@ -32,7 +38,10 @@ export function UserNav() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="flex w-full items-center gap-2 rounded-md py-2 text-sm hover:bg-accent transition-colors cursor-pointer">
+        <button
+          className="flex w-full items-center gap-2 rounded-md py-2 text-sm hover:bg-accent transition-colors cursor-pointer"
+          disabled={isLoading}
+        >
           {user?.avatar_url ? (
             <Avatar className="h-8 w-8 shrink-0">
               <AvatarImage src={user.avatar_url} alt={user.name || 'User'} />
@@ -45,10 +54,14 @@ export function UserNav() {
           )}
           <div className="flex flex-col flex-1 text-left overflow-hidden transition-all duration-300 group-data-[state=collapsed]:w-0 group-data-[state=collapsed]:opacity-0">
             <span className="text-xs font-semibold text-foreground whitespace-nowrap">
-              {user?.name || 'User'}
+              {user?.name || (
+                <span className="h-4 w-24 bg-muted rounded animate-pulse inline-block" />
+              )}
             </span>
             <span className="text-xs text-muted-foreground truncate whitespace-nowrap">
-              {user?.email}
+              {user?.email || (
+                <span className="h-3 w-32 bg-muted rounded animate-pulse inline-block" />
+              )}
             </span>
           </div>
         </button>
@@ -69,10 +82,10 @@ export function UserNav() {
             )}
             <div className="flex flex-col space-y-1">
               <p className="text-sm font-medium leading-none">
-                {user?.name || 'User'}
+                {user?.name || 'Loading...'}
               </p>
               <p className="text-xs leading-none text-muted-foreground">
-                {user?.email}
+                {user?.email || ''}
               </p>
             </div>
           </div>

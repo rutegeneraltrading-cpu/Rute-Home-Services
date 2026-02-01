@@ -2,32 +2,18 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/context/AuthContext';
+import { useSignUp } from '@/lib/api/auth.mutation';
 import { Button, Input, PasswordInput } from '@/components/ui';
 import Link from 'next/link';
 
 export default function SignupPage() {
   const router = useRouter();
-  const { signUp, isAuthenticated, user } = useAuth();
+  const signUpMutation = useSignUp();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  React.useEffect(() => {
-    // Redirect authenticated users based on role
-    if (isAuthenticated && user) {
-      if (user.role === 'admin') {
-        router.push('/admin');
-      } else if (user.role === 'worker') {
-        router.push('/user');
-      } else {
-        router.push('/user');
-      }
-    }
-  }, [isAuthenticated, user, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,25 +30,35 @@ export default function SignupPage() {
       return;
     }
 
-    setLoading(true);
-
     try {
-      await signUp(email, password, name);
-      // Note: Redirect will happen automatically via useEffect above
+      const response = await signUpMutation.mutateAsync({
+        email,
+        password,
+        name,
+      });
+      // Wait a bit for Supabase session to be established
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      // After successful signup, redirect to user dashboard
+      if (response?.user?.role === 'admin') {
+        router.push('/admin');
+      } else {
+        router.push('/user');
+      }
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message || 'Sign up failed');
       } else {
         setError('Sign up failed');
       }
-    } finally {
-      setLoading(false);
     }
   };
 
   return (
     <div className="lg:relative flex lg:flex-row flex-col min-h-screen items-center justify-center bg-slate-50 px-4">
-      <Link href="/" className="lg:absolute top-8 left-8 text-2xl font-bold text-center lg:text-left w-full lg:w-auto">
+      <Link
+        href="/"
+        className="lg:absolute top-8 left-8 text-2xl font-bold text-center lg:text-left w-full lg:w-auto"
+      >
         RUTE<span className="text-green-600">.</span>
       </Link>
       <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-8 shadow-lg mt-16 lg:mt-0">
@@ -88,6 +84,7 @@ export default function SignupPage() {
               onChange={(e) => setName(e.target.value)}
               placeholder="John Doe"
               required
+              disabled={signUpMutation.isPending}
             />
           </div>
 
@@ -101,6 +98,7 @@ export default function SignupPage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
               required
+              disabled={signUpMutation.isPending}
             />
           </div>
 
@@ -114,6 +112,7 @@ export default function SignupPage() {
               placeholder="••••••••"
               required
               minLength={6}
+              disabled={signUpMutation.isPending}
             />
           </div>
 
@@ -127,15 +126,16 @@ export default function SignupPage() {
               placeholder="••••••••"
               required
               minLength={6}
+              disabled={signUpMutation.isPending}
             />
           </div>
 
           <Button
             type="submit"
             className="w-full cursor-pointer"
-            disabled={loading}
+            disabled={signUpMutation.isPending}
           >
-            {loading ? 'Creating account...' : 'Sign Up'}
+            {signUpMutation.isPending ? 'Creating account...' : 'Sign Up'}
           </Button>
         </form>
 

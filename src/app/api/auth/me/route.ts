@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (authError || !authUser) {
-      return NextResponse.json({ user: null }, { status: 200 });
+      return NextResponse.json(null, { status: 200 });
     }
 
     // Fetch user profile
@@ -22,19 +22,16 @@ export async function GET(request: NextRequest) {
       .single();
 
     if (userError) {
-      return NextResponse.json({ user: null }, { status: 200 });
+      return NextResponse.json(null, { status: 200 });
     }
 
     return NextResponse.json({
-      user: {
-        id: userData.auth_id,
-        email: userData.email,
-        name: userData.full_name,
-        role: userData.role,
-        avatar_url: userData.avatar_url,
-        created_at: userData.created_at,
-        updated_at: userData.updated_at,
-      },
+      id: userData.auth_id,
+      email: userData.email,
+      name: userData.full_name,
+      role: userData.role,
+      avatar_url: userData.avatar_url,
+      created_at: userData.created_at,
     });
   } catch (error) {
     console.error('Get user error:', error);

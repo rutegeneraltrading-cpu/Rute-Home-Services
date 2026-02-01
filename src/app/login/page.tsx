@@ -1,54 +1,48 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/context/AuthContext';
+import { useSignIn } from '@/lib/api/auth.mutation';
 import { Button, Input, PasswordInput } from '@/components/ui';
 import Link from 'next/link';
+import { useState } from 'react';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { signIn, isAuthenticated, user } = useAuth();
+  const signInMutation = useSignIn();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  React.useEffect(() => {
-    // Redirect authenticated users based on role
-    if (isAuthenticated && user) {
-      if (user.role === 'admin') {
-        router.push('/admin');
-      } else if (user.role === 'worker') {
-        router.push('/user'); // or /worker if you have separate dashboard
-      } else {
-        router.push('/user');
-      }
-    }
-  }, [isAuthenticated, user, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setLoading(true);
 
     try {
-      await signIn(email, password);
-      // Note: Redirect will happen automatically via useEffect above
+      const response = await signInMutation.mutateAsync({ email, password });
+      // Wait a bit for Supabase session to be established
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      // After successful login, redirect to dashboard
+      if (response?.user?.role === 'admin') {
+        router.push('/admin');
+      } else {
+        router.push('/user');
+      }
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message || 'Login failed');
       } else {
         setError('Login failed');
       }
-    } finally {
-      setLoading(false);
     }
   };
 
   return (
     <div className="lg:relative flex lg:flex-row flex-col min-h-screen items-center justify-center bg-slate-50 px-4">
-      <Link href="/" className="lg:absolute top-8 left-8 text-2xl font-bold text-center lg:text-left w-full lg:w-auto">
+      <Link
+        href="/"
+        className="lg:absolute top-8 left-8 text-2xl font-bold text-center lg:text-left w-full lg:w-auto"
+      >
         RUTE<span className="text-green-600">.</span>
       </Link>
       <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-8 shadow-lg mt-16 lg:mt-0">
@@ -74,6 +68,7 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
               required
+              disabled={signInMutation.isPending}
             />
           </div>
 
@@ -86,15 +81,16 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               required
+              disabled={signInMutation.isPending}
             />
           </div>
 
           <Button
             type="submit"
             className="w-full cursor-pointer"
-            disabled={loading}
+            disabled={signInMutation.isPending}
           >
-            {loading ? 'Signing in...' : 'Sign In'}
+            {signInMutation.isPending ? 'Signing in...' : 'Sign In'}
           </Button>
         </form>
 
