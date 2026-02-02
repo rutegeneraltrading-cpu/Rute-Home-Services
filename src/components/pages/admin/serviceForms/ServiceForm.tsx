@@ -90,7 +90,7 @@ export function ServiceForm({ onServiceCreated }: ServiceFormProps) {
   };
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="bg-card border rounded-lg p-6">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {/* Category - FIRST FIELD */}
         <div>
@@ -221,7 +221,7 @@ export function ServiceForm({ onServiceCreated }: ServiceFormProps) {
         </div>
 
         {/* Submit Buttons */}
-        <div className="flex gap-3">
+        <div className="flex justify-end gap-3 pt-6 border-t">
           {isDirty && (
             <Button
               type="button"

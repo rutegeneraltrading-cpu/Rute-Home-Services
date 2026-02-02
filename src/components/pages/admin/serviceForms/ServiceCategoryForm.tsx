@@ -57,17 +57,7 @@ export function ServiceCategoryForm() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">
-          New Service Category
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          Create a new service category. Categories help organize services like
-          House Cleaning, AC Repair, Plumbing, etc.
-        </p>
-      </div>
-
+    <>
       <div className="bg-card border rounded-lg p-6">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {/* Category Name */}
@@ -164,6 +154,6 @@ export function ServiceCategoryForm() {
           </div>
         </form>
       </div>
-    </div>
+    </>
   );
 }

@@ -49,23 +49,21 @@ const NewServicePage = () => {
       <Card className="p-6">
         {step === 'category' && (
           <div>
-            <h2 className="text-2xl font-semibold mb-6">
-              Create Service Category
-            </h2>
+            <h2 className="text-2xl font-semibold mb-6">Service Category</h2>
             <ServiceCategoryForm />
           </div>
         )}
 
         {step === 'service' && (
           <div>
-            <h2 className="text-2xl font-semibold mb-6">Create Service</h2>
+            <h2 className="text-2xl font-semibold mb-6">Service</h2>
             <ServiceForm />
           </div>
         )}
 
         {step === 'options' && (
           <div>
-            <h2 className="text-2xl font-semibold mb-6">Add Service Options</h2>
+            <h2 className="text-2xl font-semibold mb-6">Service Options</h2>
             <ServiceOptionsForm />
           </div>
         )}
