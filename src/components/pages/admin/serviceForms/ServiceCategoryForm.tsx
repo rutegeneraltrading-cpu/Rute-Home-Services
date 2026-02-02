@@ -1,13 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCreateCategory } from '@/lib/client/api';
+import { uploadCategoryImage } from '@/lib/client/utils/uploadImage';
+import { toast } from 'sonner';
 
 const categoryFormSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -21,6 +24,9 @@ type CategoryFormValues = z.infer<typeof categoryFormSchema>;
 export function ServiceCategoryForm() {
   const createCategoryMutation = useCreateCategory();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
     register,
@@ -37,20 +43,61 @@ export function ServiceCategoryForm() {
     },
   });
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select a valid image file');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File size must be less than 5MB');
+      return;
+    }
+
+    setSelectedFile(file);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setPreviewUrl(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const onSubmit = async (data: CategoryFormValues) => {
     setIsSubmitting(true);
+
     try {
+      let imageUrl: string | undefined = undefined;
+
+      // Step 1: Upload image first if selected
+      if (selectedFile) {
+        toast.info('Uploading image...');
+        imageUrl = await uploadCategoryImage(selectedFile);
+        toast.success('Image uploaded successfully');
+      }
+
+      // Step 2: Create category with image URL
       await createCategoryMutation.mutateAsync({
         name: data.name,
         description: data.description,
-        image_url: data.image_url || undefined,
+        image_url: imageUrl,
         display_order: data.display_order ? parseInt(data.display_order) : 0,
       });
 
       // Clear form after success
       reset();
+      setPreviewUrl(null);
+      setSelectedFile(null);
     } catch (error) {
       console.error('Error creating category:', error);
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to create category',
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -96,23 +143,50 @@ export function ServiceCategoryForm() {
             </p>
           </div>
 
-          {/* Image URL */}
+          {/* Category Image */}
           <div>
-            <Label htmlFor="image_url">Image URL</Label>
-            <Input
-              id="image_url"
-              placeholder="https://example.com/image.jpg"
-              {...register('image_url')}
-              className="mt-2"
-            />
-            {formErrors.image_url && (
-              <p className="text-sm text-red-500 mt-1">
-                {formErrors.image_url.message}
-              </p>
-            )}
-            <p className="text-xs text-muted-foreground mt-1">
-              Optional - URL to category image
-            </p>
+            <Label>Category Image</Label>
+
+            <div className="mt-2 space-y-4">
+              {/* Preview Image */}
+              {previewUrl && (
+                <div className="relative w-48 h-48 rounded-lg overflow-hidden border-2 border-gray-300">
+                  <Image
+                    src={previewUrl}
+                    alt="Category preview"
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+              )}
+
+              {/* File Input Button */}
+              <div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isSubmitting}
+                >
+                  {selectedFile ? 'Change Image' : 'Choose Image (Optional)'}
+                </Button>
+              </div>
+
+              {selectedFile && (
+                <p className="text-xs text-blue-600 font-medium">
+                  ✓ Image selected - will upload when you create category
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Display Order */}
