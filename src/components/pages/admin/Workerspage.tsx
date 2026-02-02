@@ -11,11 +11,10 @@ import {
   useUnsuspendWorker,
 } from '@/lib/client/api';
 
-// import type { Worker } from '@/lib/client/api';
 import { Button } from '@/components/ui/button';
 import { WorkerForm } from './workerform';
 
-export default function WorkersPage() {
+const WorkersPage = () => {
   const { data, isLoading } = useGetWorkers();
   const workers = data?.workers || [];
   const suspendMutation = useSuspendWorker();
@@ -165,4 +164,6 @@ export default function WorkersPage() {
       />
     </div>
   );
-}
+};
+
+export default WorkersPage;

@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
       'cdn-icons-png.freepik.com',
       'e7.pngegg.com',
       'img.freepik.com',
+      'cdn-icons-png.freepik.com',
     ],
     remotePatterns: [
       {
