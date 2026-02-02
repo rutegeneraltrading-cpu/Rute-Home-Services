@@ -144,49 +144,61 @@ export function ServiceCategoryForm() {
           </div>
 
           {/* Category Image */}
-          <div>
-            <Label>Category Image</Label>
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 bg-gray-50">
+            <Label htmlFor="image">Category Image</Label>
+            <p className="text-sm text-gray-500 mt-1 mb-4">
+              Upload an image for your category
+            </p>
 
-            <div className="mt-2 space-y-4">
-              {/* Preview Image */}
-              {previewUrl && (
-                <div className="relative w-48 h-48 rounded-lg overflow-hidden border-2 border-gray-300">
-                  <Image
-                    src={previewUrl}
-                    alt="Category preview"
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-              )}
-
-              {/* File Input Button */}
-              <div>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileSelect}
-                  className="hidden"
+            {previewUrl && (
+              <div className="mb-4 relative w-full h-48 rounded-md overflow-hidden">
+                <Image
+                  src={previewUrl}
+                  alt="Category preview"
+                  width={400}
+                  height={400}
+                  className="w-48 rounded-lg"
+                  priority
                 />
+              </div>
+            )}
 
+            <div className="flex gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isSubmitting}
+                className="flex-1"
+              >
+                {selectedFile ? 'Change Image' : 'Choose Image'}
+              </Button>
+              {selectedFile && (
                 <Button
                   type="button"
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => fileInputRef.current?.click()}
+                  variant="ghost"
+                  onClick={() => {
+                    setPreviewUrl(null);
+                    setSelectedFile(null);
+                    if (fileInputRef.current) {
+                      fileInputRef.current.value = '';
+                    }
+                  }}
                   disabled={isSubmitting}
                 >
-                  {selectedFile ? 'Change Image' : 'Choose Image (Optional)'}
+                  Remove
                 </Button>
-              </div>
-
-              {selectedFile && (
-                <p className="text-xs text-blue-600 font-medium">
-                  ✓ Image selected - will upload when you create category
-                </p>
               )}
             </div>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileSelect}
+              className="hidden"
+              id="image"
+            />
           </div>
 
           {/* Display Order */}

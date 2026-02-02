@@ -1,5 +1,6 @@
 import BookingPage from './BookingPage';
 import DashboardPage from './DashboardPage';
+import NewProductPage from './NewProductPage';
 import NewServicePage from './NewServicePage';
 import OrdersPage from './OrdersPage';
 import ProductsPage from './ProductsPage';
@@ -12,6 +13,7 @@ import UsersPage from './UsersPage';
 export {
   BookingPage,
   DashboardPage,
+  NewProductPage,
   NewServicePage,
   OrdersPage,
   ProductsPage,

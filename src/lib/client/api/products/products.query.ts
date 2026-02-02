@@ -40,3 +40,19 @@ export function useGetProduct(id: string) {
     enabled: !!id, // Only run if id exists
   });
 }
+/**
+ * Fetch all product categories
+ */
+export function useGetProductCategories() {
+  return useQuery({
+    queryKey: ['product-categories'],
+    queryFn: async () => {
+      const response = await fetch('/api/admin/product-categories');
+      if (!response.ok) {
+        throw new Error('Failed to fetch product categories');
+      }
+      return response.json();
+    },
+    staleTime: 10 * 60 * 1000, // 10 minutes
+  });
+}

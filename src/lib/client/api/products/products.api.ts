@@ -9,18 +9,30 @@ const BASE_URL = '/api/products';
 
 export interface CreateProductDTO {
   name: string;
-  description: string;
+  description?: string;
   price: number;
   stock: number;
-  category: string;
+  category_id: string;
+  image_url?: string;
 }
 
 export type UpdateProductDTO = Partial<CreateProductDTO>;
 
-export interface Product extends CreateProductDTO {
+export interface Product {
   id: string;
+  name: string;
+  description?: string;
+  price: number;
+  stock: number;
+  category_id: string;
+  image_url?: string;
+  is_active?: boolean;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
+  category?: {
+    id: string;
+    name: string;
+  };
 }
 
 // GET - Fetch all products
@@ -30,8 +42,6 @@ export const getProductsApi = (): Promise<{ products: Product[] }> =>
 // GET - Fetch single product
 export const getProductApi = (id: string): Promise<Product> =>
   httpClient.get(`${BASE_URL}/${id}`);
-
-// POST - Create product
 export const createProductApi = (data: CreateProductDTO): Promise<Product> =>
   httpClient.post(`${BASE_URL}`, data);
 
