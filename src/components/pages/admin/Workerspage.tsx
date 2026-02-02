@@ -1,17 +1,19 @@
 'use client';
 
+import { useState } from 'react';
+import { Edit2, Ban, CheckCircle, Plus } from 'lucide-react';
 import { DataTable } from '@/components/common';
 import { DataTableConfig, TableColumn, TableAction } from '@/lib/types/table';
-import { useGetWorkers } from '@/lib/client/api/workers/workers.query';
 import {
+  Worker,
+  useGetWorkers,
   useSuspendWorker,
   useUnsuspendWorker,
-} from '@/lib/client/api/workers/workers.mutation';
-import type { Worker } from '@/lib/client/api/workers/workers.api';
-import { Edit2, Ban, CheckCircle, Plus } from 'lucide-react';
-import { useState } from 'react';
+} from '@/lib/client/api';
+
+// import type { Worker } from '@/lib/client/api';
 import { Button } from '@/components/ui/button';
-import { WorkerForm } from './WorkerForm';
+import { WorkerForm } from './workerform';
 
 export default function WorkersPage() {
   const { data, isLoading } = useGetWorkers();

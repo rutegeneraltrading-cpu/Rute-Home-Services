@@ -1,4 +1,4 @@
-import { WorkersPage } from '@/components/pages';
+import WorkersPage from '@/components/pages/admin/WorkersPage';
 
 const Workers = () => {
   return <WorkersPage />;
