@@ -1,48 +1,60 @@
 import { httpClient } from '@/lib/client/http';
 
-export interface CreateWorkerDTO {
+export interface Worker {
+  id: string;
+  profile_id: string;
+  full_name: string;
   email: string;
-  name: string;
+  phone?: string | null;
+  address?: string | null;
+  avatar_url?: string | null;
+  rating_avg?: number;
+  hourly_rate?: number;
+  is_active?: boolean;
+  status?: 'active' | 'inactive' | 'suspended';
+  role: 'worker';
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface CreateWorkerDTO {
+  full_name: string;
+  email: string;
   phone?: string;
   address?: string;
-  serviceCategory?: string;
-  rating?: number;
+  service_id: string;
+  hourly_rate?: number;
 }
 
 export interface UpdateWorkerDTO {
-  name?: string;
+  full_name?: string;
+  email?: string;
   phone?: string;
   address?: string;
-  serviceCategory?: string;
-}
-
-export interface Worker extends CreateWorkerDTO {
-  id: string;
-  createdAt: string;
-  updatedAt: string;
-  created_at: string;
-  status?: 'active' | 'inactive' | 'suspended';
-  service_category?: string;
   hourly_rate?: number;
+  avatar_url?: string;
 }
 
 /**
  * Fetch all workers
  */
-export const getWorkersApi = (): Promise<{ workers: Worker[] }> =>
-  httpClient.get(`/api/admin/workers`);
+export const getWorkersApi = (): Promise<{
+  workers: Worker[];
+  total: number;
+}> => httpClient.get(`/api/admin/workers/get`);
 
 /**
  * Fetch single worker by ID
  */
-export const getWorkerApi = (id: string): Promise<Worker> =>
+export const getWorkerApi = (id: string): Promise<{ worker: Worker }> =>
   httpClient.get(`/api/admin/workers/${id}`);
 
 /**
  * Create a new worker
  */
-export const createWorkerApi = (data: CreateWorkerDTO): Promise<Worker> =>
-  httpClient.post(`/api/admin/workers`, data);
+export const createWorkerApi = (
+  data: CreateWorkerDTO,
+): Promise<{ worker: Worker }> => httpClient.post(`/api/admin/workers/create`, data);
 
 /**
  * Update worker by ID
@@ -50,10 +62,17 @@ export const createWorkerApi = (data: CreateWorkerDTO): Promise<Worker> =>
 export const updateWorkerApi = (
   id: string,
   data: UpdateWorkerDTO,
-): Promise<Worker> => httpClient.put(`/api/admin/workers/${id}`, data);
+): Promise<{ worker: Worker }> =>
+  httpClient.put(`/api/admin/workers/${id}`, data);
 
 /**
- * Delete worker by ID
+ * Suspend a worker (prevent new bookings)
  */
-export const deleteWorkerApi = (id: string): Promise<{ success: boolean }> =>
-  httpClient.delete(`/api/admin/workers/${id}`);
+export const suspendWorkerApi = (id: string): Promise<{ worker: Worker }> =>
+  httpClient.patch(`/api/admin/workers/${id}`, { action: 'suspend' });
+
+/**
+ * Unsuspend a worker (allow new bookings)
+ */
+export const unsuspendWorkerApi = (id: string): Promise<{ worker: Worker }> =>
+  httpClient.patch(`/api/admin/workers/${id}`, { action: 'unsuspend' });

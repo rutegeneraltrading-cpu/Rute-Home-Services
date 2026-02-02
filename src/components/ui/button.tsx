@@ -55,9 +55,10 @@ function Button({
       data-slot="button"
       data-variant={variant}
       data-size={size}
-      className={
-        'cursor-pointer!' + cn(buttonVariants({ variant, size, className }))
-      }
+      className={cn(
+        'cursor-pointer',
+        buttonVariants({ variant, size, className }),
+      )}
       {...props}
     />
   );

@@ -16,9 +16,9 @@ export default function UsersPage() {
 
   const columns: TableColumn<User>[] = [
     {
-      id: 'name',
+      id: 'full_name',
       header: 'Name',
-      accessorKey: 'name',
+      accessorKey: 'full_name',
       sortable: true,
     },
     {
@@ -113,6 +113,7 @@ export default function UsersPage() {
       description: 'Get started by creating a new user.',
     },
   };
+  console.log('users:', users);
 
   return (
     <div className="p-6">

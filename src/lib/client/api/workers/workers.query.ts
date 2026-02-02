@@ -15,7 +15,7 @@ export const workerKeys = {
  * Fetch all workers
  */
 export const useGetWorkers = (
-  options?: UseQueryOptions<{ workers: Worker[] }, Error>,
+  options?: UseQueryOptions<{ workers: Worker[]; total: number }, Error>,
 ) => {
   const query = useQuery({
     queryKey: workerKeys.lists(),
@@ -41,12 +41,24 @@ export const useGetWorkers = (
  */
 export const useGetWorker = (
   id: string | undefined,
-  options?: UseQueryOptions<Worker, Error>,
-) =>
-  useQuery({
+  options?: UseQueryOptions<{ worker: Worker }, Error>,
+) => {
+  const query = useQuery({
     queryKey: workerKeys.detail(id || ''),
     queryFn: () => getWorkerApi(id!),
     enabled: !!id, // Only run if ID is provided
     staleTime: 5 * 60 * 1000, // 5 minutes
     ...options,
   });
+
+  // Show error toast
+  if (query.error) {
+    toast({
+      variant: 'destructive',
+      title: 'Failed to Load Worker',
+      description: query.error.message || 'Could not fetch worker details.',
+    });
+  }
+
+  return query;
+};

@@ -2,32 +2,35 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   createWorkerApi,
   updateWorkerApi,
-  deleteWorkerApi,
+  suspendWorkerApi,
+  unsuspendWorkerApi,
   UpdateWorkerDTO,
 } from './workers.api';
 import { workerKeys } from './workers.query';
-
-interface WorkerMutationOptions {
-  onSuccess?: () => void;
-  onError?: (error: Error) => void;
-}
+import { toast } from '@/components/ui/use-toast';
 
 /**
  * Create a new worker
  */
-export const useCreateWorker = (options?: WorkerMutationOptions) => {
+export const useCreateWorker = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: createWorkerApi,
-    onSuccess: () => {
-      // Invalidate workers list cache
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: workerKeys.lists() });
-      options?.onSuccess?.();
+      toast({
+        variant: 'success',
+        title: 'Worker Created',
+        description: `${data.worker.full_name} has been added as a worker.`,
+      });
     },
-    onError: (error: Error) => {
-      console.error('Create worker error:', error);
-      options?.onError?.(error);
+    onError: (error: any) => {
+      toast({
+        variant: 'destructive',
+        title: 'Failed to Create Worker',
+        description: error.message || 'Could not create worker.',
+      });
     },
   });
 };
@@ -35,43 +38,84 @@ export const useCreateWorker = (options?: WorkerMutationOptions) => {
 /**
  * Update worker by ID
  */
-export const useUpdateWorker = (
-  workerId: string,
-  options?: WorkerMutationOptions,
-) => {
+export const useUpdateWorker = (workerId: string) => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (data: UpdateWorkerDTO) => updateWorkerApi(workerId, data),
-    onSuccess: () => {
-      // Invalidate both list and detail cache
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: workerKeys.lists() });
       queryClient.invalidateQueries({ queryKey: workerKeys.detail(workerId) });
-      options?.onSuccess?.();
+      toast({
+        variant: 'success',
+        title: 'Worker Updated',
+        description: `${data.worker.full_name}'s profile has been updated.`,
+      });
     },
-    onError: (error: Error) => {
-      console.error('Update worker error:', error);
-      options?.onError?.(error);
+    onError: (error: any) => {
+      toast({
+        variant: 'destructive',
+        title: 'Failed to Update Worker',
+        description: error.message || 'Could not update worker.',
+      });
     },
   });
 };
 
 /**
- * Delete worker by ID
+ * Suspend a worker
  */
-export const useDeleteWorker = (options?: WorkerMutationOptions) => {
+export const useSuspendWorker = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: deleteWorkerApi,
-    onSuccess: () => {
-      // Invalidate workers list cache
+    mutationFn: suspendWorkerApi,
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: workerKeys.lists() });
-      options?.onSuccess?.();
+      queryClient.invalidateQueries({
+        queryKey: workerKeys.detail(data.worker.id),
+      });
+      toast({
+        variant: 'destructive',
+        title: 'Worker Suspended',
+        description: `${data.worker.full_name} is now suspended and cannot accept new bookings.`,
+      });
     },
-    onError: (error: Error) => {
-      console.error('Delete worker error:', error);
-      options?.onError?.(error);
+    onError: (error: any) => {
+      toast({
+        variant: 'destructive',
+        title: 'Failed to Suspend Worker',
+        description: error.message || 'Could not suspend worker.',
+      });
+    },
+  });
+};
+
+/**
+ * Unsuspend a worker
+ */
+export const useUnsuspendWorker = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: unsuspendWorkerApi,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: workerKeys.lists() });
+      queryClient.invalidateQueries({
+        queryKey: workerKeys.detail(data.worker.id),
+      });
+      toast({
+        variant: 'success',
+        title: 'Worker Reactivated',
+        description: `${data.worker.full_name} can now accept new bookings.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: 'destructive',
+        title: 'Failed to Reactivate Worker',
+        description: error.message || 'Could not reactivate worker.',
+      });
     },
   });
 };

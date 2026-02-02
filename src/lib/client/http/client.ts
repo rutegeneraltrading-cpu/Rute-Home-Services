@@ -103,6 +103,18 @@ class HTTPClient {
   async delete<T>(url: string, options?: FetchOptions): Promise<T> {
     return this.request<T>(url, { ...options, method: 'DELETE' });
   }
+
+  async patch<T>(
+    url: string,
+    data?: unknown,
+    options?: FetchOptions,
+  ): Promise<T> {
+    return this.request<T>(url, {
+      ...options,
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
 }
 
 export const httpClient = new HTTPClient(process.env.NEXT_PUBLIC_API_URL || '');

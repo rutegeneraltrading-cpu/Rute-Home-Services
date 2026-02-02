@@ -4,77 +4,55 @@
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import {
   createServiceApi,
-  updateServiceApi,
-  deleteServiceApi,
+  createServiceOptionApi,
   CreateServiceDTO,
-  UpdateServiceDTO,
+  CreateServiceOptionDTO,
+  Service,
+  ServiceOption,
 } from './services.api';
-import { serviceKeys } from './services.query';
 
-interface ServiceMutationOptions {
-  onSuccess?: () => void;
-  onError?: (error: Error) => void;
-}
+// ============================================
+// SERVICE MUTATIONS
+// ============================================
 
-/**
- * Mutation hook to create a new service
- */
-export function useCreateService(options?: ServiceMutationOptions) {
+export const useCreateService = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (data: CreateServiceDTO) => createServiceApi(data),
-    onSuccess: () => {
-      // Invalidate services list to refetch
-      queryClient.invalidateQueries({ queryKey: serviceKeys.lists() });
-      options?.onSuccess?.();
+    onSuccess: (data: Service) => {
+      queryClient.invalidateQueries({ queryKey: ['services'] });
+      toast.success(`Service "${data.name}" created successfully!`);
     },
     onError: (error: Error) => {
-      options?.onError?.(error);
+      console.error('Error creating service:', error);
+      toast.error(error.message || 'Failed to create service');
     },
   });
-}
+};
 
-/**
- * Mutation hook to update a service
- */
-export function useUpdateService(options?: ServiceMutationOptions) {
+// ============================================
+// SERVICE OPTIONS MUTATIONS
+// ============================================
+
+export const useCreateServiceOption = (serviceId: string) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateServiceDTO }) =>
-      updateServiceApi(id, data),
-    onSuccess: (_, variables) => {
-      // Invalidate both list and detail query
-      queryClient.invalidateQueries({ queryKey: serviceKeys.lists() });
+    mutationFn: (data: CreateServiceOptionDTO) =>
+      createServiceOptionApi(serviceId, data),
+    onSuccess: (data: ServiceOption) => {
       queryClient.invalidateQueries({
-        queryKey: serviceKeys.detail(variables.id),
+        queryKey: ['serviceOptions', serviceId],
       });
-      options?.onSuccess?.();
+      toast.success(`Option "${data.name}" added successfully!`);
     },
     onError: (error: Error) => {
-      options?.onError?.(error);
+      console.error('Error creating service option:', error);
+      toast.error(error.message || 'Failed to add option');
     },
   });
-}
-
-/**
- * Mutation hook to delete a service
- */
-export function useDeleteService(options?: ServiceMutationOptions) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: string) => deleteServiceApi(id),
-    onSuccess: () => {
-      // Invalidate services list to refetch
-      queryClient.invalidateQueries({ queryKey: serviceKeys.lists() });
-      options?.onSuccess?.();
-    },
-    onError: (error: Error) => {
-      options?.onError?.(error);
-    },
-  });
-}
+};

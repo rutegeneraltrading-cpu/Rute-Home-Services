@@ -3,6 +3,7 @@ import { httpClient } from '@/lib/client/http';
 export interface CreateUserDTO {
   email: string;
   name: string;
+  full_name?: string;
   phone?: string;
   address?: string;
   role?: 'admin' | 'user' | 'worker';

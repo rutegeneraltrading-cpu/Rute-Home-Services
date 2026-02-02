@@ -4,10 +4,11 @@ import BookingPage from './BookingPage';
 import RevenuePage from './RevenuePage';
 import ReportsPage from './ReportsPage';
 import ProfilePage from './ProfilePage';
-import WorkersPage from './Workerspage';
+import WorkersPage from './WorkersPage';
 import DashboardPage from './DashboardPage';
 import ProductsPage from './ProductsPage';
 import ServicesPage from './ServicesPage';
+import NewServicePage from './NewServicePage';
 
 export {
   UsersPage,
@@ -20,4 +21,5 @@ export {
   ProductsPage,
   ServicesPage,
   DashboardPage,
+  NewServicePage,
 };

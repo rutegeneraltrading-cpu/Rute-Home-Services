@@ -84,13 +84,29 @@
 └──────────────────────┘
 
 
+┌──────────────────────────────────────────────────────────────┐
+│                    SERVICE HIERARCHY                          │
+└──────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────┐
+│ service_categories               │
+├──────────────────────────────────┤
+│ id (PK)                          │
+│ name (House Cleaning, etc)       │
+│ slug, description, image_url     │
+│ is_active, display_order         │
+└──────────────────────────────────┘
+         ▲
+         │
+    1:N  │
+         │
 ┌──────────────────────────────────────┐
 │ services                             │
 ├──────────────────────────────────────┤
 │ id (PK)                              │
-│ name, description                    │
+│ name (Basic Clean, Deep Clean)       │
 │ base_price                           │
-│ category_id (FK)                     │
+│ category_id (FK) ◄─┘                 │
 │ duration_minutes                     │
 │ is_active                            │
 └──────────────────────────────────────┘
@@ -98,6 +114,53 @@
          │ 1:N
          │
 ┌─────────────────────────┐
+│ service_options         │ (Add-ons: Washing Machine, Door Clean)
+├─────────────────────────┤
+│ id (PK)                 │
+│ service_id (FK) ◄──┘    │
+│ name                    │
+│ price, duration         │
+│ is_active               │
+└─────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────┐
+│                    WORKER SERVICE LINKS                       │
+└──────────────────────────────────────────────────────────────┘
+
+                    ┌──────────────┐
+                    │   workers    │
+                    │              │
+                    │ (Ahmed,      │
+                    │  Fatima)     │
+                    └──────────────┘
+                          │
+                          │ 1:N
+                          │
+    ┌─────────────────────────────────────┐
+    │ worker_services ⭐                  │ (New Design!)
+    ├─────────────────────────────────────┤
+    │ id (PK)                             │
+    │ worker_id (FK) ◄───┘ (1:N)          │
+    │ service_id (FK) ──┘ (N:1)           │
+    │ is_active                           │
+    └─────────────────────────────────────┘
+                          │
+                          │
+                    ┌─────▼─────────┐
+                    │   services    │ ◄─ (Can be from any category!)
+                    │               │
+                    │ (Basic Clean, │
+                    │  Deep Clean,  │
+                    │  Wall Repair, │
+                    │  etc)         │
+                    └───────────────┘
+                          │
+                    ┌─────▼────────────┐
+                    │ service_categories
+                    │ (House Cleaning, │
+                    │  House Repair,   │
+                    │  Elder Care)     │
+                    └──────────────────┘
 │ service_options         │ (Customizable add-ons)
 ├─────────────────────────┤
 │ id (PK)                 │
@@ -109,9 +172,20 @@
 │ display_order           │
 │ is_active               │
 └─────────────────────────┘
-
-
-┌──────────────────────────────────────┐
+         ▲
+         │
+┌─────────────────────────────────────────────────┐ 1:N
+│ worker_services ⭐                              │◄──────┐
+├─────────────────────────────────────────────────┤       │
+│ id (PK)                                         │       │
+│ worker_id (FK)                                  │       │
+│ service_id (FK)                                 │       │
+│ is_active                                       │       │ 1:N
+└─────────────────────────────────────────────────┘       │
+         ▲                                                 │
+         │                                          ┌──────────────┐
+         └──────────────────────────────────────────│   workers    │
+                                                    └──────────────┘
 │ bookings                             │
 ├──────────────────────────────────────┤
 │ id (PK)                              │
@@ -246,7 +320,6 @@ CREATE TABLE workers (
   profile_id UUID NOT NULL UNIQUE REFERENCES profiles(auth_id) ON DELETE CASCADE,
   phone VARCHAR(20),
   address TEXT,
-  service_category_id UUID REFERENCES service_categories(id),
   rating_avg DECIMAL(3, 2) DEFAULT 0.00 CHECK (rating_avg >= 0 AND rating_avg <= 5),
   hourly_rate DECIMAL(10, 2),
   is_active BOOLEAN DEFAULT TRUE,
@@ -254,7 +327,7 @@ CREATE TABLE workers (
   updated_at TIMESTAMP DEFAULT NOW()
 );
 
-COMMENT ON TABLE workers IS 'Worker-specific details. Profile contains auth data, this table contains role-specific data';
+COMMENT ON TABLE workers IS 'Worker-specific details. Profile contains auth data, this table contains role-specific data. Services are linked via worker_services (not limited to one category)';
 COMMENT ON COLUMN workers.profile_id IS 'Link to profiles table (1:1 relationship)';
 COMMENT ON COLUMN workers.rating_avg IS 'Average rating from completed bookings (0-5 stars)';
 ```
@@ -263,7 +336,6 @@ COMMENT ON COLUMN workers.rating_avg IS 'Average rating from completed bookings 
 
 ```sql
 CREATE INDEX idx_workers_profile_id ON workers(profile_id);
-CREATE INDEX idx_workers_service_category ON workers(service_category_id);
 CREATE INDEX idx_workers_is_active ON workers(is_active);
 ```
 
@@ -471,7 +543,7 @@ CREATE TABLE services (
   updated_at TIMESTAMP DEFAULT NOW()
 );
 
-COMMENT ON TABLE services IS 'Base services (House Cleaning, AC Repair). Actual price includes add-on options';
+COMMENT ON TABLE services IS 'Base services (House Cleaning, AC Repair). Actual price includes add-on options. Admin defines all services';
 COMMENT ON COLUMN services.base_price IS 'Starting price - can be 0 if all pricing from options';
 COMMENT ON COLUMN services.duration_minutes IS 'Base duration - extended by selected options';
 ```
@@ -513,6 +585,33 @@ COMMENT ON COLUMN service_options.is_required IS 'Some services require at least
 ```sql
 CREATE INDEX idx_service_options_service_id ON service_options(service_id);
 CREATE INDEX idx_service_options_is_active ON service_options(is_active);
+```
+
+---
+
+#### `worker_services` (Worker Service Assignment) ⭐ NEW
+
+```sql
+CREATE TABLE worker_services (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  worker_id UUID NOT NULL REFERENCES workers(id) ON DELETE CASCADE,
+  service_id UUID NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+COMMENT ON TABLE worker_services IS 'Which specific services each worker can provide. Admin assigns during worker setup or management';
+COMMENT ON COLUMN worker_services.worker_id IS 'Worker who provides this service';
+COMMENT ON COLUMN worker_services.service_id IS 'Specific service (e.g., Basic House Clean, Deep Clean)';
+COMMENT ON COLUMN worker_services.is_active IS 'Worker can enable/disable services they offer';
+```
+
+**Indexes:**
+
+```sql
+CREATE INDEX idx_worker_services_worker_id ON worker_services(worker_id);
+CREATE INDEX idx_worker_services_service_id ON worker_services(service_id);
+CREATE UNIQUE INDEX idx_worker_services_unique ON worker_services(worker_id, service_id);
 ```
 
 ---
@@ -814,22 +913,25 @@ CREATE UNIQUE INDEX idx_worker_timeoff_unique ON worker_timeoff(worker_id, date)
 
 ## 📍 Key Relationships Summary
 
-| From                | To                      | Relationship               | Purpose                      |
-| ------------------- | ----------------------- | -------------------------- | ---------------------------- |
-| profiles            | workers                 | 1:1 (auth_id → profile_id) | Identity to worker role      |
-| profiles            | user_profile            | 1:1 (auth_id → user_id)    | Identity to customer data    |
-| profiles            | addresses               | 1:N (auth_id → user_id)    | Multiple addresses per user  |
-| profiles            | bookings                | 1:N (auth_id → user_id)    | Customer makes many bookings |
-| profiles            | orders                  | 1:N (auth_id → user_id)    | Customer places many orders  |
-| bookings            | booking_items           | 1:N                        | One booking has many options |
-| bookings            | booking_assignments     | 1:N                        | Track assignment history     |
-| booking_assignments | profiles                | N:1 (assigned_by)          | **ADMIN who assigned**       |
-| booking_assignments | workers                 | N:1 (worker_id)            | Worker assigned              |
-| services            | service_options         | 1:N                        | Service has many options     |
-| orders              | order_items             | 1:N                        | Order has many line items    |
-| workers             | worker_service_capacity | 1:N                        | Worker capacity per category |
-| payments            | orders                  | N:1                        | Payment for order            |
-| payments            | bookings                | N:1                        | Payment for booking          |
+| From                | To                      | Relationship               | Purpose                                |
+| ------------------- | ----------------------- | -------------------------- | -------------------------------------- |
+| profiles            | workers                 | 1:1 (auth_id → profile_id) | Identity to worker role                |
+| profiles            | user_profile            | 1:1 (auth_id → user_id)    | Identity to customer data              |
+| profiles            | addresses               | 1:N (auth_id → user_id)    | Multiple addresses per user            |
+| profiles            | bookings                | 1:N (auth_id → user_id)    | Customer makes many bookings           |
+| profiles            | orders                  | 1:N (auth_id → user_id)    | Customer places many orders            |
+| bookings            | booking_items           | 1:N                        | One booking has many options           |
+| bookings            | booking_assignments     | 1:N                        | Track assignment history               |
+| booking_assignments | profiles                | N:1 (assigned_by)          | **ADMIN who assigned**                 |
+| booking_assignments | workers                 | N:1 (worker_id)            | Worker assigned                        |
+| **workers**         | **worker_services**     | **1:N** ⭐ NEW DESIGN      | **Worker provides multiple services**  |
+| **worker_services** | **services**            | **N:1** ⭐ NEW DESIGN      | **Services from any category**         |
+| **services**        | **service_categories**  | **N:1** ⭐ RELINKED        | **Service belongs to category**        |
+| services            | service_options         | 1:N                        | Service has many customization options |
+| workers             | worker_service_capacity | 1:N                        | Worker capacity per category           |
+| orders              | order_items             | 1:N                        | Order has many line items              |
+| payments            | orders                  | N:1                        | Payment for order                      |
+| payments            | bookings                | N:1                        | Payment for booking                    |
 
 ---
 
@@ -856,7 +958,9 @@ CREATE UNIQUE INDEX idx_worker_timeoff_unique ON worker_timeoff(worker_id, date)
 
 ```
 - worker.profile_id = profiles.auth_id where role='worker'
-- Worker capacity defined in worker_service_capacity
+- Services linked via worker_services → services (can be from multiple categories!)
+- NO service_category_id on workers table anymore
+- Worker capacity defined in worker_service_capacity (per category)
 - Availability defined in worker_availability
 - Time off tracked in worker_timeoff
 ```
@@ -981,18 +1085,20 @@ Available Slots =
 
 ## 🎯 Summary
 
-| Aspect            | Details                                                   |
-| ----------------- | --------------------------------------------------------- |
-| **Auth Table**    | `profiles` - single source of identity                    |
-| **Admin**         | Just a profile with role='admin', no extra fields         |
-| **User**          | Profile + user_profile (phone, address, payment)          |
-| **Worker**        | Profile + workers (service_category, rating, hourly_rate) |
-| **Services**      | Customizable with service_options (add-ons)               |
-| **Bookings**      | booking_items snapshot selected options                   |
-| **Slots**         | worker_service_capacity + daily calculation               |
-| **Assignments**   | booking_assignments.assigned_by = admin profile_id        |
-| **Notifications** | All email/SMS/in-app tracked in notifications table       |
-| **Payments**      | One table for orders + bookings                           |
+| Aspect              | Details                                                                        |
+| ------------------- | ------------------------------------------------------------------------------ |
+| **Auth Table**      | `profiles` - single source of identity                                         |
+| **Admin**           | Just a profile with role='admin', no extra fields                              |
+| **User**            | Profile + user_profile (phone, address, payment)                               |
+| **Worker**          | Profile + workers (phone, address, rating, hourly_rate) - **No category_id**   |
+| **Services Flow**   | **service_categories → services → service_options (linked together)**          |
+| **Worker-Services** | **⭐ Replaces old design: worker_services links workers to specific services** |
+| **Multi-Category**  | **Worker can provide services from ANY category via worker_services**          |
+| **Bookings**        | booking_items snapshot selected options                                        |
+| **Slots**           | worker_service_capacity + daily calculation per category                       |
+| **Assignments**     | booking_assignments.assigned_by = admin profile_id                             |
+| **Notifications**   | All email/SMS/in-app tracked in notifications table                            |
+| **Payments**        | One table for orders + bookings                                                |
 
 ---
 
@@ -1004,3 +1110,102 @@ Available Slots =
 - ✅ Snapshot-safe (prices locked at booking time)
 - ✅ Slot-managed (capacity-aware scheduling)
 - ✅ Communication-tracked (all notifications logged)
+- ✅ **Multi-Category-Ready (workers can provide services from different categories)**
+- ✅ **Future-Proof (workers can self-manage via worker_services)**
+
+---
+
+## 📋 Admin Setup Flow (Current & Future-Ready)
+
+### **Phase 1: Define Service Catalog (Admin Only)**
+
+```
+Step 1: CREATE service_categories
+   INSERT → House Cleaning
+   INSERT → House Repair
+   INSERT → Mom's Helper
+   INSERT → Elder Care
+
+Step 2: CREATE services (under categories)
+   INSERT → House Cleaning: "Basic Clean" ($50, 2hrs)
+   INSERT → House Cleaning: "Deep Clean" ($100, 4hrs)
+   INSERT → House Repair: "Wall Repair" ($75, 3hrs)
+   INSERT → Elder Care: "Bathing Service" ($60, 1.5hrs)
+
+Step 3: CREATE service_options (customizations)
+   INSERT → Basic Clean: "Washing Machine" (+$20, +30min)
+   INSERT → Basic Clean: "Door Cleaning" (+$15, +20min)
+   INSERT → Deep Clean: "Carpet Cleaning" (+$40, +45min)
+   INSERT → Wall Repair: "Paint" (+$30, +1hr)
+```
+
+### **Phase 2: Register & Assign Workers (Admin Only)**
+
+```
+Step 4: CREATE workers (register new workers)
+   INSERT → Ahmed (profile_id: auth_123, hourly_rate: $15)
+   INSERT → Fatima (profile_id: auth_456, hourly_rate: $18)
+   INSERT → Malik (profile_id: auth_789, hourly_rate: $20)
+
+Step 5: ASSIGN SERVICES TO WORKERS ⭐ (Can be from ANY category!)
+   INSERT worker_services → Ahmed + "Basic Clean" (✓ active) [House Cleaning]
+   INSERT worker_services → Ahmed + "Deep Clean" (✓ active) [House Cleaning]
+   INSERT worker_services → Fatima + "Wall Repair" (✓ active) [House Repair]
+   INSERT worker_services → Malik + "Bathing Service" (✓ active) [Elder Care]
+
+Step 6: SET WORKER CAPACITY (per category - they may have multiple!)
+   INSERT worker_service_capacity → Ahmed (House Cleaning: 3/day, 1 concurrent)
+   INSERT worker_service_capacity → Fatima (House Repair: 2/day, 1 concurrent)
+   INSERT worker_service_capacity → Malik (Elder Care: 2/day, 1 concurrent)
+```
+
+### **Phase 3: User Books Service**
+
+```
+Step 7: User selects service + options
+   User: "Basic Clean" + "Washing Machine" + "Door Cleaning"
+   Total: $50 + $20 + $15 = $85 | Duration: 2hr + 30min + 20min = 170min
+
+Step 8: SYSTEM FINDS AVAILABLE WORKERS ⭐ NEW LOGIC
+   Query worker_services WHERE service_id = 'basic-clean'
+   Results: Ahmed (House Cleaning category, 3/day available) ✓
+
+   Check worker_service_capacity for Ahmed:
+   - House Cleaning category: max 3/day
+   - Check if Ahmed has available slots today
+   - Yes: Ahmed available ✓
+
+   → Only Ahmed can provide this service (and has capacity)
+
+Step 9: Admin assigns worker
+   INSERT booking_assignments → booking: 456, worker: Ahmed, assigned_by: admin
+```
+
+### **Phase 3b (Future): Worker Self-Management**
+
+```
+When workers get access to their own profile:
+
+Worker Management:
+   Ahmed can:
+   ├─ View assigned services ✓
+   ├─ See services from multiple categories ✓
+   ├─ Enable/disable services they offer (UPDATE worker_services.is_active)
+   ├─ View bookings assigned to them ✓
+   └─ Cannot create/delete services (admin-controlled)
+
+System automatically filters:
+   If worker_services.is_active = FALSE
+   → Service NOT shown to users
+   → User cannot book this worker for that service
+```
+
+**Result:** Clean separation + Multi-Category Support:
+
+- **Admin Control:** Categories, Services, Options, Worker Registration
+- **Admin Assignment:** Which services each worker provides (any category!)
+- **Multi-Category:** Worker can provide services from House Cleaning AND House Repair AND Elder Care
+- **Capacity:** Per category (different limits for different services)
+- **Future Worker Agency:** Can enable/disable their services (no deletions)
+- **System Automation:** Auto-finds available workers based on worker_services + category capacity
+- ✅ **Completely Flexible & Future-Proof**

@@ -1,47 +1,88 @@
 /**
- * API Layer - Pure API calls
+ * API Layer - Pure API calls for Services & Service Options
  * No React Query logic, just HTTP requests
  */
 
-import { httpClient } from '@/lib/client/http';
+import { httpClient } from '@/lib/client/http/client';
 
-const BASE_URL = '/api/services';
+// ============================================
+// TYPES
+// ============================================
+
+export interface Service {
+  id: string;
+  name: string;
+  description?: string;
+  base_price: number;
+  category_id: string;
+  duration_minutes: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  category?: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+}
 
 export interface CreateServiceDTO {
   name: string;
-  description: string;
+  description?: string;
+  base_price: number;
+  category_id: string;
+  duration_minutes?: number;
+}
+
+export interface ServiceOption {
+  id: string;
+  service_id: string;
+  name: string;
+  description?: string;
   price: number;
   duration_minutes: number;
-  category: string;
-}
-
-export type UpdateServiceDTO = Partial<CreateServiceDTO>;
-
-export interface Service extends CreateServiceDTO {
-  id: string;
-  created_at: string;
-  updated_at: string;
+  is_required: boolean;
+  display_order?: number;
   is_active: boolean;
+  created_at: string;
 }
 
-// GET - Fetch all services
-export const getServicesApi = (): Promise<{ services: Service[] }> =>
-  httpClient.get(`${BASE_URL}`);
+export interface CreateServiceOptionDTO {
+  name: string;
+  description?: string;
+  price: number;
+  duration_minutes?: number;
+  is_required?: boolean;
+  display_order?: number;
+}
 
-// GET - Fetch single service
-export const getServiceApi = (id: string): Promise<Service> =>
-  httpClient.get(`${BASE_URL}/${id}`);
+// ============================================
+// SERVICES API
+// ============================================
 
-// POST - Create service
-export const createServiceApi = (data: CreateServiceDTO): Promise<Service> =>
-  httpClient.post(`${BASE_URL}`, data);
+export const getServicesApi = async (): Promise<Service[]> => {
+  return httpClient.get('/api/admin/services');
+};
 
-// PUT - Update service
-export const updateServiceApi = (
-  id: string,
-  data: UpdateServiceDTO,
-): Promise<Service> => httpClient.put(`${BASE_URL}/${id}`, data);
+export const createServiceApi = async (
+  data: CreateServiceDTO,
+): Promise<Service> => {
+  return httpClient.post('/api/admin/services', data);
+};
 
-// DELETE - Delete service
-export const deleteServiceApi = (id: string): Promise<void> =>
-  httpClient.delete(`${BASE_URL}/${id}`);
+// ============================================
+// SERVICE OPTIONS API
+// ============================================
+
+export const getServiceOptionsApi = async (
+  serviceId: string,
+): Promise<ServiceOption[]> => {
+  return httpClient.get(`/api/admin/services/${serviceId}/options`);
+};
+
+export const createServiceOptionApi = async (
+  serviceId: string,
+  data: CreateServiceOptionDTO,
+): Promise<ServiceOption> => {
+  return httpClient.post(`/api/admin/services/${serviceId}/options`, data);
+};
