@@ -9,10 +9,19 @@ export interface CreateUserDTO {
   role?: 'admin' | 'user' | 'worker';
 }
 
+export interface AdminCreateUserDTO {
+  email: string;
+  name: string;
+  password: string;
+}
+
 export interface UpdateUserDTO {
+  full_name?: string;
   name?: string;
   phone?: string;
   address?: string;
+  role?: 'admin' | 'user' | 'worker';
+  status?: 'active' | 'inactive' | 'suspended';
 }
 
 export interface User extends CreateUserDTO {
@@ -20,7 +29,7 @@ export interface User extends CreateUserDTO {
   createdAt: string;
   updatedAt: string;
   created_at: string;
-  status?: 'active' | 'inactive';
+  status?: 'active' | 'inactive' | 'suspended';
 }
 
 /**
@@ -38,7 +47,7 @@ export const getUserApi = (id: string): Promise<User> =>
 /**
  * Create a new user
  */
-export const createUserApi = (data: CreateUserDTO): Promise<User> =>
+export const createUserApi = (data: AdminCreateUserDTO): Promise<User> =>
   httpClient.post(`/api/admin/users`, data);
 
 /**

@@ -2,21 +2,40 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { useGetServices } from '@/lib/client/api/services/services.query';
-import { useGetCategories } from '@/lib/client/api/services/categories.query';
-import { useGetServiceOptions } from '@/lib/client/api/services/services.query';
-import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import {
+  ServiceOption,
+  useGetServices,
+  useGetCategories,
+  useGetServiceOptions,
+} from '@/lib/client/api';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  ServiceEditModal,
+  ServiceOptionEditModal,
+  ServiceCategoryEditModal,
+} from '@/components/pages/admin/serviceForms';
+import {
+  EmptyState,
+  SectionHeader,
+  ActionDropdown,
+  DeleteConfirmationDialog,
+} from '@/components/common';
 
 export default function ServicesPage() {
+  const queryClient = useQueryClient();
   const { data: categoriesData, isLoading: categoriesLoading } =
     useGetCategories();
   const { data: servicesData, isLoading: servicesLoading } = useGetServices();
 
-  const categories = categoriesData?.categories || [];
-  const services = servicesData || [];
+  const categories = useMemo(
+    () => categoriesData?.categories || [],
+    [categoriesData],
+  );
+  const services = useMemo(() => servicesData || [], [servicesData]);
 
   // Auto-select first category, but allow manual override
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
@@ -25,6 +44,22 @@ export default function ServicesPage() {
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(
     null,
   );
+  const [editingCategory, setEditingCategory] = useState<
+    (typeof categories)[0] | null
+  >(null);
+  const [deleteCategory, setDeleteCategory] = useState<
+    (typeof categories)[0] | null
+  >(null);
+  const [editingService, setEditingService] = useState<
+    (typeof services)[0] | null
+  >(null);
+  const [deleteService, setDeleteService] = useState<
+    (typeof services)[0] | null
+  >(null);
+  const [editingOption, setEditingOption] = useState<ServiceOption | null>(
+    null,
+  );
+  const [deleteOption, setDeleteOption] = useState<ServiceOption | null>(null);
 
   // Derive the active category ID (manual selection or first category)
   const activeCategoryId = useMemo(() => {
@@ -35,14 +70,14 @@ export default function ServicesPage() {
   // Filter services for active category
   const filteredServices = useMemo(() => {
     if (!activeCategoryId) return [];
-    return services.filter((s: any) => s.category_id === activeCategoryId);
+    return services.filter((s) => s.category_id === activeCategoryId);
   }, [services, activeCategoryId]);
 
   // Derive the active service ID (manual selection or first service)
   const activeServiceId = useMemo(() => {
     if (
       selectedServiceId &&
-      filteredServices.some((s: any) => s.id === selectedServiceId)
+      filteredServices.some((s) => s.id === selectedServiceId)
     ) {
       return selectedServiceId;
     }
@@ -55,13 +90,13 @@ export default function ServicesPage() {
 
   const selectedService = useMemo(() => {
     return activeServiceId
-      ? filteredServices.find((s: any) => s.id === activeServiceId)
+      ? filteredServices.find((s) => s.id === activeServiceId)
       : null;
   }, [activeServiceId, filteredServices]);
 
   const selectedCategory = useMemo(() => {
     return activeCategoryId
-      ? categories.find((c: any) => c.id === activeCategoryId)
+      ? categories.find((c) => c.id === activeCategoryId)
       : null;
   }, [activeCategoryId, categories]);
 
@@ -83,45 +118,42 @@ export default function ServicesPage() {
     <div className="py-10 space-y-8">
       {/* CATEGORIES SECTION */}
       <div>
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Categories</h2>
-            <p className="text-sm text-gray-600 mt-1">
-              Select a category to view its services
-            </p>
-          </div>
-          <Link href="/admin/services/new">
-            <Button>+ Create New Category</Button>
-          </Link>
-        </div>
+        <SectionHeader
+          title="Categories"
+          description="Select a category to view its services"
+          action={
+            <Link href="/admin/services/new">
+              <Button>+ Create New Category</Button>
+            </Link>
+          }
+        />
 
         {/* Category Cards */}
         {categories.length === 0 ? (
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center py-8">
-                <p className="text-gray-500 mb-4">
-                  No categories yet. Create your first service category to get
-                  started.
-                </p>
-                <Link href="/admin/services/new">
-                  <Button>Create First Category</Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
+          <EmptyState
+            message="No categories yet. Create your first service category to get started."
+            action={
+              <Link href="/admin/services/new">
+                <Button>Create First Category</Button>
+              </Link>
+            }
+          />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {categories.map((category: any) => (
+            {categories.map((category) => (
               <div
                 key={category.id}
                 onClick={() => setSelectedCategoryId(category.id)}
-                className={`rounded-lg p-4 cursor-pointer transition-all duration-200 text-center flex flex-col items-center border-2 ${
+                className={`relative rounded-lg p-4 cursor-pointer transition-all duration-200 text-center flex flex-col items-center border-2 ${
                   activeCategoryId === category.id
                     ? 'border-black shadow-md border-2'
                     : 'hover:shadow-sm'
                 }`}
               >
+                <ActionDropdown
+                  onEdit={() => setEditingCategory(category)}
+                  onDelete={() => setDeleteCategory(category)}
+                />
                 {category.image_url && (
                   <div className="mb-3">
                     <Image
@@ -156,44 +188,45 @@ export default function ServicesPage() {
       {/* SERVICES SECTION */}
       {activeCategoryId && (
         <div>
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">Services</h2>
-              <p className="text-sm text-gray-600 mt-1">
-                {selectedCategory?.name &&
-                  `Services in ${selectedCategory.name}`}
-              </p>
-            </div>
-            <Link href="/admin/services/new">
-              <Button>+ Create New Service</Button>
-            </Link>
-          </div>
+          <SectionHeader
+            title="Services"
+            description={
+              selectedCategory?.name
+                ? `Services in ${selectedCategory.name}`
+                : undefined
+            }
+            action={
+              <Link href="/admin/services/new">
+                <Button>+ Create New Service</Button>
+              </Link>
+            }
+          />
 
           {filteredServices.length === 0 ? (
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-center py-8">
-                  <p className="text-gray-500 mb-4">
-                    No services in this category yet
-                  </p>
-                  <Link href="/admin/services/new">
-                    <Button>Create First Service</Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
+            <EmptyState
+              message="No services in this category yet"
+              action={
+                <Link href="/admin/services/new">
+                  <Button>Create First Service</Button>
+                </Link>
+              }
+            />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredServices.map((service: any) => (
+              {filteredServices.map((service) => (
                 <div
                   key={service.id}
                   onClick={() => setSelectedServiceId(service.id)}
-                  className={`rounded-lg p-4 cursor-pointer border-2 transition-all duration-200 ${
+                  className={`relative rounded-lg p-4 cursor-pointer border-2 transition-all duration-200 ${
                     activeServiceId === service.id
                       ? 'border-black shadow-md'
                       : 'hover:shadow-sm'
                   }`}
                 >
+                  <ActionDropdown
+                    onEdit={() => setEditingService(service)}
+                    onDelete={() => setDeleteService(service)}
+                  />
                   <div className="space-y-3">
                     <p className="text-lg font-bold text-gray-900">
                       {service.name}
@@ -220,9 +253,6 @@ export default function ServicesPage() {
                         {service.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-400">
-                      Display Order: {service.display_order || 0}
-                    </p>
                   </div>
                 </div>
               ))}
@@ -234,19 +264,19 @@ export default function ServicesPage() {
       {/* OPTIONS SECTION */}
       {selectedService && (
         <div>
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">
-                Service Options
-              </h2>
-              <p className="text-sm text-gray-600 mt-1">
-                {selectedService?.name && `Options for ${selectedService.name}`}
-              </p>
-            </div>
-            <Link href={`/admin/services/new`}>
-              <Button>+ Create New Option</Button>
-            </Link>
-          </div>
+          <SectionHeader
+            title="Service Options"
+            description={
+              selectedService?.name
+                ? `Options for ${selectedService.name}`
+                : undefined
+            }
+            action={
+              <Link href="/admin/services/new">
+                <Button>+ Create New Option</Button>
+              </Link>
+            }
+          />
 
           {optionsLoading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -255,23 +285,26 @@ export default function ServicesPage() {
               ))}
             </div>
           ) : options.length === 0 ? (
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-center py-8">
-                  <p className="text-gray-500 mb-4">No options added yet</p>
-                  <Link href={`/admin/services/new`}>
-                    <Button>Add First Option</Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
+            <EmptyState
+              message="No options added yet"
+              action={
+                <Link href="/admin/services/new">
+                  <Button>Add First Option</Button>
+                </Link>
+              }
+            />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {options.map((option: any) => (
+              {options.map((option) => (
                 <div
                   key={option.id}
-                  className="rounded-lg p-4 border-2  hover:shadow-sm transition-all duration-200"
+                  className="relative rounded-lg p-4 border-2  hover:shadow-sm transition-all duration-200"
                 >
+                  <ActionDropdown
+                    onEdit={() => setEditingOption(option)}
+                    onDelete={() => setDeleteOption(option)}
+                    stopPropagation={false}
+                  />
                   <div className="space-y-3">
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-lg font-bold text-gray-900">
@@ -310,7 +343,7 @@ export default function ServicesPage() {
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between text-xs text-gray-400">
+                    <div className="flex items-center justify-between text-xs text-gray-400 pr-8">
                       <span>Order: {option.display_order || 0}</span>
                       <span>
                         {new Date(option.created_at).toLocaleDateString()}
@@ -323,6 +356,149 @@ export default function ServicesPage() {
           )}
         </div>
       )}
+
+      <ServiceCategoryEditModal
+        open={!!editingCategory}
+        category={editingCategory}
+        onOpenChange={(open) => {
+          if (!open) setEditingCategory(null);
+        }}
+        onSuccess={() => setEditingCategory(null)}
+      />
+
+      <ServiceEditModal
+        open={!!editingService}
+        service={editingService}
+        onOpenChange={(open) => {
+          if (!open) setEditingService(null);
+        }}
+        onSuccess={() => setEditingService(null)}
+      />
+
+      <ServiceOptionEditModal
+        open={!!editingOption}
+        option={editingOption}
+        onOpenChange={(open) => {
+          if (!open) setEditingOption(null);
+        }}
+        onSuccess={() => setEditingOption(null)}
+      />
+
+      <DeleteConfirmationDialog
+        open={!!deleteCategory}
+        onOpenChange={(open) => {
+          if (!open) setDeleteCategory(null);
+        }}
+        title="Delete Category"
+        itemName={deleteCategory?.name}
+        description="Deleting this category will also delete all linked services and service options. Are you sure you want to delete"
+        onConfirm={async () => {
+          if (!deleteCategory) return;
+          try {
+            const response = await fetch(
+              `/api/admin/services/categories/${deleteCategory.id}`,
+              { method: 'DELETE' },
+            );
+
+            if (!response.ok) {
+              const error = await response.json().catch(() => ({}));
+              throw new Error(error.error || 'Failed to delete category');
+            }
+
+            setDeleteCategory(null);
+            await queryClient.invalidateQueries({
+              queryKey: ['services'],
+            });
+            await queryClient.invalidateQueries({
+              queryKey: ['serviceOptions'],
+            });
+            await queryClient.invalidateQueries({
+              queryKey: ['service-categories', 'list'],
+            });
+            toast.success('Category deleted successfully');
+          } catch (error) {
+            const errorMessage =
+              error instanceof Error
+                ? error.message
+                : 'Failed to delete category';
+            toast.error(errorMessage);
+          }
+        }}
+      />
+
+      <DeleteConfirmationDialog
+        open={!!deleteService}
+        onOpenChange={(open) => {
+          if (!open) setDeleteService(null);
+        }}
+        title="Delete Service"
+        itemName={deleteService?.name}
+        description="Deleting this service will also delete all linked service options. Are you sure you want to delete"
+        onConfirm={async () => {
+          if (!deleteService) return;
+          try {
+            const response = await fetch(
+              `/api/admin/services/${deleteService.id}`,
+              { method: 'DELETE' },
+            );
+
+            if (!response.ok) {
+              const error = await response.json().catch(() => ({}));
+              throw new Error(error.error || 'Failed to delete service');
+            }
+
+            setDeleteService(null);
+            await queryClient.invalidateQueries({
+              queryKey: ['services'],
+            });
+            await queryClient.invalidateQueries({
+              queryKey: ['serviceOptions'],
+            });
+            toast.success('Service deleted successfully');
+          } catch (error) {
+            const errorMessage =
+              error instanceof Error
+                ? error.message
+                : 'Failed to delete service';
+            toast.error(errorMessage);
+          }
+        }}
+      />
+
+      <DeleteConfirmationDialog
+        open={!!deleteOption}
+        onOpenChange={(open) => {
+          if (!open) setDeleteOption(null);
+        }}
+        title="Delete Option"
+        itemName={deleteOption?.name}
+        onConfirm={async () => {
+          if (!deleteOption) return;
+          try {
+            const response = await fetch(
+              `/api/admin/services/options/${deleteOption.id}`,
+              { method: 'DELETE' },
+            );
+
+            if (!response.ok) {
+              const error = await response.json().catch(() => ({}));
+              throw new Error(error.error || 'Failed to delete option');
+            }
+
+            setDeleteOption(null);
+            await queryClient.invalidateQueries({
+              queryKey: ['serviceOptions', deleteOption.service_id],
+            });
+            toast.success('Option deleted successfully');
+          } catch (error) {
+            const errorMessage =
+              error instanceof Error
+                ? error.message
+                : 'Failed to delete option';
+            toast.error(errorMessage);
+          }
+        }}
+      />
     </div>
   );
 }

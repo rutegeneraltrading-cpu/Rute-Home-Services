@@ -66,7 +66,7 @@ export async function DELETE(
 
     if (error) throw error;
 
-    return NextResponse.json(undefined, { status: 204 });
+    return new NextResponse(null, { status: 204 });
   } catch (error) {
     console.error('Error deleting product:', error);
     return NextResponse.json(

@@ -3,18 +3,27 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { DataTable } from '@/components/common';
-import { DataTableConfig, TableColumn, TableAction } from '@/lib/types/table';
+import { TableColumn, TableAction } from '@/lib/types/table';
 import { useGetProducts } from '@/lib/client/api/products';
 import { useDeleteProduct } from '@/lib/client/api/products';
 import { Product } from '@/lib/client/api/products/products.api';
 import { Edit2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { ProductEditModal } from '@/components/pages/admin/productForms';
 
 const ProductsPage = () => {
   const { data: products = [], isLoading } = useGetProducts();
   const deleteProductMutation = useDeleteProduct();
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [deleteProduct, setDeleteProduct] = useState<Product | null>(null);
 
   const columns: TableColumn<Product>[] = [
     {
@@ -92,27 +101,13 @@ const ProductsPage = () => {
       id: 'edit',
       label: 'Edit',
       icon: Edit2,
-      onClick: (row) => console.log('Edit:', row),
+      onClick: (row) => setEditingProduct(row),
     },
     {
       id: 'delete',
       label: 'Delete',
       icon: Trash2,
-      onClick: (row) => {
-        if (confirm(`Delete product "${row.name}"?`)) {
-          setDeletingId(row.id);
-          deleteProductMutation.mutate(row.id, {
-            onSuccess: () => {
-              setDeletingId(null);
-              toast.success('Product deleted successfully');
-            },
-            onError: () => {
-              setDeletingId(null);
-              toast.error('Failed to delete product');
-            },
-          });
-        }
-      },
+      onClick: (row) => setDeleteProduct(row),
       variant: 'destructive',
     },
   ];
@@ -125,9 +120,7 @@ const ProductsPage = () => {
           <p className="text-gray-600 mt-1">Manage your e-commerce products</p>
         </div>
         <Link href="/admin/products/new">
-          <Button className="bg-blue-600 hover:bg-blue-700">
-            + Add Product
-          </Button>
+          <Button>+ Add Product</Button>
         </Link>
       </div>
 
@@ -142,6 +135,63 @@ const ProductsPage = () => {
           defaultSortOrder: 'desc',
         }}
       />
+
+      <ProductEditModal
+        open={!!editingProduct}
+        product={editingProduct}
+        onOpenChange={(open) => {
+          if (!open) setEditingProduct(null);
+        }}
+        onSuccess={() => setEditingProduct(null)}
+      />
+
+      <Dialog
+        open={!!deleteProduct}
+        onOpenChange={(open) => {
+          if (!open) setDeleteProduct(null);
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Product</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete{' '}
+              <span className="font-semibold">{deleteProduct?.name}</span>? This
+              action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex justify-end gap-3 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeleteProduct(null)}
+              disabled={deleteProductMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => {
+                if (!deleteProduct) return;
+                deleteProductMutation.mutate(deleteProduct.id, {
+                  onSuccess: () => {
+                    setDeleteProduct(null);
+                    toast.success('Product deleted successfully');
+                  },
+                  onError: () => {
+                    toast.error('Failed to delete product');
+                  },
+                });
+              }}
+              disabled={deleteProductMutation.isPending}
+            >
+              {deleteProductMutation.isPending ? 'Deleting...' : 'Delete'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

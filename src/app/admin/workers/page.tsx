@@ -1,26 +1,22 @@
 'use client';
 
 import { useState } from 'react';
-import { Edit2, Ban, CheckCircle, Plus } from 'lucide-react';
-import { DataTable } from '@/components/common';
+import { Edit2, Plus, Trash2 } from 'lucide-react';
+import { DataTable, DeleteConfirmationDialog } from '@/components/common';
 import { DataTableConfig, TableColumn, TableAction } from '@/lib/types/table';
-import {
-  Worker,
-  useGetWorkers,
-  useSuspendWorker,
-  useUnsuspendWorker,
-} from '@/lib/client/api';
+import { Worker, useGetWorkers, useDeleteWorker } from '@/lib/client/api';
 
 import { Button } from '@/components/ui/button';
 import { WorkerForm } from '@/components/pages/admin/workerform';
+import { WorkerEditModal } from '@/components/pages/admin/workerform/WorkerEditModal';
 
 const Workers = () => {
   const { data, isLoading } = useGetWorkers();
   const workers = data?.workers || [];
-  const suspendMutation = useSuspendWorker();
-  const unsuspendMutation = useUnsuspendWorker();
-  const [suspendingId, setSuspendingId] = useState<string | null>(null);
+  const deleteWorkerMutation = useDeleteWorker();
   const [isWorkerFormOpen, setIsWorkerFormOpen] = useState(false);
+  const [editingWorker, setEditingWorker] = useState<Worker | null>(null);
+  const [deletingWorker, setDeletingWorker] = useState<Worker | null>(null);
 
   const columns: TableColumn<Worker>[] = [
     {
@@ -90,37 +86,17 @@ const Workers = () => {
       label: 'Edit',
       icon: Edit2,
       onClick: (worker: Worker) => {
-        console.log('Edit worker:', worker);
+        setEditingWorker(worker);
       },
     },
     {
-      id: 'suspend',
-      label: 'Suspend',
-      icon: Ban,
+      id: 'delete',
+      label: 'Delete',
+      icon: Trash2,
       variant: 'destructive',
       onClick: (worker: Worker) => {
-        setSuspendingId(worker.id);
-        suspendMutation.mutate(worker.id, {
-          onSuccess: () => {
-            setSuspendingId(null);
-          },
-        });
+        setDeletingWorker(worker);
       },
-      showWhen: (worker: Worker) => worker.status !== 'suspended',
-    },
-    {
-      id: 'reactivate',
-      label: 'Reactivate',
-      icon: CheckCircle,
-      onClick: (worker: Worker) => {
-        setSuspendingId(worker.id);
-        unsuspendMutation.mutate(worker.id, {
-          onSuccess: () => {
-            setSuspendingId(null);
-          },
-        });
-      },
-      showWhen: (worker: Worker) => worker.status === 'suspended',
     },
   ];
 
@@ -133,7 +109,7 @@ const Workers = () => {
     pageSize: 10,
     showSearch: true,
     showPagination: true,
-    isLoading: isLoading || suspendingId !== null,
+    isLoading: isLoading,
     emptyState: {
       title: 'No workers found',
       description: 'Get started by creating a new worker.',
@@ -141,7 +117,7 @@ const Workers = () => {
   };
 
   return (
-    <div className="p-6">
+    <div className="py-12">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold">Workers</h1>
@@ -161,6 +137,34 @@ const Workers = () => {
         open={isWorkerFormOpen}
         onOpenChange={setIsWorkerFormOpen}
         onSuccess={() => setIsWorkerFormOpen(false)}
+      />
+
+      <WorkerEditModal
+        open={!!editingWorker}
+        worker={editingWorker}
+        onOpenChange={(open) => {
+          if (!open) setEditingWorker(null);
+        }}
+        onSuccess={() => setEditingWorker(null)}
+      />
+
+      <DeleteConfirmationDialog
+        open={!!deletingWorker}
+        onOpenChange={(open) => {
+          if (!open) setDeletingWorker(null);
+        }}
+        title="Delete Worker"
+        itemName={deletingWorker?.full_name}
+        description="This will permanently delete the worker account and profile."
+        onConfirm={() => {
+          if (!deletingWorker) return;
+          deleteWorkerMutation.mutate(deletingWorker.id, {
+            onSuccess: () => {
+              setDeletingWorker(null);
+            },
+          });
+        }}
+        isDeleting={deleteWorkerMutation.isPending}
       />
     </div>
   );

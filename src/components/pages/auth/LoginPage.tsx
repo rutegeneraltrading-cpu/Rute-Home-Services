@@ -71,7 +71,14 @@ export default function LoginPage() {
               disabled={signInMutation.isPending}
             />
           </div>
-
+          <p className="text-start text-sm mt-2">
+            <Link
+              href="/forgot-password"
+              className="text-slate-600 font-medium hover:text-black"
+            >
+              Forgot your password?
+            </Link>
+          </p>
           <Button
             type="submit"
             className="w-full cursor-pointer"

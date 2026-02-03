@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { createClient } from '@/lib/supabase';
+import { createAdminClient, createClient } from '@/lib/supabase';
 
 export async function GET(
   request: NextRequest,
@@ -67,8 +67,8 @@ export async function PUT(
       return NextResponse.json({ error: 'Worker not found' }, { status: 404 });
     }
 
-    // Extract profile fields
-    const { full_name, email, avatar_url, ...workerFields } = body;
+    // Extract profile fields and status
+    const { full_name, email, avatar_url, status, ...workerFields } = body;
 
     // Update profile if provided
     if (full_name || email || avatar_url !== undefined) {
@@ -78,7 +78,16 @@ export async function PUT(
           ...(full_name && { full_name }),
           ...(email && { email }),
           ...(avatar_url !== undefined && { avatar_url }),
+          ...(status && { status }),
         })
+        .eq('auth_id', worker.profile_id);
+
+      if (profileError) throw profileError;
+    } else if (status) {
+      // If only status is being updated
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ status })
         .eq('auth_id', worker.profile_id);
 
       if (profileError) throw profileError;
@@ -171,6 +180,70 @@ export async function PATCH(
     console.error('Error updating worker status:', error);
     return NextResponse.json(
       { error: 'Failed to update worker status' },
+      { status: 500 },
+    );
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const { id } = await params;
+    const supabase = await createClient();
+    const adminClient = await createAdminClient();
+
+    // Get worker to find profile_id
+    const { data: worker, error: workerError } = await supabase
+      .from('workers')
+      .select('id, profile_id')
+      .eq('id', id)
+      .single();
+
+    if (workerError) throw workerError;
+    if (!worker) {
+      return NextResponse.json({ error: 'Worker not found' }, { status: 404 });
+    }
+
+    // Delete worker_services first
+    const { error: workerServicesError } = await supabase
+      .from('worker_services')
+      .delete()
+      .eq('worker_id', id);
+
+    if (workerServicesError) throw workerServicesError;
+
+    // Delete worker record
+    const { error: deleteWorkerError } = await supabase
+      .from('workers')
+      .delete()
+      .eq('id', id);
+
+    if (deleteWorkerError) throw deleteWorkerError;
+
+    // Delete profile record
+    const { error: deleteProfileError } = await supabase
+      .from('profiles')
+      .delete()
+      .eq('auth_id', worker.profile_id);
+
+    if (deleteProfileError) throw deleteProfileError;
+
+    // Delete auth user (admin API)
+    const { error: deleteAuthError } = await adminClient.auth.admin.deleteUser(
+      worker.profile_id,
+    );
+
+    if (deleteAuthError) {
+      console.error('Error deleting auth user:', deleteAuthError);
+    }
+
+    return NextResponse.json({ success: true }, { status: 200 });
+  } catch (error) {
+    console.error('Error deleting worker:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete worker' },
       { status: 500 },
     );
   }

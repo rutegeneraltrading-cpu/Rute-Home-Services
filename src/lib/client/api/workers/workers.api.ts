@@ -33,6 +33,7 @@ export interface UpdateWorkerDTO {
   address?: string;
   hourly_rate?: number;
   avatar_url?: string;
+  status?: 'active' | 'inactive' | 'suspended';
 }
 
 /**
@@ -54,7 +55,8 @@ export const getWorkerApi = (id: string): Promise<{ worker: Worker }> =>
  */
 export const createWorkerApi = (
   data: CreateWorkerDTO,
-): Promise<{ worker: Worker }> => httpClient.post(`/api/admin/workers/create`, data);
+): Promise<{ worker: Worker }> =>
+  httpClient.post(`/api/admin/workers/create`, data);
 
 /**
  * Update worker by ID
@@ -76,3 +78,9 @@ export const suspendWorkerApi = (id: string): Promise<{ worker: Worker }> =>
  */
 export const unsuspendWorkerApi = (id: string): Promise<{ worker: Worker }> =>
   httpClient.patch(`/api/admin/workers/${id}`, { action: 'unsuspend' });
+
+/**
+ * Delete worker by ID
+ */
+export const deleteWorkerApi = (id: string): Promise<{ success: boolean }> =>
+  httpClient.delete(`/api/admin/workers/${id}`);

@@ -45,8 +45,21 @@ class HTTPClient {
           data: error,
         };
       }
+      if (response.status === 204 || response.status === 205) {
+        return undefined as T;
+      }
 
-      return response.json();
+      const contentType = response.headers.get('content-type') || '';
+      const responseText = await response.text();
+      if (!responseText) {
+        return undefined as T;
+      }
+
+      if (contentType.includes('application/json')) {
+        return JSON.parse(responseText) as T;
+      }
+
+      return responseText as unknown as T;
     } catch (error: unknown) {
       // Network error (no internet, timeout, etc)
       if (

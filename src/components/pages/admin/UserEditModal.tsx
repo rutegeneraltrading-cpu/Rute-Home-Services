@@ -1,0 +1,214 @@
+'use client';
+
+import { useEffect } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useUpdateUser } from '@/lib/client/api/users';
+import type { User } from '@/lib/client/api/users';
+import { toast } from 'sonner';
+
+const userEditSchema = z.object({
+  full_name: z.string().min(2, 'Name must be at least 2 characters'),
+  role: z.enum(['admin', 'user', 'worker']),
+  status: z.enum(['active', 'inactive', 'suspended']),
+});
+
+type UserEditValues = z.infer<typeof userEditSchema>;
+
+interface UserEditModalProps {
+  open: boolean;
+  user: User | null;
+  onOpenChange: (open: boolean) => void;
+  onSuccess?: () => void;
+}
+
+export function UserEditModal({
+  open,
+  user,
+  onOpenChange,
+  onSuccess,
+}: UserEditModalProps) {
+  const updateUserMutation = useUpdateUser(user?.id || '', {
+    onSuccess: () => {
+      toast.success('User updated successfully');
+      onSuccess?.();
+      onOpenChange(false);
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to update user');
+    },
+  });
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    control,
+    setValue,
+    formState: { errors, isDirty },
+  } = useForm<UserEditValues>({
+    resolver: zodResolver(userEditSchema),
+  });
+
+  useEffect(() => {
+    if (user) {
+      reset({
+        full_name: user.full_name || user.name || '',
+        role: (user.role as 'admin' | 'user' | 'worker') || 'user',
+        status:
+          (user.status as 'active' | 'inactive' | 'suspended') || 'active',
+      });
+    }
+  }, [user, reset]);
+
+  const onSubmit = (data: UserEditValues) => {
+    if (!user) return;
+    updateUserMutation.mutate(data);
+  };
+
+  if (!user) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Edit User</DialogTitle>
+          <DialogDescription>
+            Update user information. Email cannot be changed.
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <div>
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              value={user.email}
+              disabled
+              className="mt-2 bg-gray-50"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Email cannot be changed
+            </p>
+          </div>
+
+          <div>
+            <Label htmlFor="full_name">Name *</Label>
+            <Input
+              id="full_name"
+              {...register('full_name')}
+              className="mt-2"
+              placeholder="Enter user name"
+            />
+            {errors.full_name && (
+              <p className="text-sm text-red-500 mt-1">
+                {errors.full_name.message}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <Label htmlFor="role">Role *</Label>
+            <Controller
+              name="role"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  value={field.value}
+                  onValueChange={(value) => {
+                    field.onChange(value);
+                    setValue('role', value as 'admin' | 'user' | 'worker', {
+                      shouldDirty: true,
+                    });
+                  }}
+                >
+                  <SelectTrigger id="role" className="mt-2">
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="user">User</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="worker">Worker</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {errors.role && (
+              <p className="text-sm text-red-500 mt-1">{errors.role.message}</p>
+            )}
+          </div>
+
+          <div>
+            <Label htmlFor="status">Status *</Label>
+            <Controller
+              name="status"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  value={field.value}
+                  onValueChange={(value) => {
+                    field.onChange(value);
+                    setValue(
+                      'status',
+                      value as 'active' | 'inactive' | 'suspended',
+                      { shouldDirty: true },
+                    );
+                  }}
+                >
+                  <SelectTrigger id="status" className="mt-2">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="suspended">Suspended</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {errors.status && (
+              <p className="text-sm text-red-500 mt-1">
+                {errors.status.message}
+              </p>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={updateUserMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={updateUserMutation.isPending || !isDirty}
+            >
+              {updateUserMutation.isPending ? 'Updating...' : 'Update User'}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

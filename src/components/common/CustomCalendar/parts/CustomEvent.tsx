@@ -17,11 +17,13 @@ const CustomEvent = ({ event }: CustomEventProps) => {
   const timeRange =
     event.start && event.end
       ? `${event.start.toLocaleTimeString([], {
-          hour: '2-digit',
+          hour: 'numeric',
           minute: '2-digit',
+          hour12: true,
         })} - ${event.end.toLocaleTimeString([], {
-          hour: '2-digit',
+          hour: 'numeric',
           minute: '2-digit',
+          hour12: true,
         })}`
       : 'Time not set';
 
@@ -29,8 +31,8 @@ const CustomEvent = ({ event }: CustomEventProps) => {
     <Tooltip>
       <TooltipTrigger asChild>
         <div className={cn('calendar-event', event.status)}>
-          <div className="text-xs font-medium text-slate-600">{timeRange}</div>
-          <div className="text-sm font-semibold">{event.title}</div>
+          <div className="text-xs font-medium text-slate-700">{timeRange}</div>
+          <div className="text-sm font-semibold truncate">{event.title}</div>
         </div>
       </TooltipTrigger>
       <TooltipContent side="top" sideOffset={6} className="max-w-xs">

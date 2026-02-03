@@ -1,10 +1,16 @@
 /**
  * Auth Mutation Layer - useMutation hooks
- * Handles sign in, sign up, sign out
+ * Handles sign in, sign up, sign out, password reset
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { signUpApi, signInApi, signOutApi } from './auth.api';
+import {
+  signUpApi,
+  signInApi,
+  signOutApi,
+  forgotPasswordApi,
+  resetPasswordApi,
+} from './auth.api';
 import { authKeys } from './auth.query';
 import { toast } from '@/components/ui/use-toast';
 
@@ -42,7 +48,8 @@ export function useSignUp(options?: AuthMutationOptions) {
         variant: 'destructive',
         title: 'Sign Up Failed',
         description:
-          error?.message?.data?.message || 'Failed to create account. Please try again.',
+          error?.message?.data?.message ||
+          'Failed to create account. Please try again.',
       });
 
       options?.onError?.(error);
@@ -78,7 +85,8 @@ export function useSignIn(options?: AuthMutationOptions) {
       toast({
         variant: 'destructive',
         title: 'Login Failed',
-        description: error?.message?.data?.message || 'Invalid email or password.',
+        description:
+          error?.message?.data?.message || 'Invalid email or password.',
       });
 
       options?.onError?.(error);
@@ -111,7 +119,76 @@ export function useSignOut(options?: AuthMutationOptions) {
       toast({
         variant: 'destructive',
         title: 'Logout Failed',
-        description: error?.message?.data?.message || 'Failed to log out. Please try again.',
+        description:
+          error?.message?.data?.message ||
+          'Failed to log out. Please try again.',
+      });
+
+      options?.onError?.(error);
+    },
+  });
+}
+
+/**
+ * Forgot Password (Send Reset Email)
+ */
+export function useForgotPassword(options?: AuthMutationOptions) {
+  return useMutation({
+    mutationFn: (email: string) => forgotPasswordApi(email),
+    onSuccess: () => {
+      toast({
+        variant: 'success',
+        title: 'Check Your Email',
+        description:
+          'If an account exists, you will receive a password reset link.',
+      });
+
+      options?.onSuccess?.();
+    },
+    onError: (error: Error | any) => {
+      console.error('Forgot password error:', error.message);
+
+      toast({
+        variant: 'destructive',
+        title: 'Request Failed',
+        description:
+          error?.message?.data?.message ||
+          'Failed to send reset link. Please try again.',
+      });
+
+      options?.onError?.(error);
+    },
+  });
+}
+
+/**
+ * Reset Password (Update Password)
+ */
+export function useResetPassword(options?: AuthMutationOptions) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (password: string) => resetPasswordApi(password),
+    onSuccess: () => {
+      queryClient.removeQueries({ queryKey: authKeys.all });
+
+      toast({
+        variant: 'success',
+        title: 'Password Updated',
+        description: 'Your password has been successfully updated.',
+      });
+
+      options?.onSuccess?.();
+    },
+    onError: (error: Error | any) => {
+      console.error('Reset password error:', error.message);
+
+      toast({
+        variant: 'destructive',
+        title: 'Password Update Failed',
+        description:
+          error?.message?.data?.message ||
+          'Failed to update password. Please try again.',
       });
 
       options?.onError?.(error);

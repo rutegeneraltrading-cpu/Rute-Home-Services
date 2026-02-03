@@ -36,6 +36,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: userError.message }, { status: 500 });
     }
 
+    // Check if user is a worker - workers cannot login
+    if (userData.role === 'worker') {
+      // Sign out the user
+      await supabase.auth.signOut();
+      return NextResponse.json(
+        { error: 'Invalid email or password' },
+        { status: 401 },
+      );
+    }
+
     return NextResponse.json({
       user: {
         id: userData.auth_id,

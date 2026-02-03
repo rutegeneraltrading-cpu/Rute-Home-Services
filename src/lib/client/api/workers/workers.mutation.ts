@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   createWorkerApi,
   updateWorkerApi,
+  deleteWorkerApi,
   suspendWorkerApi,
   unsuspendWorkerApi,
   UpdateWorkerDTO,
@@ -115,6 +116,32 @@ export const useUnsuspendWorker = () => {
         variant: 'destructive',
         title: 'Failed to Reactivate Worker',
         description: error.message || 'Could not reactivate worker.',
+      });
+    },
+  });
+};
+
+/**
+ * Delete worker by ID
+ */
+export const useDeleteWorker = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: deleteWorkerApi,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: workerKeys.lists() });
+      toast({
+        variant: 'success',
+        title: 'Worker Deleted',
+        description: 'Worker account has been deleted successfully.',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: 'destructive',
+        title: 'Failed to Delete Worker',
+        description: error.message || 'Could not delete worker.',
       });
     },
   });

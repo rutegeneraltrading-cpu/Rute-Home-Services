@@ -21,3 +21,15 @@ export const signOutApi = (): Promise<void> =>
 // GET - Get current user
 export const getMeApi = (): Promise<AuthUser> =>
   httpClient.get(`${BASE_URL}/me`);
+
+// POST - Forgot password (send reset email)
+export const forgotPasswordApi = (
+  email: string,
+): Promise<{ message: string }> =>
+  httpClient.post(`${BASE_URL}/forgot-password`, { email });
+
+// POST - Reset password (update password with token)
+export const resetPasswordApi = (
+  password: string,
+): Promise<{ message: string }> =>
+  httpClient.post(`${BASE_URL}/reset-password`, { password });

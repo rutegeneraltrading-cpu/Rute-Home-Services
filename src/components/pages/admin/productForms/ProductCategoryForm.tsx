@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -21,6 +22,7 @@ interface ProductCategoryFormProps {
 }
 
 export function ProductCategoryForm({ onSuccess }: ProductCategoryFormProps) {
+  const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
@@ -54,6 +56,9 @@ export function ProductCategoryForm({ onSuccess }: ProductCategoryFormProps) {
       }
 
       toast.success('Product category created successfully');
+      await queryClient.invalidateQueries({
+        queryKey: ['product-categories'],
+      });
       reset();
       onSuccess?.();
     } catch (error) {

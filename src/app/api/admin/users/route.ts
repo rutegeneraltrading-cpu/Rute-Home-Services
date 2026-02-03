@@ -6,20 +6,139 @@ export async function GET() {
     const supabase = await createAdminClient();
     const { data: profiles, error } = await supabase
       .from('profiles')
-      .select('*')
+      .select(
+        'auth_id, full_name, email, avatar_url, role, status, created_at, updated_at',
+      )
       .eq('role', 'user')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
 
+    // Map auth_id to id for consistency with User type
+    const users =
+      profiles?.map((profile) => ({
+        ...profile,
+        id: profile.auth_id,
+        name: profile.full_name,
+      })) || [];
+
     return NextResponse.json({
-      users: profiles || [],
-      total: profiles?.length || 0,
+      users,
+      total: users.length,
     });
   } catch (error) {
     console.error('Error fetching users:', error);
     return NextResponse.json(
       { error: 'Failed to fetch users' },
+      { status: 500 },
+    );
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const { email, password, name } = await request.json();
+
+    if (!email || !password || !name) {
+      return NextResponse.json(
+        { error: 'Email, password, and name are required' },
+        { status: 400 },
+      );
+    }
+
+    if (password.length < 6) {
+      return NextResponse.json(
+        { error: 'Password must be at least 6 characters' },
+        { status: 400 },
+      );
+    }
+
+    const adminClient = await createAdminClient();
+
+    const { data: createdUser, error: createError } =
+      await adminClient.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: {
+          full_name: name,
+          display_name: name,
+        },
+      });
+
+    if (createError) {
+      return NextResponse.json({ error: createError.message }, { status: 400 });
+    }
+
+    if (!createdUser?.user) {
+      return NextResponse.json(
+        { error: 'Failed to create user' },
+        { status: 500 },
+      );
+    }
+
+    const userId = createdUser.user.id;
+
+    const { data: profile, error: profileError } = await adminClient
+      .from('profiles')
+      .select('*')
+      .eq('auth_id', userId)
+      .single();
+
+    if (profileError || !profile) {
+      const { data: newProfile, error: insertError } = await adminClient
+        .from('profiles')
+        .insert({
+          auth_id: userId,
+          email,
+          full_name: name,
+          role: 'user',
+          status: 'active',
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        return NextResponse.json(
+          { error: 'Profile creation failed. Please try again.' },
+          { status: 400 },
+        );
+      }
+
+      return NextResponse.json(
+        {
+          id: newProfile.auth_id,
+          email: newProfile.email,
+          name: newProfile.full_name,
+          full_name: newProfile.full_name,
+          role: newProfile.role,
+          status: newProfile.status,
+          avatar_url: newProfile.avatar_url || null,
+          created_at: newProfile.created_at,
+          updated_at: newProfile.updated_at,
+        },
+        { status: 201 },
+      );
+    }
+
+    return NextResponse.json(
+      {
+        id: profile.auth_id,
+        email: profile.email,
+        name: profile.full_name,
+        full_name: profile.full_name,
+        role: profile.role,
+        status: profile.status,
+        avatar_url: profile.avatar_url || null,
+        created_at: profile.created_at,
+        updated_at: profile.updated_at,
+      },
+      { status: 201 },
+    );
+  } catch (error) {
+    console.error('Error creating user:', error);
+    return NextResponse.json(
+      { error: 'Failed to create user' },
       { status: 500 },
     );
   }

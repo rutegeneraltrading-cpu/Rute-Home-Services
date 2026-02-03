@@ -1,0 +1,224 @@
+'use client';
+
+import { useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { useUpdateWorker } from '@/lib/client/api/workers/workers.mutation';
+import type { Worker } from '@/lib/client/api/workers/workers.api';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Controller } from 'react-hook-form';
+
+const workerEditSchema = z.object({
+  full_name: z.string().min(2, 'Name must be at least 2 characters'),
+  phone: z.string().optional(),
+  address: z.string().optional(),
+  hourly_rate: z.string().optional(),
+  status: z.enum(['active', 'inactive', 'suspended']),
+});
+
+type WorkerEditValues = z.infer<typeof workerEditSchema>;
+
+interface WorkerEditModalProps {
+  open: boolean;
+  worker: Worker | null;
+  onOpenChange: (open: boolean) => void;
+  onSuccess?: () => void;
+}
+
+export function WorkerEditModal({
+  open,
+  worker,
+  onOpenChange,
+  onSuccess,
+}: WorkerEditModalProps) {
+  const updateWorkerMutation = useUpdateWorker(worker?.id || '');
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    control,
+    setValue,
+    formState: { errors, isDirty },
+  } = useForm<WorkerEditValues>({
+    resolver: zodResolver(workerEditSchema),
+  });
+
+  useEffect(() => {
+    if (worker) {
+      reset({
+        full_name: worker.full_name || '',
+        phone: worker.phone || '',
+        address: worker.address || '',
+        hourly_rate: worker.hourly_rate ? String(worker.hourly_rate) : '',
+        status:
+          (worker.status as 'active' | 'inactive' | 'suspended') || 'active',
+      });
+    }
+  }, [worker, reset]);
+
+  const onSubmit = (data: WorkerEditValues) => {
+    if (!worker) return;
+    updateWorkerMutation.mutate(
+      {
+        full_name: data.full_name,
+        phone: data.phone || undefined,
+        address: data.address || undefined,
+        hourly_rate: data.hourly_rate
+          ? parseFloat(data.hourly_rate)
+          : undefined,
+        status: data.status,
+      },
+      {
+        onSuccess: () => {
+          onSuccess?.();
+          onOpenChange(false);
+        },
+      },
+    );
+  };
+
+  if (!worker) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Edit Worker</DialogTitle>
+          <DialogDescription>
+            Update worker details. Role cannot be changed.
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div>
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              value={worker.email}
+              disabled
+              className="mt-2 bg-gray-50"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Email cannot be changed
+            </p>
+          </div>
+
+          <div>
+            <Label htmlFor="full_name">Full Name *</Label>
+            <Input
+              id="full_name"
+              placeholder="John Doe"
+              {...register('full_name')}
+            />
+            {errors.full_name && (
+              <p className="text-sm text-red-500 mt-1">
+                {errors.full_name.message}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <Label htmlFor="phone">Phone</Label>
+            <Input
+              id="phone"
+              placeholder="+27 11 123 4567"
+              {...register('phone')}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="address">Address</Label>
+            <Input
+              id="address"
+              placeholder="123 Main St, Johannesburg"
+              {...register('address')}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="hourly_rate">Hourly Rate (ZAR)</Label>
+            <Input
+              id="hourly_rate"
+              type="number"
+              placeholder="250"
+              {...register('hourly_rate')}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="status">Status *</Label>
+            <Controller
+              name="status"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  value={field.value}
+                  onValueChange={(value) => {
+                    field.onChange(value);
+                    setValue(
+                      'status',
+                      value as 'active' | 'inactive' | 'suspended',
+                      {
+                        shouldDirty: true,
+                      },
+                    );
+                  }}
+                >
+                  <SelectTrigger id="status" className="mt-2">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="suspended">Suspended</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {errors.status && (
+              <p className="text-sm text-red-500 mt-1">
+                {errors.status.message}
+              </p>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={updateWorkerMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={updateWorkerMutation.isPending || !isDirty}
+            >
+              {updateWorkerMutation.isPending ? 'Updating...' : 'Update Worker'}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

@@ -30,26 +30,51 @@ export async function middleware(request: NextRequest) {
         cookie.name.startsWith('sb-') && cookie.name.includes('auth-token'),
     );
 
-  // Public routes
-  const publicRoutes = ['/login', '/signup', '/'];
-  const isPublicRoute =
-    publicRoutes.includes(pathname) ||
+  // Routes that are always accessible (API, static files, etc)
+  const alwaysAccessible =
     pathname.startsWith('/_next') ||
-    pathname.startsWith('/api');
+    pathname.startsWith('/api') ||
+    pathname.startsWith('/static');
+
+  if (alwaysAccessible) {
+    return NextResponse.next();
+  }
+
+  // Auth pages - only accessible when NOT logged in
+  const authPages = [
+    '/login',
+    '/signup',
+    '/forgot-password',
+    '/reset-password',
+  ];
+  const isAuthPage = authPages.some((page) => pathname.startsWith(page));
+
+  // Protected admin/user routes
+  const isAdminRoute = pathname.startsWith('/admin');
+  const isUserRoute = pathname.startsWith('/user');
 
   // ============================================
   // UNAUTHENTICATED USERS
   // ============================================
   if (!user) {
     // If auth fetch failed (offline) but auth cookie exists, allow the request
+    // FIX: Don't redirect to login when network is offline but cookie exists
     if (authFetchFailed && hasAuthCookie) {
       return NextResponse.next();
     }
-    // Allow public routes
-    if (isPublicRoute) {
+
+    // Allow auth pages when not logged in
+    if (isAuthPage) {
       return NextResponse.next();
     }
-    // Redirect to login if accessing protected route
+
+    // Allow public routes (home and other pages)
+    // FIX: Only protect /admin and /user routes, all others are accessible
+    if (!isAdminRoute && !isUserRoute) {
+      return NextResponse.next();
+    }
+
+    // Redirect to login only if accessing protected routes (/admin or /user)
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
@@ -77,9 +102,10 @@ export async function middleware(request: NextRequest) {
 
   const userRole = profile?.role;
 
+  // FIX: If role fetch failed (network offline), allow access without redirect
   if (!userRole) {
-    // If role fetch failed (offline), allow access without redirect
-    if (profileFetchFailed) {
+    if (profileFetchFailed && hasAuthCookie) {
+      // Network is down but user is logged in - allow access
       return NextResponse.next();
     }
     console.warn('User has no role assigned:', user.id);
@@ -87,11 +113,11 @@ export async function middleware(request: NextRequest) {
   }
 
   // ============================================
-  // ROLE-BASED ROUTING
+  // AUTHENTICATED USERS - ROUTING
   // ============================================
 
-  // Authenticated users should not access /login or /signup
-  if (pathname === '/login' || pathname === '/signup') {
+  // FIX: Authenticated users cannot access auth pages - redirect to dashboard
+  if (isAuthPage) {
     if (userRole === 'admin') {
       return NextResponse.redirect(new URL('/admin', request.url));
     } else {
@@ -100,28 +126,25 @@ export async function middleware(request: NextRequest) {
   }
 
   // ADMIN ONLY: /admin routes
-  if (pathname.startsWith('/admin')) {
+  if (isAdminRoute) {
     if (userRole !== 'admin') {
       return NextResponse.redirect(new URL('/user', request.url));
     }
   }
 
   // USER/WORKER ONLY: /user routes
-  if (pathname.startsWith('/user')) {
+  if (isUserRoute) {
     if (userRole === 'admin') {
       return NextResponse.redirect(new URL('/admin', request.url));
     }
   }
 
-  // ROOT: redirect to appropriate dashboard
-  if (pathname === '/') {
-    if (userRole === 'admin') {
-      return NextResponse.redirect(new URL('/admin', request.url));
-    } else {
-      return NextResponse.redirect(new URL('/user', request.url));
-    }
-  }
+  // FIX: Logged in users can access "/" - don't auto-redirect them
+  // "/" remains accessible for both logged in and non-logged in users
+  // Logged in users will see it as home, non-logged in users will also see home
+  // They can still navigate to /admin or /user as needed
 
+  // All other routes are accessible for authenticated users
   return NextResponse.next();
 }
 

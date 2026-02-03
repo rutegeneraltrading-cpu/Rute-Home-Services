@@ -1,18 +1,25 @@
 'use client';
 
 import { DataTable } from '@/components/common';
+import { DeleteConfirmationDialog, SectionHeader } from '@/components/common';
 import { DataTableConfig, TableColumn, TableAction } from '@/lib/types/table';
 import { useGetUsers } from '@/lib/client/api/users';
 import { useDeleteUser } from '@/lib/client/api/users';
 import type { User } from '@/lib/client/api/users';
-import { Edit2, Trash2, Eye } from 'lucide-react';
+import { Edit2, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { UserEditModal } from './UserEditModal';
+import { UserCreateModal } from './UserCreateModal';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
 
 export default function UsersPage() {
   const { data, isLoading } = useGetUsers();
   const users = data?.users || [];
   const deleteUserMutation = useDeleteUser();
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [deletingUser, setDeletingUser] = useState<User | null>(null);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   const columns: TableColumn<User>[] = [
     {
@@ -66,19 +73,11 @@ export default function UsersPage() {
 
   const actions: TableAction[] = [
     {
-      id: 'view',
-      label: 'View',
-      icon: Eye,
-      onClick: (user: User) => {
-        console.log('View user:', user);
-      },
-    },
-    {
       id: 'edit',
       label: 'Edit',
       icon: Edit2,
       onClick: (user: User) => {
-        console.log('Edit user:', user);
+        setEditingUser(user);
       },
     },
     {
@@ -87,12 +86,7 @@ export default function UsersPage() {
       icon: Trash2,
       variant: 'destructive',
       onClick: (user: User) => {
-        setDeletingId(user.id);
-        deleteUserMutation.mutate(user.id, {
-          onSuccess: () => {
-            setDeletingId(null);
-          },
-        });
+        setDeletingUser(user);
       },
       showWhen: (user: User) => user.role !== 'admin',
     },
@@ -107,20 +101,63 @@ export default function UsersPage() {
     pageSize: 10,
     showSearch: true,
     showPagination: true,
-    isLoading: isLoading || deletingId !== null,
+    isLoading: isLoading || deleteUserMutation.isPending,
     emptyState: {
       title: 'No users found',
       description: 'Get started by creating a new user.',
     },
   };
-  console.log('users:', users);
+
+  const handleDeleteUser = async () => {
+    if (!deletingUser) return;
+
+    deleteUserMutation.mutate(deletingUser.id, {
+      onSuccess: () => {
+        toast.success('User deleted successfully');
+        setDeletingUser(null);
+      },
+      onError: (error) => {
+        toast.error(error.message || 'Failed to delete user');
+      },
+    });
+  };
 
   return (
-    <div className="p-6">
-      <DataTable<User>
-        config={tableConfig}
+    <div className="py-12">
+      <SectionHeader
         title="Users"
         description="Manage and view all users in your system"
+        action={
+          <Button onClick={() => setIsCreateOpen(true)}>Create User</Button>
+        }
+      />
+
+      <DataTable<User> config={tableConfig} />
+
+      <UserCreateModal
+        open={isCreateOpen}
+        onOpenChange={setIsCreateOpen}
+        onSuccess={() => setIsCreateOpen(false)}
+      />
+
+      <UserEditModal
+        open={!!editingUser}
+        user={editingUser}
+        onOpenChange={(open) => {
+          if (!open) setEditingUser(null);
+        }}
+        onSuccess={() => setEditingUser(null)}
+      />
+
+      <DeleteConfirmationDialog
+        open={!!deletingUser}
+        onOpenChange={(open) => {
+          if (!open) setDeletingUser(null);
+        }}
+        title="Delete User"
+        itemName={deletingUser?.full_name || deletingUser?.name}
+        onConfirm={handleDeleteUser}
+        isDeleting={deleteUserMutation.isPending}
       />
     </div>
   );

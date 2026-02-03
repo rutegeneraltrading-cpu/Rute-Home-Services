@@ -58,7 +58,19 @@ const CustomCalendar: FC<CustomCalendarProps> = ({ events, loading }) => {
         dateObj: Date,
         culture: string | undefined,
         localizerInstance?: DateLocalizer,
-      ) => formatWithFallback(dateObj, 'h a', culture, localizerInstance),
+      ) => formatWithFallback(dateObj, 'h A', culture, localizerInstance),
+      eventTimeRangeFormat: () => '',
+      agendaTimeRangeFormat: (
+        { start, end }: { start: Date; end: Date },
+        culture: string | undefined,
+        localizerInstance?: DateLocalizer,
+      ) =>
+        `${formatWithFallback(start, 'h:mm A', culture, localizerInstance)} - ${formatWithFallback(
+          end,
+          'h:mm A',
+          culture,
+          localizerInstance,
+        )}`,
     };
 
     return {
