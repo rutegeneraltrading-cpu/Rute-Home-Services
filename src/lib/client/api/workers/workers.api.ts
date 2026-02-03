@@ -13,6 +13,9 @@ export interface Worker {
   is_active?: boolean;
   status?: 'active' | 'inactive' | 'suspended';
   role: 'worker';
+  service_ids?: string[];
+  service_names?: string[];
+  service_category_names?: string[];
   created_at: string;
   updated_at?: string;
 }
@@ -34,6 +37,7 @@ export interface UpdateWorkerDTO {
   hourly_rate?: number;
   avatar_url?: string;
   status?: 'active' | 'inactive' | 'suspended';
+  service_id?: string;
 }
 
 /**

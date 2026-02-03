@@ -68,7 +68,14 @@ export async function PUT(
     }
 
     // Extract profile fields and status
-    const { full_name, email, avatar_url, status, ...workerFields } = body;
+    const {
+      full_name,
+      email,
+      avatar_url,
+      status,
+      service_id,
+      ...workerFields
+    } = body;
 
     // Update profile if provided
     if (full_name || email || avatar_url !== undefined) {
@@ -102,6 +109,26 @@ export async function PUT(
       .single();
 
     if (workerUpdateError) throw workerUpdateError;
+
+    // Update worker service assignment if provided
+    if (service_id) {
+      const { error: deleteWorkerServicesError } = await supabase
+        .from('worker_services')
+        .delete()
+        .eq('worker_id', workerId);
+
+      if (deleteWorkerServicesError) throw deleteWorkerServicesError;
+
+      const { error: insertWorkerServiceError } = await supabase
+        .from('worker_services')
+        .insert({
+          worker_id: workerId,
+          service_id,
+          is_active: true,
+        });
+
+      if (insertWorkerServiceError) throw insertWorkerServiceError;
+    }
 
     // Get updated profile
     const { data: profile } = await supabase

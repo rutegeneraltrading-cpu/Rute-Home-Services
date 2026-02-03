@@ -39,6 +39,22 @@ const Workers = () => {
       cell: (value) => value || '-',
     },
     {
+      id: 'service_category_names',
+      header: 'Service Category',
+      accessorKey: 'service_category_names',
+      sortable: false,
+      cell: (value) =>
+        Array.isArray(value) && value.length > 0 ? value.join(', ') : '-',
+    },
+    {
+      id: 'service_names',
+      header: 'Service',
+      accessorKey: 'service_names',
+      sortable: false,
+      cell: (value) =>
+        Array.isArray(value) && value.length > 0 ? value.join(', ') : '-',
+    },
+    {
       id: 'hourly_rate',
       header: 'Hourly Rate',
       accessorKey: 'hourly_rate',

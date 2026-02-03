@@ -25,6 +25,15 @@ export async function GET() {
           avatar_url,
           role,
           status
+        ),
+        worker_services:worker_services (
+          service_id,
+          service:services (
+            name,
+            service_categories:category_id (
+              name
+            )
+          )
         )
       `,
       )
@@ -33,11 +42,28 @@ export async function GET() {
     if (workersError) throw workersError;
 
     // Flatten the response
-    const formattedWorkers = (workers || []).map((w: any) => ({
-      ...w,
-      ...w.profiles,
-      profiles: undefined,
-    }));
+    const formattedWorkers = (workers || []).map((w: any) => {
+      const workerServices = w.worker_services || [];
+      const serviceNames = workerServices
+        .map((ws: any) => ws?.service?.name)
+        .filter(Boolean);
+      const categoryNames = workerServices
+        .map((ws: any) => ws?.service?.service_categories?.name)
+        .filter(Boolean);
+      const serviceIds = workerServices
+        .map((ws: any) => ws?.service_id)
+        .filter(Boolean);
+
+      return {
+        ...w,
+        ...w.profiles,
+        service_names: Array.from(new Set(serviceNames)),
+        service_category_names: Array.from(new Set(categoryNames)),
+        service_ids: Array.from(new Set(serviceIds)),
+        profiles: undefined,
+        worker_services: undefined,
+      };
+    });
 
     return NextResponse.json({
       workers: formattedWorkers,

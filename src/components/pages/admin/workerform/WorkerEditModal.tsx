@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useUpdateWorker } from '@/lib/client/api/workers/workers.mutation';
 import type { Worker } from '@/lib/client/api/workers/workers.api';
+import { useGetServices } from '@/lib/client/api';
 import {
   Select,
   SelectContent,
@@ -30,6 +31,7 @@ const workerEditSchema = z.object({
   phone: z.string().optional(),
   address: z.string().optional(),
   hourly_rate: z.string().optional(),
+  service_id: z.string().min(1, 'Service is required'),
   status: z.enum(['active', 'inactive', 'suspended']),
 });
 
@@ -49,6 +51,7 @@ export function WorkerEditModal({
   onSuccess,
 }: WorkerEditModalProps) {
   const updateWorkerMutation = useUpdateWorker(worker?.id || '');
+  const { data: services, isLoading: servicesLoading } = useGetServices();
 
   const {
     register,
@@ -68,6 +71,7 @@ export function WorkerEditModal({
         phone: worker.phone || '',
         address: worker.address || '',
         hourly_rate: worker.hourly_rate ? String(worker.hourly_rate) : '',
+        service_id: worker.service_ids?.[0] || '',
         status:
           (worker.status as 'active' | 'inactive' | 'suspended') || 'active',
       });
@@ -85,6 +89,7 @@ export function WorkerEditModal({
           ? parseFloat(data.hourly_rate)
           : undefined,
         status: data.status,
+        service_id: data.service_id,
       },
       {
         onSuccess: () => {
@@ -162,6 +167,50 @@ export function WorkerEditModal({
               placeholder="250"
               {...register('hourly_rate')}
             />
+          </div>
+
+          <div>
+            <Label htmlFor="service_id">Service *</Label>
+            <Controller
+              name="service_id"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  value={field.value}
+                  onValueChange={(value) => {
+                    field.onChange(value);
+                    setValue('service_id', value, { shouldDirty: true });
+                  }}
+                  disabled={servicesLoading}
+                >
+                  <SelectTrigger id="service_id" className="mt-2">
+                    <SelectValue placeholder="Select a service" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {servicesLoading ? (
+                      <SelectItem value="loading" disabled>
+                        Loading services...
+                      </SelectItem>
+                    ) : services && services.length > 0 ? (
+                      services.map((service) => (
+                        <SelectItem key={service.id} value={service.id}>
+                          {service.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="none" disabled>
+                        No services available
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {errors.service_id && (
+              <p className="text-sm text-red-500 mt-1">
+                {errors.service_id.message}
+              </p>
+            )}
           </div>
 
           <div>
