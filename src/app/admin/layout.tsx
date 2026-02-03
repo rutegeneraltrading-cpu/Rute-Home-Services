@@ -41,7 +41,7 @@ export default function AdminLayout({
       <SidebarProvider>
         <AdminSidebar />
         <SidebarInset>
-          <header className="fixed flex h-15.25 items-center gap-2 border-b w-full px-4 bg-white">
+          <header className="fixed flex h-15.25 items-center gap-2 border-b w-full px-4 bg-white z-50">
             <SidebarTrigger className="mr-2" />
             <span className="text-base font-medium text-muted-foreground">
               {pageTitle}

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { DataTable } from '@/components/common';
 import { TableColumn, TableAction } from '@/lib/types/table';
 import { Eye, Trash2 } from 'lucide-react';
