@@ -6,13 +6,15 @@ import Image from 'next/image';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
-  ServiceOption,
   useGetServices,
   useGetCategories,
   useGetServiceOptions,
+  useDeleteService,
+  useDeleteServiceOption,
 } from '@/lib/client/api';
+import type { ServiceOption } from '@/lib/client/api/services';
+import { useDeleteServiceCategory } from '@/lib/client/api';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useQueryClient } from '@tanstack/react-query';
 import {
   ServiceEditModal,
   ServiceOptionEditModal,
@@ -26,10 +28,12 @@ import {
 } from '@/components/common';
 
 export default function ServicesPage() {
-  const queryClient = useQueryClient();
   const { data: categoriesData, isLoading: categoriesLoading } =
     useGetCategories();
   const { data: servicesData, isLoading: servicesLoading } = useGetServices();
+  const deleteCategoryMutation = useDeleteServiceCategory();
+  const deleteServiceMutation = useDeleteService();
+  const deleteOptionMutation = useDeleteServiceOption();
 
   const categories = useMemo(
     () => categoriesData?.categories || [],
@@ -392,38 +396,19 @@ export default function ServicesPage() {
         title="Delete Category"
         itemName={deleteCategory?.name}
         description="Deleting this category will also delete all linked services and service options. Are you sure you want to delete"
-        onConfirm={async () => {
+        onConfirm={() => {
           if (!deleteCategory) return;
-          try {
-            const response = await fetch(
-              `/api/admin/services/categories/${deleteCategory.id}`,
-              { method: 'DELETE' },
-            );
-
-            if (!response.ok) {
-              const error = await response.json().catch(() => ({}));
-              throw new Error(error.error || 'Failed to delete category');
-            }
-
-            setDeleteCategory(null);
-            await queryClient.invalidateQueries({
-              queryKey: ['services'],
-            });
-            await queryClient.invalidateQueries({
-              queryKey: ['serviceOptions'],
-            });
-            await queryClient.invalidateQueries({
-              queryKey: ['service-categories', 'list'],
-            });
-            toast.success('Category deleted successfully');
-          } catch (error) {
-            const errorMessage =
-              error instanceof Error
-                ? error.message
-                : 'Failed to delete category';
-            toast.error(errorMessage);
-          }
+          deleteCategoryMutation.mutate(deleteCategory.id, {
+            onSuccess: () => {
+              setDeleteCategory(null);
+              toast.success('Category deleted successfully');
+            },
+            onError: (error) => {
+              toast.error(error.message || 'Failed to delete category');
+            },
+          });
         }}
+        isDeleting={deleteCategoryMutation.isPending}
       />
 
       <DeleteConfirmationDialog
@@ -434,35 +419,19 @@ export default function ServicesPage() {
         title="Delete Service"
         itemName={deleteService?.name}
         description="Deleting this service will also delete all linked service options. Are you sure you want to delete"
-        onConfirm={async () => {
+        onConfirm={() => {
           if (!deleteService) return;
-          try {
-            const response = await fetch(
-              `/api/admin/services/${deleteService.id}`,
-              { method: 'DELETE' },
-            );
-
-            if (!response.ok) {
-              const error = await response.json().catch(() => ({}));
-              throw new Error(error.error || 'Failed to delete service');
-            }
-
-            setDeleteService(null);
-            await queryClient.invalidateQueries({
-              queryKey: ['services'],
-            });
-            await queryClient.invalidateQueries({
-              queryKey: ['serviceOptions'],
-            });
-            toast.success('Service deleted successfully');
-          } catch (error) {
-            const errorMessage =
-              error instanceof Error
-                ? error.message
-                : 'Failed to delete service';
-            toast.error(errorMessage);
-          }
+          deleteServiceMutation.mutate(deleteService.id, {
+            onSuccess: () => {
+              setDeleteService(null);
+              toast.success('Service deleted successfully');
+            },
+            onError: (error) => {
+              toast.error(error.message || 'Failed to delete service');
+            },
+          });
         }}
+        isDeleting={deleteServiceMutation.isPending}
       />
 
       <DeleteConfirmationDialog
@@ -472,32 +441,22 @@ export default function ServicesPage() {
         }}
         title="Delete Option"
         itemName={deleteOption?.name}
-        onConfirm={async () => {
+        onConfirm={() => {
           if (!deleteOption) return;
-          try {
-            const response = await fetch(
-              `/api/admin/services/options/${deleteOption.id}`,
-              { method: 'DELETE' },
-            );
-
-            if (!response.ok) {
-              const error = await response.json().catch(() => ({}));
-              throw new Error(error.error || 'Failed to delete option');
-            }
-
-            setDeleteOption(null);
-            await queryClient.invalidateQueries({
-              queryKey: ['serviceOptions', deleteOption.service_id],
-            });
-            toast.success('Option deleted successfully');
-          } catch (error) {
-            const errorMessage =
-              error instanceof Error
-                ? error.message
-                : 'Failed to delete option';
-            toast.error(errorMessage);
-          }
+          deleteOptionMutation.mutate(
+            { serviceId: deleteOption.service_id, optionId: deleteOption.id },
+            {
+              onSuccess: () => {
+                setDeleteOption(null);
+                toast.success('Option deleted successfully');
+              },
+              onError: (error) => {
+                toast.error(error.message || 'Failed to delete option');
+              },
+            },
+          );
         }}
+        isDeleting={deleteOptionMutation.isPending}
       />
     </div>
   );

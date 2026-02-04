@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
 import Image from 'next/image';
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
@@ -22,20 +22,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useGetProductCategories, useUpdateProduct } from '@/lib/client/api';
+import { Product } from '@/lib/types';
 import { uploadProductImage } from '@/lib/client/utils/uploadImage';
-import type { Product } from '@/lib/client/api/products/products.api';
-import { toast } from 'sonner';
-
-const productEditSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
-  description: z.string().optional(),
-  price: z.string().min(1, 'Price is required'),
-  category_id: z.string().min(1, 'Category is required'),
-  stock: z.string().min(1, 'Stock is required'),
-});
-
-type ProductEditValues = z.infer<typeof productEditSchema>;
+import { productEditSchema, ProductEditValues } from '@/lib/validations';
+import { useGetProductCategories, useUpdateProduct } from '@/lib/client/api';
 
 interface ProductEditModalProps {
   open: boolean;

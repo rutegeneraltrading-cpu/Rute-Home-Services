@@ -1,29 +1,19 @@
 'use client';
 
-import { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { toast } from 'sonner';
-
-const productCategoryFormSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
-  description: z.string().optional(),
-});
-
-type ProductCategoryFormValues = z.infer<typeof productCategoryFormSchema>;
-
-interface ProductCategoryFormProps {
-  onSuccess?: () => void;
-}
+import {
+  productCategoryFormSchema,
+  ProductCategoryFormValues,
+} from '@/lib/validations';
+import { ProductCategoryFormProps } from '@/lib/types';
+import { useCreateProductCategory } from '@/lib/client/api';
 
 export function ProductCategoryForm({ onSuccess }: ProductCategoryFormProps) {
-  const queryClient = useQueryClient();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const createCategoryMutation = useCreateProductCategory();
 
   const {
     register,
@@ -39,35 +29,18 @@ export function ProductCategoryForm({ onSuccess }: ProductCategoryFormProps) {
   });
 
   const onSubmit = async (data: ProductCategoryFormValues) => {
-    setIsSubmitting(true);
-    try {
-      const response = await fetch('/api/admin/product-categories', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: data.name,
-          description: data.description || null,
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to create category');
-      }
-
-      toast.success('Product category created successfully');
-      await queryClient.invalidateQueries({
-        queryKey: ['product-categories'],
-      });
-      reset();
-      onSuccess?.();
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Failed to create category';
-      toast.error(errorMessage);
-    } finally {
-      setIsSubmitting(false);
-    }
+    createCategoryMutation.mutate(
+      {
+        name: data.name,
+        description: data.description || undefined,
+      },
+      {
+        onSuccess: () => {
+          reset();
+          onSuccess?.();
+        },
+      },
+    );
   };
 
   return (
@@ -116,13 +89,18 @@ export function ProductCategoryForm({ onSuccess }: ProductCategoryFormProps) {
               type="button"
               variant="outline"
               onClick={() => reset()}
-              disabled={isSubmitting}
+              disabled={createCategoryMutation.isPending}
             >
               Cancel
             </Button>
           )}
-          <Button type="submit" disabled={isSubmitting || !isDirty}>
-            {isSubmitting ? 'Creating...' : 'Create Category'}
+          <Button
+            type="submit"
+            disabled={createCategoryMutation.isPending || !isDirty}
+          >
+            {createCategoryMutation.isPending
+              ? 'Creating...'
+              : 'Create Category'}
           </Button>
         </div>
       </form>

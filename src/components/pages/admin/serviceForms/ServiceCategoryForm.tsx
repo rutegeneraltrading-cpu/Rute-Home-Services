@@ -3,23 +3,14 @@
 import { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
+import { toast } from 'sonner';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCreateCategory } from '@/lib/client/api';
 import { uploadCategoryImage } from '@/lib/client/utils/uploadImage';
-import { toast } from 'sonner';
-
-const categoryFormSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
-  description: z.string().optional(),
-  image_url: z.string().url('Must be a valid URL').optional().or(z.literal('')),
-  display_order: z.string().optional(),
-});
-
-type CategoryFormValues = z.infer<typeof categoryFormSchema>;
+import { categoryFormSchema, CategoryFormValues } from '@/lib/validations';
 
 export function ServiceCategoryForm() {
   const createCategoryMutation = useCreateCategory();

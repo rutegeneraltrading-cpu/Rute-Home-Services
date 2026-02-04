@@ -1,8 +1,3 @@
-/**
- * Auth Mutation Layer - useMutation hooks
- * Handles sign in, sign up, sign out, password reset
- */
-
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   signUpApi,

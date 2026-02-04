@@ -1,16 +1,15 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useForgotPassword } from '@/lib/client/api';
-import { Button, Input } from '@/components/ui';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { Button, Input } from '@/components/ui';
+import { useForgotPassword } from '@/lib/client/api';
 
 const ForgotPasswordPage = () => {
   const router = useRouter();
   const forgotPasswordMutation = useForgotPassword({
     onSuccess: () => {
-      // Redirect to login after 2 seconds
       setTimeout(() => router.push('/login'), 2000);
     },
   });
@@ -35,65 +34,56 @@ const ForgotPasswordPage = () => {
   };
 
   return (
-    <div className="lg:relative flex lg:flex-row flex-col min-h-screen items-center justify-center bg-slate-50 px-4">
-      <Link
-        href="/"
-        className="lg:absolute top-8 left-8 text-2xl font-bold text-center lg:text-left w-full lg:w-auto"
-      >
-        RUTE<span className="text-green-600">.</span>
-      </Link>
-      <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-8 shadow-lg mt-16 lg:mt-0">
-        <h1 className="text-2xl font-bold text-center mb-2">Reset Password</h1>
-        <p className="text-center text-slate-600 mb-6">
-          Enter your email address and we&apos;ll send you a password reset
-          link.
-        </p>
+    <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-8 shadow-lg mt-16 lg:mt-0">
+      <h1 className="text-2xl font-bold text-center mb-2">Reset Password</h1>
+      <p className="text-center text-slate-600 mb-6">
+        Enter your email address and we&apos;ll send you a password reset link.
+      </p>
 
-        {submitted ? (
-          <div className="space-y-4">
-            <div className="p-3 bg-green-100 border border-green-400 text-green-700 rounded">
-              Check your email for the password reset link. Redirecting to
-              login...
-            </div>
+      {submitted ? (
+        <div className="space-y-4">
+          <div className="p-3 bg-green-100 border border-green-400 text-green-700 rounded">
+            Check your email for the password reset link. Redirecting to
+            login...
           </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Email Address
-              </label>
-              <Input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                required
-                disabled={forgotPasswordMutation.isPending}
-              />
-            </div>
-
-            <Button
-              type="submit"
-              className="w-full cursor-pointer"
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Email Address
+            </label>
+            <Input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              required
               disabled={forgotPasswordMutation.isPending}
-            >
-              {forgotPasswordMutation.isPending
-                ? 'Sending...'
-                : 'Send Reset Link'}
-            </Button>
-          </form>
-        )}
+            />
+          </div>
 
-        <p className="text-center text-slate-600 text-sm mt-4">
-          Remember your password?{' '}
-          <Link
-            href="/login"
-            className="text-slate-900 font-medium hover:underline"
+          <Button
+            type="submit"
+            className="w-full cursor-pointer"
+            disabled={forgotPasswordMutation.isPending}
           >
-            Sign in
-          </Link>
-        </p>
-      </div>
+            {forgotPasswordMutation.isPending
+              ? 'Sending...'
+              : 'Send Reset Link'}
+          </Button>
+        </form>
+      )}
+
+      <p className="text-center text-slate-600 text-sm mt-4">
+        Remember your password?{' '}
+        <Link
+          href="/login"
+          className="text-slate-900 font-medium hover:underline"
+        >
+          Sign in
+        </Link>
+      </p>
     </div>
   );
 };

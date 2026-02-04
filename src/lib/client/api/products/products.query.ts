@@ -1,12 +1,15 @@
-/**
- * Query Layer - useQuery hooks
- * Handles data fetching and caching
- */
-
 import { useQuery } from '@tanstack/react-query';
-import { getProductsApi, getProductApi, Product } from './products.api';
+import {
+  getProductsApi,
+  getProductApi,
+  getProductCategoriesApi,
+  getProductCategoryApi,
+} from './products.api';
 
-// Query Keys for cache management
+// ============================================
+// QUERY KEYS
+// ============================================
+
 export const productKeys = {
   all: ['products'] as const,
   lists: () => [...productKeys.all, 'list'] as const,
@@ -14,6 +17,17 @@ export const productKeys = {
   details: () => [...productKeys.all, 'detail'] as const,
   detail: (id: string) => [...productKeys.details(), id] as const,
 };
+
+export const productCategoryKeys = {
+  all: ['product-categories'] as const,
+  lists: () => [...productCategoryKeys.all, 'list'] as const,
+  details: () => [...productCategoryKeys.all, 'detail'] as const,
+  detail: (id: string) => [...productCategoryKeys.details(), id] as const,
+};
+
+// ============================================
+// PRODUCT QUERIES
+// ============================================
 
 /**
  * Fetch all products
@@ -40,19 +54,30 @@ export function useGetProduct(id: string) {
     enabled: !!id, // Only run if id exists
   });
 }
+
+// ============================================
+// PRODUCT CATEGORY QUERIES
+// ============================================
+
 /**
  * Fetch all product categories
  */
 export function useGetProductCategories() {
   return useQuery({
-    queryKey: ['product-categories'],
-    queryFn: async () => {
-      const response = await fetch('/api/admin/product-categories');
-      if (!response.ok) {
-        throw new Error('Failed to fetch product categories');
-      }
-      return response.json();
-    },
+    queryKey: productCategoryKeys.lists(),
+    queryFn: getProductCategoriesApi,
     staleTime: 10 * 60 * 1000, // 10 minutes
+  });
+}
+
+/**
+ * Fetch single product category
+ */
+export function useGetProductCategory(id: string) {
+  return useQuery({
+    queryKey: productCategoryKeys.detail(id),
+    queryFn: () => getProductCategoryApi(id),
+    staleTime: 10 * 60 * 1000,
+    enabled: !!id,
   });
 }

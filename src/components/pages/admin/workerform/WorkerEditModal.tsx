@@ -1,48 +1,28 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
 import {
   Dialog,
+  DialogTitle,
+  DialogHeader,
   DialogContent,
   DialogDescription,
-  DialogHeader,
-  DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { useUpdateWorker } from '@/lib/client/api/workers/workers.mutation';
-import type { Worker } from '@/lib/client/api/workers/workers.api';
-import { useGetServices } from '@/lib/client/api';
+import { useUpdateWorker, useGetServices } from '@/lib/client/api';
 import {
   Select,
-  SelectContent,
   SelectItem,
-  SelectTrigger,
   SelectValue,
+  SelectTrigger,
+  SelectContent,
 } from '@/components/ui/select';
-import { Controller } from 'react-hook-form';
-
-const workerEditSchema = z.object({
-  full_name: z.string().min(2, 'Name must be at least 2 characters'),
-  phone: z.string().optional(),
-  address: z.string().optional(),
-  hourly_rate: z.string().optional(),
-  service_id: z.string().min(1, 'Service is required'),
-  status: z.enum(['active', 'inactive', 'suspended']),
-});
-
-type WorkerEditValues = z.infer<typeof workerEditSchema>;
-
-interface WorkerEditModalProps {
-  open: boolean;
-  worker: Worker | null;
-  onOpenChange: (open: boolean) => void;
-  onSuccess?: () => void;
-}
+import { WorkerEditModalProps } from '@/lib/types';
+import { workerEditSchema, WorkerEditValues } from '@/lib/validations';
 
 export function WorkerEditModal({
   open,

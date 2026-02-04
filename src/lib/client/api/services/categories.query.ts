@@ -4,12 +4,9 @@ import {
   useQueryClient,
   UseQueryOptions,
 } from '@tanstack/react-query';
-import {
-  getCategoriesApi,
-  createCategoryApi,
-  ServiceCategory,
-} from './categories.api';
+import { ServiceCategory } from '@/lib/types';
 import { toast } from '@/components/ui/use-toast';
+import { getCategoriesApi, createCategoryApi } from './categories.api';
 
 /**
  * Query key factory for service categories

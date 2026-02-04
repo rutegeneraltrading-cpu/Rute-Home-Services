@@ -1,13 +1,7 @@
 import { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-
-interface UseDeleteHandlerOptions {
-  endpoint: (id: string) => string;
-  successMessage: string;
-  errorMessage?: string;
-  invalidateQueries?: string[][];
-}
+import { useQueryClient } from '@tanstack/react-query';
+import { UseDeleteHandlerOptions } from '@/lib/types/hooks';
 
 export function useDeleteHandler({
   endpoint,

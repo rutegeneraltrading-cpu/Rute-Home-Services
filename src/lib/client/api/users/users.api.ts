@@ -1,12 +1,22 @@
 import { httpClient } from '@/lib/client/http';
 
-export interface CreateUserDTO {
+// ============================================
+// TYPES
+// ============================================
+
+export interface User {
+  id: string;
   email: string;
   name: string;
   full_name?: string;
   phone?: string;
   address?: string;
   role?: 'admin' | 'user' | 'worker';
+  status?: 'active' | 'inactive' | 'suspended';
+  created_at: string;
+  createdAt?: string;
+  updated_at?: string;
+  updatedAt?: string;
 }
 
 export interface AdminCreateUserDTO {
@@ -24,13 +34,9 @@ export interface UpdateUserDTO {
   status?: 'active' | 'inactive' | 'suspended';
 }
 
-export interface User extends CreateUserDTO {
-  id: string;
-  createdAt: string;
-  updatedAt: string;
-  created_at: string;
-  status?: 'active' | 'inactive' | 'suspended';
-}
+// ============================================
+// USERS API
+// ============================================
 
 /**
  * Fetch all users

@@ -3,8 +3,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useQueryClient } from '@tanstack/react-query';
-import * as z from 'zod';
 import {
   Dialog,
   DialogContent,
@@ -22,36 +20,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useGetCategories } from '@/lib/client/api/services/categories.query';
-import { toast } from 'sonner';
-
-const serviceEditSchema = z.object({
-  category_id: z.string().min(1, 'Please select a service category'),
-  name: z.string().min(2, 'Service name must be at least 2 characters'),
-  description: z.string().optional(),
-  base_price: z.string().min(1, 'Price is required'),
-  duration_minutes: z.string().min(1, 'Duration is required'),
-  is_active: z.boolean(),
-});
-
-type ServiceEditValues = z.infer<typeof serviceEditSchema>;
-
-interface ServiceItem {
-  id: string;
-  category_id: string;
-  name: string;
-  description?: string | null;
-  base_price: number;
-  duration_minutes: number;
-  is_active: boolean;
-}
-
-interface ServiceEditModalProps {
-  open: boolean;
-  service: ServiceItem | null;
-  onOpenChange: (open: boolean) => void;
-  onSuccess?: () => void;
-}
+import { useGetCategories, useUpdateService } from '@/lib/client/api';
+import { ServiceEditModalProps } from '@/lib/types';
+import { serviceEditSchema, ServiceEditValues } from '@/lib/validations';
 
 export function ServiceEditModal({
   open,
@@ -59,10 +30,11 @@ export function ServiceEditModal({
   onOpenChange,
   onSuccess,
 }: ServiceEditModalProps) {
-  const queryClient = useQueryClient();
   const { data: categories, isLoading: categoriesLoading } = useGetCategories();
-  const [selectedCategoryId, setSelectedCategoryId] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const updateServiceMutation = useUpdateService(service?.id || '');
+
+  // Derive selectedCategoryId from service prop instead of using state
+  const selectedCategoryId = service?.category_id || '';
 
   const defaultValues = useMemo(
     () => ({
@@ -92,44 +64,28 @@ export function ServiceEditModal({
   useEffect(() => {
     if (service) {
       reset(defaultValues);
-      setSelectedCategoryId(service.category_id || '');
     }
   }, [service, reset, defaultValues]);
 
   const onSubmit = async (data: ServiceEditValues) => {
     if (!service) return;
-    setIsSubmitting(true);
 
-    try {
-      const response = await fetch(`/api/admin/services/${service.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          category_id: data.category_id,
-          name: data.name,
-          description: data.description || null,
-          base_price: parseFloat(data.base_price),
-          duration_minutes: parseInt(data.duration_minutes, 10),
-          is_active: data.is_active,
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error.error || 'Failed to update service');
-      }
-
-      await queryClient.invalidateQueries({ queryKey: ['services'] });
-      toast.success('Service updated successfully');
-      onSuccess?.();
-      onOpenChange(false);
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Failed to update service';
-      toast.error(errorMessage);
-    } finally {
-      setIsSubmitting(false);
-    }
+    updateServiceMutation.mutate(
+      {
+        category_id: data.category_id,
+        name: data.name,
+        description: data.description || undefined,
+        base_price: parseFloat(data.base_price),
+        duration_minutes: parseInt(data.duration_minutes, 10),
+        is_active: data.is_active,
+      },
+      {
+        onSuccess: () => {
+          onSuccess?.();
+          onOpenChange(false);
+        },
+      },
+    );
   };
 
   if (!service) return null;
@@ -150,13 +106,12 @@ export function ServiceEditModal({
             <Select
               value={selectedCategoryId}
               onValueChange={(value) => {
-                setSelectedCategoryId(value);
                 setValue('category_id', value, {
                   shouldValidate: true,
                   shouldDirty: true,
                 });
               }}
-              disabled={categoriesLoading || isSubmitting}
+              disabled={categoriesLoading || updateServiceMutation.isPending}
             >
               <SelectTrigger id="category_id" className="mt-2">
                 <SelectValue placeholder="Select a category" />
@@ -252,12 +207,17 @@ export function ServiceEditModal({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={isSubmitting}
+              disabled={updateServiceMutation.isPending}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting || !isDirty}>
-              {isSubmitting ? 'Updating...' : 'Update Service'}
+            <Button
+              type="submit"
+              disabled={updateServiceMutation.isPending || !isDirty}
+            >
+              {updateServiceMutation.isPending
+                ? 'Updating...'
+                : 'Update Service'}
             </Button>
           </div>
         </form>

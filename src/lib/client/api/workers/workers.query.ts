@@ -1,7 +1,6 @@
 import { useQuery, UseQueryOptions } from '@tanstack/react-query';
-import { getWorkersApi, getWorkerApi, Worker } from './workers.api';
+import { getWorkersApi, getWorkerApi, WorkerProfile } from './workers.api';
 import { toast } from '@/components/ui/use-toast';
-
 /**
  * Query key factory for workers
  */
@@ -15,7 +14,7 @@ export const workerKeys = {
  * Fetch all workers
  */
 export const useGetWorkers = (
-  options?: UseQueryOptions<{ workers: Worker[]; total: number }, Error>,
+  options?: UseQueryOptions<{ workers: WorkerProfile[]; total: number }, Error>,
 ) => {
   const query = useQuery({
     queryKey: workerKeys.lists(),
@@ -41,7 +40,7 @@ export const useGetWorkers = (
  */
 export const useGetWorker = (
   id: string | undefined,
-  options?: UseQueryOptions<{ worker: Worker }, Error>,
+  options?: UseQueryOptions<{ worker: WorkerProfile }, Error>,
 ) => {
   const query = useQuery({
     queryKey: workerKeys.detail(id || ''),

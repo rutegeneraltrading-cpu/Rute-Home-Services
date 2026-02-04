@@ -17,9 +17,7 @@ export default function LoginPage() {
 
     try {
       const response = await signInMutation.mutateAsync({ email, password });
-      // Wait a bit for Supabase session to be established
       await new Promise((resolve) => setTimeout(resolve, 500));
-      // After successful login, redirect to dashboard
       if (response?.user?.role === 'admin') {
         router.push('/admin');
       } else {
@@ -31,73 +29,65 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="lg:relative flex lg:flex-row flex-col min-h-screen items-center justify-center bg-slate-50 px-4">
-      <Link
-        href="/"
-        className="lg:absolute top-8 left-8 text-2xl font-bold text-center lg:text-left w-full lg:w-auto"
-      >
-        RUTE<span className="text-green-600">.</span>
-      </Link>
-      <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-8 shadow-lg mt-16 lg:mt-0">
-        <h1 className="text-2xl font-bold text-center mb-2">Welcome Back</h1>
-        <p className="text-center text-slate-600 mb-6">
-          Sign in to access your account
-        </p>
+    <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-8 shadow-lg mt-16 lg:mt-0">
+      <h1 className="text-2xl font-bold text-center mb-2">Welcome Back</h1>
+      <p className="text-center text-slate-600 mb-6">
+        Sign in to access your account
+      </p>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Email
-            </label>
-            <Input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              required
-              disabled={signInMutation.isPending}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Password
-            </label>
-            <PasswordInput
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-              disabled={signInMutation.isPending}
-            />
-          </div>
-          <p className="text-start text-sm mt-2">
-            <Link
-              href="/forgot-password"
-              className="text-slate-600 font-medium hover:text-black"
-            >
-              Forgot your password?
-            </Link>
-          </p>
-          <Button
-            type="submit"
-            className="w-full cursor-pointer"
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">
+            Email
+          </label>
+          <Input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            required
             disabled={signInMutation.isPending}
-          >
-            {signInMutation.isPending ? 'Signing in...' : 'Sign In'}
-          </Button>
-        </form>
+          />
+        </div>
 
-        <p className="text-center text-slate-600 text-sm mt-4">
-          Don&apos;t have an account?{' '}
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">
+            Password
+          </label>
+          <PasswordInput
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
+            required
+            disabled={signInMutation.isPending}
+          />
+        </div>
+        <p className="text-start text-sm mt-2">
           <Link
-            href="/signup"
-            className="text-slate-900 font-medium hover:underline"
+            href="/forgot-password"
+            className="text-slate-600 font-medium hover:text-black"
           >
-            Sign up
+            Forgot your password?
           </Link>
         </p>
-      </div>
+        <Button
+          type="submit"
+          className="w-full cursor-pointer"
+          disabled={signInMutation.isPending}
+        >
+          {signInMutation.isPending ? 'Signing in...' : 'Sign In'}
+        </Button>
+      </form>
+
+      <p className="text-center text-slate-600 text-sm mt-4">
+        Don&apos;t have an account?{' '}
+        <Link
+          href="/signup"
+          className="text-slate-900 font-medium hover:underline"
+        >
+          Sign up
+        </Link>
+      </p>
     </div>
   );
 }

@@ -1,15 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
 import {
   Dialog,
-  DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogContent,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -21,25 +20,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useCreateWorker } from '@/lib/client/api/workers/workers.mutation';
-import { useGetServices } from '@/lib/client/api/services/services.query';
-
-const workerFormSchema = z.object({
-  full_name: z.string().min(2, 'Name must be at least 2 characters'),
-  email: z.string().email('Invalid email address'),
-  phone: z.string().optional(),
-  address: z.string().optional(),
-  service_id: z.string().min(1, 'Please select a service'),
-  hourly_rate: z.string().optional(),
-});
-
-type WorkerFormValues = z.infer<typeof workerFormSchema>;
-
-interface WorkerFormProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSuccess?: () => void;
-}
+import { WorkerFormProps } from '@/lib/types';
+import { useCreateWorker, useGetServices } from '@/lib/client/api';
+import { workerFormSchema, WorkerFormValues } from '@/lib/validations';
 
 export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
   const createWorkerMutation = useCreateWorker();

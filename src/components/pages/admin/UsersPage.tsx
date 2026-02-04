@@ -1,17 +1,16 @@
 'use client';
 
+import { useState } from 'react';
+import { Edit2, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { DataTable } from '@/components/common';
 import { DeleteConfirmationDialog, SectionHeader } from '@/components/common';
 import { DataTableConfig, TableColumn, TableAction } from '@/lib/types/table';
-import { useGetUsers } from '@/lib/client/api/users';
-import { useDeleteUser } from '@/lib/client/api/users';
-import type { User } from '@/lib/client/api/users';
-import { Edit2, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useGetUsers, useDeleteUser } from '@/lib/client/api/users';
 import { UserEditModal } from './UserEditModal';
 import { UserCreateModal } from './UserCreateModal';
-import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { User } from '@/lib/types';
 
 export default function UsersPage() {
   const { data, isLoading } = useGetUsers();

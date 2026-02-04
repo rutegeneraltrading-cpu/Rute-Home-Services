@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
@@ -8,16 +9,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Button, Input, PasswordInput } from '@/components/ui';
 import { Label } from '@/components/ui/label';
+import { UserCreateModalProps } from '@/lib/types';
 import { useCreateUser } from '@/lib/client/api/users';
-import { toast } from 'sonner';
-
-interface UserCreateModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSuccess?: () => void;
-}
+import { Button, Input, PasswordInput } from '@/components/ui';
 
 export function UserCreateModal({
   open,

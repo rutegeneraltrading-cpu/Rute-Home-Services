@@ -1,41 +1,22 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useQueryClient } from '@tanstack/react-query';
-import * as z from 'zod';
+
 import {
   Dialog,
+  DialogTitle,
+  DialogHeader,
   DialogContent,
   DialogDescription,
-  DialogHeader,
-  DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { toast } from 'sonner';
-
-const categoryEditSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
-  description: z.string().optional(),
-});
-
-type CategoryEditValues = z.infer<typeof categoryEditSchema>;
-
-interface ProductCategory {
-  id: string;
-  name: string;
-  description?: string | null;
-}
-
-interface ProductCategoryEditModalProps {
-  open: boolean;
-  category: ProductCategory | null;
-  onOpenChange: (open: boolean) => void;
-  onSuccess?: () => void;
-}
+import { ProductCategoryEditModalProps } from '@/lib/types';
+import { categoryEditSchema, CategoryEditValues } from '@/lib/validations';
+import { useUpdateProductCategory } from '@/lib/client/api';
 
 export function ProductCategoryEditModal({
   open,
@@ -43,8 +24,7 @@ export function ProductCategoryEditModal({
   onOpenChange,
   onSuccess,
 }: ProductCategoryEditModalProps) {
-  const queryClient = useQueryClient();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const updateCategoryMutation = useUpdateProductCategory(category?.id || '');
 
   const defaultValues = useMemo(
     () => ({
@@ -72,38 +52,19 @@ export function ProductCategoryEditModal({
 
   const onSubmit = async (data: CategoryEditValues) => {
     if (!category) return;
-    setIsSubmitting(true);
-    try {
-      const response = await fetch(
-        `/api/admin/product-categories/${category.id}`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: data.name,
-            description: data.description || null,
-          }),
+
+    updateCategoryMutation.mutate(
+      {
+        name: data.name,
+        description: data.description || undefined,
+      },
+      {
+        onSuccess: () => {
+          onSuccess?.();
+          onOpenChange(false);
         },
-      );
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error.error || 'Failed to update category');
-      }
-
-      await queryClient.invalidateQueries({
-        queryKey: ['product-categories'],
-      });
-      toast.success('Category updated successfully');
-      onSuccess?.();
-      onOpenChange(false);
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Failed to update category';
-      toast.error(errorMessage);
-    } finally {
-      setIsSubmitting(false);
-    }
+      },
+    );
   };
 
   if (!category) return null;
@@ -149,12 +110,17 @@ export function ProductCategoryEditModal({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={isSubmitting}
+              disabled={updateCategoryMutation.isPending}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting || !isDirty}>
-              {isSubmitting ? 'Updating...' : 'Update Category'}
+            <Button
+              type="submit"
+              disabled={updateCategoryMutation.isPending || !isDirty}
+            >
+              {updateCategoryMutation.isPending
+                ? 'Updating...'
+                : 'Update Category'}
             </Button>
           </div>
         </form>

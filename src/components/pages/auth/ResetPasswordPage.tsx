@@ -1,17 +1,17 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useResetPassword } from '@/lib/client/api';
-import { Button, PasswordInput } from '@/components/ui';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { Loading } from '@/components/common';
+import { useResetPassword } from '@/lib/client/api';
 import { createClient } from '@/lib/supabase/client';
+import { Button, PasswordInput } from '@/components/ui';
 
 const ResetPasswordPage = () => {
   const router = useRouter();
   const resetPasswordMutation = useResetPassword({
     onSuccess: () => {
-      // Redirect to login after 2 seconds
       setTimeout(() => router.push('/login'), 2000);
     },
   });
@@ -23,7 +23,6 @@ const ResetPasswordPage = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is authenticated (has valid reset token)
     const checkToken = async () => {
       try {
         const supabase = createClient();
@@ -67,114 +66,89 @@ const ResetPasswordPage = () => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <div className="text-center">
-          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
-          <p className="text-slate-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+  if (isLoading) return <Loading fullScreen />;
 
   if (!isValidToken) {
     return (
-      <div className="lg:relative flex lg:flex-row flex-col min-h-screen items-center justify-center bg-slate-50 px-4">
-        <Link
-          href="/"
-          className="lg:absolute top-8 left-8 text-2xl font-bold text-center lg:text-left w-full lg:w-auto"
-        >
-          RUTE<span className="text-green-600">.</span>
-        </Link>
-        <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-8 shadow-lg mt-16 lg:mt-0">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold mb-4">Invalid Reset Link</h1>
-            <p className="text-slate-600 mb-6">{error}</p>
-            <Link
-              href="/forgot-password"
-              className="text-slate-900 font-medium hover:underline"
-            >
-              Request a new reset link
-            </Link>
-          </div>
+      <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-8 shadow-lg mt-16 lg:mt-0">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Invalid Reset Link</h1>
+          <p className="text-slate-600 mb-6">{error}</p>
+          <Link
+            href="/forgot-password"
+            className="text-slate-900 font-medium hover:underline"
+          >
+            Request a new reset link
+          </Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="lg:relative flex lg:flex-row flex-col min-h-screen items-center justify-center bg-slate-50 px-4">
-      <Link
-        href="/"
-        className="lg:absolute top-8 left-8 text-2xl font-bold text-center lg:text-left w-full lg:w-auto"
-      >
-        RUTE<span className="text-green-600">.</span>
-      </Link>
-      <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-8 shadow-lg mt-16 lg:mt-0">
-        <h1 className="text-2xl font-bold text-center mb-2">
-          Create New Password
-        </h1>
-        <p className="text-center text-slate-600 mb-6">
-          Enter your new password below.
-        </p>
+    <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-8 shadow-lg mt-16 lg:mt-0">
+      <h1 className="text-2xl font-bold text-center mb-2">
+        Create New Password
+      </h1>
+      <p className="text-center text-slate-600 mb-6">
+        Enter your new password below.
+      </p>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-              {error}
-            </div>
-          )}
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              New Password
-            </label>
-            <PasswordInput
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-              minLength={6}
-              disabled={resetPasswordMutation.isPending}
-            />
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+            {error}
           </div>
+        )}
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Confirm Password
-            </label>
-            <PasswordInput
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-              minLength={6}
-              disabled={resetPasswordMutation.isPending}
-            />
-          </div>
-
-          <Button
-            type="submit"
-            className="w-full cursor-pointer"
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">
+            New Password
+          </label>
+          <PasswordInput
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
+            required
+            minLength={6}
             disabled={resetPasswordMutation.isPending}
-          >
-            {resetPasswordMutation.isPending
-              ? 'Updating Password...'
-              : 'Reset Password'}
-          </Button>
-        </form>
+          />
+        </div>
 
-        <p className="text-center text-slate-600 text-sm mt-4">
-          Remember your password?{' '}
-          <Link
-            href="/login"
-            className="text-slate-900 font-medium hover:underline"
-          >
-            Sign in
-          </Link>
-        </p>
-      </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">
+            Confirm Password
+          </label>
+          <PasswordInput
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder="••••••••"
+            required
+            minLength={6}
+            disabled={resetPasswordMutation.isPending}
+          />
+        </div>
+
+        <Button
+          type="submit"
+          className="w-full cursor-pointer"
+          disabled={resetPasswordMutation.isPending}
+        >
+          {resetPasswordMutation.isPending
+            ? 'Updating Password...'
+            : 'Reset Password'}
+        </Button>
+      </form>
+
+      <p className="text-center text-slate-600 text-sm mt-4">
+        Remember your password?{' '}
+        <Link
+          href="/login"
+          className="text-slate-900 font-medium hover:underline"
+        >
+          Sign in
+        </Link>
+      </p>
     </div>
   );
 };

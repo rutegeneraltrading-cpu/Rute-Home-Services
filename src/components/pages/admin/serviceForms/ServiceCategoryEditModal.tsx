@@ -3,45 +3,25 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useQueryClient } from '@tanstack/react-query';
-import * as z from 'zod';
 import Image from 'next/image';
+import { toast } from 'sonner';
 import {
   Dialog,
+  DialogTitle,
+  DialogHeader,
   DialogContent,
   DialogDescription,
-  DialogHeader,
-  DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { useUpdateServiceCategory } from '@/lib/client/api';
 import { uploadCategoryImage } from '@/lib/client/utils/uploadImage';
-import { toast } from 'sonner';
-import { categoryKeys } from '@/lib/client/api/services/categories.query';
-
-const categoryEditSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
-  description: z.string().optional(),
-  display_order: z.string().optional(),
-});
-
-type CategoryEditValues = z.infer<typeof categoryEditSchema>;
-
-interface ServiceCategory {
-  id: string;
-  name: string;
-  description?: string | null;
-  image_url?: string | null;
-  display_order?: number | null;
-}
-
-interface ServiceCategoryEditModalProps {
-  open: boolean;
-  category: ServiceCategory | null;
-  onOpenChange: (open: boolean) => void;
-  onSuccess?: () => void;
-}
+import {
+  categoryEditServiceSchema,
+  CategoryEditServiceValues,
+} from '@/lib/validations';
+import { ServiceCategoryEditModalProps } from '@/lib/types';
 
 export function ServiceCategoryEditModal({
   open,
@@ -49,8 +29,7 @@ export function ServiceCategoryEditModal({
   onOpenChange,
   onSuccess,
 }: ServiceCategoryEditModalProps) {
-  const queryClient = useQueryClient();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const updateCategoryMutation = useUpdateServiceCategory(category?.id || '');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -75,8 +54,8 @@ export function ServiceCategoryEditModal({
     handleSubmit,
     reset,
     formState: { errors: formErrors, isDirty },
-  } = useForm<CategoryEditValues>({
-    resolver: zodResolver(categoryEditSchema),
+  } = useForm<CategoryEditServiceValues>({
+    resolver: zodResolver(categoryEditServiceSchema),
     defaultValues,
   });
 
@@ -116,54 +95,41 @@ export function ServiceCategoryEditModal({
     reader.readAsDataURL(file);
   };
 
-  const onSubmit = async (data: CategoryEditValues) => {
+  const onSubmit = async (data: CategoryEditServiceValues) => {
     if (!category) return;
-    setIsSubmitting(true);
 
-    try {
-      let imageUrl = category.image_url || undefined;
+    let imageUrl = category.image_url || undefined;
 
-      if (selectedFile) {
-        setIsUploadingImage(true);
-        toast.loading('Uploading image...');
+    if (selectedFile) {
+      setIsUploadingImage(true);
+      toast.loading('Uploading image...');
+      try {
         imageUrl = await uploadCategoryImage(selectedFile);
         toast.dismiss();
+      } catch (error) {
+        toast.dismiss();
+        toast.error('Failed to upload image');
+        setIsUploadingImage(false);
+        return;
       }
-
-      const response = await fetch(
-        `/api/admin/services/categories/${category.id}`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: data.name,
-            description: data.description || null,
-            image_url: imageUrl || null,
-            display_order: data.display_order
-              ? parseInt(data.display_order)
-              : 0,
-          }),
-        },
-      );
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error.error || 'Failed to update category');
-      }
-
-      await queryClient.invalidateQueries({ queryKey: categoryKeys.lists() });
-      toast.success('Category updated successfully');
-      setIsImageDirty(false);
-      onSuccess?.();
-      onOpenChange(false);
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Failed to update category';
-      toast.error(errorMessage);
-    } finally {
-      setIsSubmitting(false);
       setIsUploadingImage(false);
     }
+
+    updateCategoryMutation.mutate(
+      {
+        name: data.name,
+        description: data.description || undefined,
+        image_url: imageUrl || undefined,
+        display_order: data.display_order ? parseInt(data.display_order) : 0,
+      },
+      {
+        onSuccess: () => {
+          setIsImageDirty(false);
+          onSuccess?.();
+          onOpenChange(false);
+        },
+      },
+    );
   };
 
   if (!category) return null;
@@ -239,7 +205,7 @@ export function ServiceCategoryEditModal({
                 type="button"
                 variant="outline"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={isSubmitting || isUploadingImage}
+                disabled={updateCategoryMutation.isPending || isUploadingImage}
                 className="flex-1"
               >
                 {previewUrl ? 'Change Image' : 'Choose Image'}
@@ -256,7 +222,9 @@ export function ServiceCategoryEditModal({
                       fileInputRef.current.value = '';
                     }
                   }}
-                  disabled={isSubmitting || isUploadingImage}
+                  disabled={
+                    updateCategoryMutation.isPending || isUploadingImage
+                  }
                 >
                   Remove
                 </Button>
@@ -278,15 +246,21 @@ export function ServiceCategoryEditModal({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={isSubmitting}
+              disabled={updateCategoryMutation.isPending}
             >
               Cancel
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting || isUploadingImage || !canSubmit}
+              disabled={
+                updateCategoryMutation.isPending ||
+                isUploadingImage ||
+                !canSubmit
+              }
             >
-              {isSubmitting ? 'Updating...' : 'Update Category'}
+              {updateCategoryMutation.isPending
+                ? 'Updating...'
+                : 'Update Category'}
             </Button>
           </div>
         </form>

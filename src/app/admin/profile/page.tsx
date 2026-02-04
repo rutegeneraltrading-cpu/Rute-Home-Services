@@ -1,10 +1,7 @@
-import ProfilePage from '@/components/pages/admin/ProfilePage';
+import { ProfilePage } from '@/components/pages';
 
-export const metadata = {
-  title: 'Admin Profile',
-  description: 'View and edit admin profile',
+const Profile = () => {
+  return <ProfilePage />;
 };
 
-export default function Profile() {
-  return <ProfilePage />;
-}
+export default Profile;

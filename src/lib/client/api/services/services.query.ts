@@ -1,10 +1,25 @@
-/**
- * Query Layer - useQuery hooks
- * Handles data fetching and caching
- */
-
 import { useQuery } from '@tanstack/react-query';
-import { getServiceOptionsApi, getServicesApi } from './services.api';
+import {
+  getServicesApi,
+  getServiceApi,
+  getServiceOptionsApi,
+  getServiceOptionApi,
+} from './services.api';
+
+// ============================================
+// QUERY KEYS
+// ============================================
+
+export const serviceKeys = {
+  all: ['services'] as const,
+  lists: () => [...serviceKeys.all, 'list'] as const,
+  details: () => [...serviceKeys.all, 'detail'] as const,
+  detail: (id: string) => [...serviceKeys.details(), id] as const,
+  options: (serviceId: string) =>
+    [...serviceKeys.all, 'options', serviceId] as const,
+  option: (serviceId: string, optionId: string) =>
+    [...serviceKeys.options(serviceId), optionId] as const,
+};
 
 // ============================================
 // SERVICES QUERIES
@@ -12,9 +27,18 @@ import { getServiceOptionsApi, getServicesApi } from './services.api';
 
 export const useGetServices = () => {
   return useQuery({
-    queryKey: ['services'],
+    queryKey: serviceKeys.lists(),
     queryFn: getServicesApi,
     staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+};
+
+export const useGetService = (id: string) => {
+  return useQuery({
+    queryKey: serviceKeys.detail(id),
+    queryFn: () => getServiceApi(id),
+    enabled: !!id,
+    staleTime: 5 * 60 * 1000,
   });
 };
 
@@ -24,9 +48,18 @@ export const useGetServices = () => {
 
 export const useGetServiceOptions = (serviceId: string) => {
   return useQuery({
-    queryKey: ['serviceOptions', serviceId],
+    queryKey: serviceKeys.options(serviceId),
     queryFn: () => getServiceOptionsApi(serviceId),
     enabled: !!serviceId,
     staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+};
+
+export const useGetServiceOption = (serviceId: string, optionId: string) => {
+  return useQuery({
+    queryKey: serviceKeys.option(serviceId, optionId),
+    queryFn: () => getServiceOptionApi(serviceId, optionId),
+    enabled: !!serviceId && !!optionId,
+    staleTime: 5 * 60 * 1000,
   });
 };

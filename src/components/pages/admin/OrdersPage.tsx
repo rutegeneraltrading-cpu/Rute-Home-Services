@@ -1,11 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { DataTable } from '@/components/common';
-import { TableColumn, TableAction } from '@/lib/types/table';
-import { Eye, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { Eye, Trash2 } from 'lucide-react';
+import { DataTable } from '@/components/common';
+import { Button } from '@/components/ui/button';
+import { TableColumn, TableAction } from '@/lib/types/table';
 
 interface Order {
   id: string;

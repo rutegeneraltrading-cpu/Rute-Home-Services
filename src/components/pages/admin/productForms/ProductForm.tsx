@@ -1,34 +1,23 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import Image from 'next/image';
+import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
-  SelectContent,
   SelectItem,
-  SelectTrigger,
   SelectValue,
+  SelectTrigger,
+  SelectContent,
 } from '@/components/ui/select';
-import { useCreateProduct, useGetProductCategories } from '@/lib/client/api';
 import { uploadProductImage } from '@/lib/client/utils/uploadImage';
-import { toast } from 'sonner';
-
-const productFormSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
-  description: z.string().optional(),
-  price: z.string().min(1, 'Price is required'),
-  category_id: z.string().min(1, 'Category is required'),
-  stock: z.string().min(1, 'Stock is required'),
-  image_url: z.string().optional(),
-});
-
-type ProductFormValues = z.infer<typeof productFormSchema>;
+import { productFormSchema, ProductFormValues } from '@/lib/validations';
+import { useCreateProduct, useGetProductCategories } from '@/lib/client/api';
 
 interface ProductFormProps {
   onSuccess?: () => void;

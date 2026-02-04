@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { profileAPI } from './profile.api';
+import { getProfileApi } from './profile.api';
 import { toast } from '@/components/ui/use-toast';
 
 export const PROFILE_QUERY_KEYS = {
@@ -10,7 +10,7 @@ export const PROFILE_QUERY_KEYS = {
 export const useGetProfile = () => {
   const query = useQuery({
     queryKey: PROFILE_QUERY_KEYS.detail(),
-    queryFn: profileAPI.getProfile,
+    queryFn: getProfileApi,
     staleTime: 1000 * 60 * 5, // 5 minutes
     gcTime: 1000 * 60 * 10, // 10 minutes
   });

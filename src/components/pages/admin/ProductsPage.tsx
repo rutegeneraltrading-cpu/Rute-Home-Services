@@ -2,21 +2,19 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { DataTable } from '@/components/common';
-import { TableColumn, TableAction } from '@/lib/types/table';
-import { useGetProducts } from '@/lib/client/api/products';
-import { useDeleteProduct } from '@/lib/client/api/products';
-import { Product } from '@/lib/client/api/products/products.api';
+import { toast } from 'sonner';
 import { Edit2, Trash2 } from 'lucide-react';
+import { DataTable } from '@/components/common';
+import { TableColumn, TableAction, Product } from '@/lib/types';
+import { useGetProducts, useDeleteProduct } from '@/lib/client/api/products';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
+  DialogTitle,
+  DialogHeader,
   DialogContent,
   DialogDescription,
-  DialogHeader,
-  DialogTitle,
 } from '@/components/ui/dialog';
-import { toast } from 'sonner';
 import { ProductEditModal } from '@/components/pages/admin/productForms';
 
 const ProductsPage = () => {
@@ -187,7 +185,14 @@ const ProductsPage = () => {
               }}
               disabled={deleteProductMutation.isPending}
             >
-              {deleteProductMutation.isPending ? 'Deleting...' : 'Delete'}
+              {deleteProductMutation.isPending ? (
+                <>
+                  <span className="animate-spin mr-2">⏳</span>
+                  Deleting...
+                </>
+              ) : (
+                'Delete'
+              )}
             </Button>
           </div>
         </DialogContent>

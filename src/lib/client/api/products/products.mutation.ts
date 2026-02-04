@@ -1,17 +1,17 @@
-/**
- * Mutation Layer - useMutation hooks
- * Handles create, update, delete with error handling
- */
-
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   createProductApi,
   updateProductApi,
   deleteProductApi,
+  createProductCategoryApi,
+  updateProductCategoryApi,
+  deleteProductCategoryApi,
   CreateProductDTO,
   UpdateProductDTO,
+  CreateProductCategoryDTO,
+  UpdateProductCategoryDTO,
 } from './products.api';
-import { productKeys } from './products.query';
+import { productKeys, productCategoryKeys } from './products.query';
 
 interface MutationOptions {
   onSuccess?: () => void;
@@ -76,6 +76,81 @@ export function useDeleteProduct(options?: MutationOptions) {
     },
     onError: (error: Error) => {
       console.error('Delete product error:', error.message);
+      options?.onError?.(error);
+    },
+  });
+}
+
+// ============================================
+// PRODUCT CATEGORY MUTATIONS
+// ============================================
+
+/**
+ * Create product category
+ */
+export function useCreateProductCategory(options?: MutationOptions) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: CreateProductCategoryDTO) =>
+      createProductCategoryApi(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: productCategoryKeys.lists(),
+      });
+      options?.onSuccess?.();
+    },
+    onError: (error: Error) => {
+      console.error('Create category error:', error.message);
+      options?.onError?.(error);
+    },
+  });
+}
+
+/**
+ * Update product category
+ */
+export function useUpdateProductCategory(
+  categoryId: string,
+  options?: MutationOptions,
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: UpdateProductCategoryDTO) =>
+      updateProductCategoryApi(categoryId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: productCategoryKeys.detail(categoryId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: productCategoryKeys.lists(),
+      });
+      options?.onSuccess?.();
+    },
+    onError: (error: Error) => {
+      console.error('Update category error:', error.message);
+      options?.onError?.(error);
+    },
+  });
+}
+
+/**
+ * Delete product category
+ */
+export function useDeleteProductCategory(options?: MutationOptions) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => deleteProductCategoryApi(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: productCategoryKeys.lists(),
+      });
+      options?.onSuccess?.();
+    },
+    onError: (error: Error) => {
+      console.error('Delete category error:', error.message);
       options?.onError?.(error);
     },
   });

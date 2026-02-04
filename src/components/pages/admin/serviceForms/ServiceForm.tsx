@@ -1,9 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { SubmitHandler, useForm } from 'react-hook-form';
-import { z } from 'zod';
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,35 +13,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  useGetCategories,
-  CreateServiceDTO,
-  useCreateService,
-} from '@/lib/client/api';
-
-const serviceSchema = z.object({
-  category_id: z.string().min(1, 'Please select a service category'),
-  name: z.string().min(2, 'Service name must be at least 2 characters'),
-  description: z.string(),
-  base_price: z.string().refine((val) => !Number.isNaN(parseFloat(val)), {
-    message: 'Price must be a valid number',
-  }),
-  duration_minutes: z.string().refine((val) => parseInt(val) > 0, {
-    message: 'Duration must be greater than 0',
-  }),
-});
-
-interface ServiceFormProps {
-  onServiceCreated?: (serviceId: string) => void;
-}
-
-type ServiceFormValues = {
-  category_id: string;
-  name: string;
-  description: string;
-  base_price: string;
-  duration_minutes: string;
-};
+import { useGetCategories, useCreateService } from '@/lib/client/api';
+import type { CreateServiceDTO } from '@/lib/client/api/services';
+import { serviceSchema } from '@/lib/validations';
+import { ServiceFormProps, ServiceFormValues } from '@/lib/types';
 
 export function ServiceForm({ onServiceCreated }: ServiceFormProps) {
   const { data: categories, isLoading: categoriesLoading } = useGetCategories();

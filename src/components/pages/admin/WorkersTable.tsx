@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import { MoreHorizontal, Edit, Ban, CheckCircle } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -19,18 +19,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, Edit, Ban, CheckCircle } from 'lucide-react';
-import { Worker } from '@/lib/client/api/workers/workers.api';
-import {
-  useSuspendWorker,
-  useUnsuspendWorker,
-} from '@/lib/client/api/workers/workers.mutation';
-
-interface WorkersTableProps {
-  workers: Worker[];
-  isLoading: boolean;
-  onEdit?: (worker: Worker) => void;
-}
+import { WorkersTableProps } from '@/lib/types';
+import { useSuspendWorker, useUnsuspendWorker } from '@/lib/client/api';
 
 export function WorkersTable({
   workers,

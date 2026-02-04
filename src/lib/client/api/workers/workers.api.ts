@@ -1,6 +1,6 @@
 import { httpClient } from '@/lib/client/http';
 
-export interface Worker {
+export interface WorkerProfile {
   id: string;
   profile_id: string;
   full_name: string;
@@ -44,14 +44,14 @@ export interface UpdateWorkerDTO {
  * Fetch all workers
  */
 export const getWorkersApi = (): Promise<{
-  workers: Worker[];
+  workers: WorkerProfile[];
   total: number;
 }> => httpClient.get(`/api/admin/workers/get`);
 
 /**
  * Fetch single worker by ID
  */
-export const getWorkerApi = (id: string): Promise<{ worker: Worker }> =>
+export const getWorkerApi = (id: string): Promise<{ worker: WorkerProfile }> =>
   httpClient.get(`/api/admin/workers/${id}`);
 
 /**
@@ -59,7 +59,7 @@ export const getWorkerApi = (id: string): Promise<{ worker: Worker }> =>
  */
 export const createWorkerApi = (
   data: CreateWorkerDTO,
-): Promise<{ worker: Worker }> =>
+): Promise<{ worker: WorkerProfile }> =>
   httpClient.post(`/api/admin/workers/create`, data);
 
 /**
@@ -68,19 +68,23 @@ export const createWorkerApi = (
 export const updateWorkerApi = (
   id: string,
   data: UpdateWorkerDTO,
-): Promise<{ worker: Worker }> =>
+): Promise<{ worker: WorkerProfile }> =>
   httpClient.put(`/api/admin/workers/${id}`, data);
 
 /**
  * Suspend a worker (prevent new bookings)
  */
-export const suspendWorkerApi = (id: string): Promise<{ worker: Worker }> =>
+export const suspendWorkerApi = (
+  id: string,
+): Promise<{ worker: WorkerProfile }> =>
   httpClient.patch(`/api/admin/workers/${id}`, { action: 'suspend' });
 
 /**
  * Unsuspend a worker (allow new bookings)
  */
-export const unsuspendWorkerApi = (id: string): Promise<{ worker: Worker }> =>
+export const unsuspendWorkerApi = (
+  id: string,
+): Promise<{ worker: WorkerProfile }> =>
   httpClient.patch(`/api/admin/workers/${id}`, { action: 'unsuspend' });
 
 /**

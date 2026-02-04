@@ -3,35 +3,27 @@
 import { useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
+import { toast } from 'sonner';
 import {
   Dialog,
+  DialogTitle,
+  DialogHeader,
   DialogContent,
   DialogDescription,
-  DialogHeader,
-  DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
-  SelectContent,
   SelectItem,
-  SelectTrigger,
   SelectValue,
+  SelectContent,
+  SelectTrigger,
 } from '@/components/ui/select';
-import { useUpdateUser } from '@/lib/client/api/users';
-import type { User } from '@/lib/client/api/users';
-import { toast } from 'sonner';
-
-const userEditSchema = z.object({
-  full_name: z.string().min(2, 'Name must be at least 2 characters'),
-  role: z.enum(['admin', 'user', 'worker']),
-  status: z.enum(['active', 'inactive', 'suspended']),
-});
-
-type UserEditValues = z.infer<typeof userEditSchema>;
+import { User } from '@/lib/types';
+import { useUpdateUser } from '@/lib/client/api';
+import { userEditSchema, UserEditValues } from '@/lib/validations';
 
 interface UserEditModalProps {
   open: boolean;

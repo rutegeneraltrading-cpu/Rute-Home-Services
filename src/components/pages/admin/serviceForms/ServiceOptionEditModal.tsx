@@ -3,8 +3,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useQueryClient } from '@tanstack/react-query';
-import * as z from 'zod';
 import {
   Dialog,
   DialogContent,
@@ -22,42 +20,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useGetCategories } from '@/lib/client/api/services/categories.query';
-import { useGetServices } from '@/lib/client/api/services/services.query';
-import { toast } from 'sonner';
-
-const optionEditSchema = z.object({
-  category_id: z.string().min(1, 'Please select a service category'),
-  service_id: z.string().min(1, 'Please select a service'),
-  name: z.string().min(2, 'Option name must be at least 2 characters'),
-  description: z.string().optional(),
-  price: z.string().min(1, 'Price is required'),
-  duration_minutes: z.string().optional(),
-  is_required: z.boolean(),
-  display_order: z.string().optional(),
-  is_active: z.boolean(),
-});
-
-type OptionEditValues = z.infer<typeof optionEditSchema>;
-
-interface ServiceOptionItem {
-  id: string;
-  service_id: string;
-  name: string;
-  description?: string | null;
-  price: number;
-  duration_minutes?: number | null;
-  is_required?: boolean;
-  display_order?: number | null;
-  is_active?: boolean;
-}
-
-interface ServiceOptionEditModalProps {
-  open: boolean;
-  option: ServiceOptionItem | null;
-  onOpenChange: (open: boolean) => void;
-  onSuccess?: () => void;
-}
+import { ServiceOptionEditModalProps } from '@/lib/types';
+import {
+  useGetCategories,
+  useGetServices,
+  useUpdateServiceOption,
+} from '@/lib/client/api';
+import { optionEditSchema, OptionEditValues } from '@/lib/validations';
 
 export function ServiceOptionEditModal({
   open,
@@ -65,17 +34,25 @@ export function ServiceOptionEditModal({
   onOpenChange,
   onSuccess,
 }: ServiceOptionEditModalProps) {
-  const queryClient = useQueryClient();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedCategoryId, setSelectedCategoryId] = useState('');
-  const [selectedServiceId, setSelectedServiceId] = useState('');
-
   const { data: categoriesData, isLoading: categoriesLoading } =
     useGetCategories();
   const { data: servicesData, isLoading: servicesLoading } = useGetServices();
 
   const categories = categoriesData?.categories || [];
   const allServices = useMemo(() => servicesData || [], [servicesData]);
+
+  // Derive selected IDs from option and services
+  const selectedService = useMemo(
+    () => allServices.find((s) => s.id === option?.service_id),
+    [allServices, option?.service_id],
+  );
+  const selectedCategoryId = selectedService?.category_id || '';
+  const selectedServiceId = option?.service_id || '';
+
+  const updateOptionMutation = useUpdateServiceOption(
+    selectedServiceId,
+    option?.id || '',
+  );
 
   // Filter services based on selected category
   const filteredServices = useMemo(
@@ -88,7 +65,7 @@ export function ServiceOptionEditModal({
 
   const defaultValues = useMemo(
     () => ({
-      category_id: '',
+      category_id: selectedCategoryId,
       service_id: option?.service_id || '',
       name: option?.name || '',
       description: option?.description || '',
@@ -105,7 +82,7 @@ export function ServiceOptionEditModal({
           : '0',
       is_active: option?.is_active ?? true,
     }),
-    [option],
+    [option, selectedCategoryId],
   );
 
   const {
@@ -120,69 +97,35 @@ export function ServiceOptionEditModal({
   });
 
   useEffect(() => {
-    if (option && allServices.length > 0) {
-      // Find the service this option belongs to
-      const service = allServices.find((s) => s.id === option.service_id);
-      if (service) {
-        setSelectedCategoryId(service.category_id);
-        setSelectedServiceId(option.service_id);
-        reset({
-          ...defaultValues,
-          category_id: service.category_id,
-          service_id: option.service_id,
-        });
-      }
+    if (option) {
+      reset(defaultValues);
     }
-  }, [option, allServices, reset, defaultValues]);
+  }, [option, reset, defaultValues]);
 
   const onSubmit = async (data: OptionEditValues) => {
     if (!option) return;
-    setIsSubmitting(true);
 
-    try {
-      const response = await fetch(`/api/admin/services/options/${option.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          service_id: data.service_id,
-          name: data.name,
-          description: data.description || null,
-          price: parseFloat(data.price),
-          duration_minutes: data.duration_minutes
-            ? parseInt(data.duration_minutes, 10)
-            : 0,
-          is_required: data.is_required,
-          display_order: data.display_order
-            ? parseInt(data.display_order, 10)
-            : 0,
-          is_active: data.is_active,
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error.error || 'Failed to update option');
-      }
-
-      // Invalidate queries for both the old and new service
-      await queryClient.invalidateQueries({
-        queryKey: ['serviceOptions', option.service_id],
-      });
-      if (data.service_id !== option.service_id) {
-        await queryClient.invalidateQueries({
-          queryKey: ['serviceOptions', data.service_id],
-        });
-      }
-      toast.success('Option updated successfully');
-      onSuccess?.();
-      onOpenChange(false);
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Failed to update option';
-      toast.error(errorMessage);
-    } finally {
-      setIsSubmitting(false);
-    }
+    updateOptionMutation.mutate(
+      {
+        name: data.name,
+        description: data.description || undefined,
+        price: parseFloat(data.price),
+        duration_minutes: data.duration_minutes
+          ? parseInt(data.duration_minutes, 10)
+          : 0,
+        is_required: data.is_required,
+        display_order: data.display_order
+          ? parseInt(data.display_order, 10)
+          : 0,
+        is_active: data.is_active,
+      },
+      {
+        onSuccess: () => {
+          onSuccess?.();
+          onOpenChange(false);
+        },
+      },
+    );
   };
 
   if (!option) return null;
@@ -203,8 +146,6 @@ export function ServiceOptionEditModal({
             <Select
               value={selectedCategoryId}
               onValueChange={(value) => {
-                setSelectedCategoryId(value);
-                setSelectedServiceId('');
                 setValue('category_id', value, {
                   shouldValidate: true,
                   shouldDirty: true,
@@ -214,7 +155,7 @@ export function ServiceOptionEditModal({
                   shouldDirty: true,
                 });
               }}
-              disabled={categoriesLoading || isSubmitting}
+              disabled={categoriesLoading || updateOptionMutation.isPending}
             >
               <SelectTrigger id="category_id" className="mt-2">
                 <SelectValue placeholder="Select a category" />
@@ -249,13 +190,16 @@ export function ServiceOptionEditModal({
             <Select
               value={selectedServiceId}
               onValueChange={(value) => {
-                setSelectedServiceId(value);
                 setValue('service_id', value, {
                   shouldValidate: true,
                   shouldDirty: true,
                 });
               }}
-              disabled={!selectedCategoryId || servicesLoading || isSubmitting}
+              disabled={
+                !selectedCategoryId ||
+                servicesLoading ||
+                updateOptionMutation.isPending
+              }
             >
               <SelectTrigger id="service_id" className="mt-2">
                 <SelectValue placeholder="Select a service" />
@@ -368,12 +312,15 @@ export function ServiceOptionEditModal({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={isSubmitting}
+              disabled={updateOptionMutation.isPending}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting || !isDirty}>
-              {isSubmitting ? 'Updating...' : 'Update Option'}
+            <Button
+              type="submit"
+              disabled={updateOptionMutation.isPending || !isDirty}
+            >
+              {updateOptionMutation.isPending ? 'Updating...' : 'Update Option'}
             </Button>
           </div>
         </form>

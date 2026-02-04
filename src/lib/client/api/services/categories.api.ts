@@ -1,27 +1,13 @@
 import { httpClient } from '@/lib/client/http';
+import { CreateServiceCategoryDTO, ServiceCategory } from '@/lib/types';
 
-export interface ServiceCategory {
-  id: string;
-  name: string;
-  slug: string;
-  description?: string | null;
-  image_url?: string | null;
-  is_active: boolean;
-  display_order?: number;
-  created_at: string;
-}
-
-export interface CreateServiceCategoryDTO {
-  name: string;
+export interface UpdateServiceCategoryDTO {
+  name?: string;
   description?: string;
   image_url?: string;
   display_order?: number;
-  is_active?: boolean;
 }
 
-/**
- * Fetch all active service categories
- */
 export const getCategoriesApi = (): Promise<{
   categories: ServiceCategory[];
   total: number;
@@ -34,3 +20,18 @@ export const createCategoryApi = (
   data: CreateServiceCategoryDTO,
 ): Promise<{ category: ServiceCategory }> =>
   httpClient.post(`/api/admin/services/categories`, data);
+
+/**
+ * Update a service category
+ */
+export const updateServiceCategoryApi = (
+  id: string,
+  data: UpdateServiceCategoryDTO,
+): Promise<ServiceCategory> =>
+  httpClient.put(`/api/admin/services/categories/${id}`, data);
+
+/**
+ * Delete a service category
+ */
+export const deleteServiceCategoryApi = (id: string): Promise<void> =>
+  httpClient.delete(`/api/admin/services/categories/${id}`);

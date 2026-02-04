@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/use-toast';
-import LoadingPage from '@/app/loading';
+import { Loading } from '@/components/common';
 
 const ProfilePage = () => {
   const { data: profile, isLoading, error } = useGetProfile();
@@ -110,7 +110,7 @@ const ProfilePage = () => {
     updateProfile({ full_name: fullName });
   };
 
-  if (isLoading) return <LoadingPage />;
+  if (isLoading) return <Loading />;
 
   if (error || !profile) {
     return (

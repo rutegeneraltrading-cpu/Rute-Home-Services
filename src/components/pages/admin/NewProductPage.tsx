@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { Edit2, Trash2 } from 'lucide-react';
 import { DataTable } from '@/components/common';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,15 +14,15 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  ProductForm,
   ProductCategoryForm,
   ProductCategoryEditModal,
-  ProductForm,
 } from '@/components/pages/admin/productForms';
-import { useGetProductCategories } from '@/lib/client/api/products';
-import { productKeys } from '@/lib/client/api/products/products.query';
 import type { TableAction, TableColumn } from '@/lib/types/table';
-import { Edit2, Trash2 } from 'lucide-react';
-import { toast } from 'sonner';
+import {
+  useGetProductCategories,
+  useDeleteProductCategory,
+} from '@/lib/client/api';
 
 interface ProductCategory {
   id: string;
@@ -31,9 +32,9 @@ interface ProductCategory {
 
 const NewProductPage = () => {
   const [step, setStep] = useState<'category' | 'product'>('category');
-  const queryClient = useQueryClient();
   const { data: categories = [], isLoading: categoriesLoading } =
     useGetProductCategories();
+  const deleteCategoryMutation = useDeleteProductCategory();
   const [editingCategory, setEditingCategory] =
     useState<ProductCategory | null>(null);
   const [deleteCategory, setDeleteCategory] = useState<ProductCategory | null>(
@@ -169,45 +170,39 @@ const NewProductPage = () => {
               type="button"
               variant="outline"
               onClick={() => setDeleteCategory(null)}
+              disabled={deleteCategoryMutation.isPending}
             >
               Cancel
             </Button>
             <Button
               type="button"
               variant="destructive"
-              onClick={async () => {
+              onClick={() => {
                 if (!deleteCategory) return;
-                try {
-                  const response = await fetch(
-                    `/api/admin/product-categories/${deleteCategory.id}`,
-                    { method: 'DELETE' },
-                  );
-
-                  if (!response.ok) {
-                    const error = await response.json().catch(() => ({}));
-                    throw new Error(
-                      error.error || 'Failed to delete product category',
-                    );
-                  }
-
-                  setDeleteCategory(null);
-                  await queryClient.invalidateQueries({
-                    queryKey: ['product-categories'],
-                  });
-                  await queryClient.invalidateQueries({
-                    queryKey: productKeys.lists(),
-                  });
-                  toast.success('Category deleted successfully');
-                } catch (error) {
-                  const errorMessage =
-                    error instanceof Error
-                      ? error.message
-                      : 'Failed to delete product category';
-                  toast.error(errorMessage);
-                }
+                deleteCategoryMutation.mutate(deleteCategory.id, {
+                  onSuccess: () => {
+                    setDeleteCategory(null);
+                    toast.success('Category deleted successfully');
+                  },
+                  onError: (error) => {
+                    const errorMessage =
+                      error instanceof Error
+                        ? error.message
+                        : 'Failed to delete product category';
+                    toast.error(errorMessage);
+                  },
+                });
               }}
+              disabled={deleteCategoryMutation.isPending}
             >
-              Delete
+              {deleteCategoryMutation.isPending ? (
+                <>
+                  <span className="animate-spin mr-2">⏳</span>
+                  Deleting...
+                </>
+              ) : (
+                'Delete'
+              )}
             </Button>
           </div>
         </DialogContent>

@@ -1,7 +1,3 @@
-/**
- * Auth Query Layer - useQuery hooks
- */
-
 import { useQuery } from '@tanstack/react-query';
 import { getMeApi } from './auth.api';
 

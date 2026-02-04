@@ -1,9 +1,8 @@
 'use client';
 
-import { zodResolver } from '@hookform/resolvers/zod';
-import { SubmitHandler, useForm } from 'react-hook-form';
-import { z } from 'zod';
 import { useState, useMemo } from 'react';
+import { SubmitHandler, useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,44 +14,24 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  CreateServiceOptionDTO,
+  useGetServices,
+  useGetCategories,
+  useGetServiceOptions,
   useCreateServiceOption,
+  CreateServiceOptionDTO,
 } from '@/lib/client/api';
 import {
-  useGetServiceOptions,
-  useGetServices,
-} from '@/lib/client/api/services/services.query';
-import { useGetCategories } from '@/lib/client/api/services/categories.query';
-import {
   Card,
+  CardTitle,
+  CardHeader,
   CardContent,
   CardDescription,
-  CardHeader,
-  CardTitle,
 } from '@/components/ui/card';
-
-const serviceOptionSchema = z.object({
-  name: z.string().min(2, 'Option name must be at least 2 characters'),
-  description: z.string().default(''),
-  price: z.string().refine((val) => !Number.isNaN(parseFloat(val)), {
-    message: 'Price must be a valid number',
-  }),
-  duration_minutes: z
-    .string()
-    .default('0')
-    .refine((val) => parseInt(val) >= 0, {
-      message: 'Duration must be 0 or greater',
-    }),
-  is_required: z.boolean().default(false),
-  display_order: z.string().default('0'),
-});
-
-interface ServiceOptionsFormProps {
-  serviceId?: string; // Optional now - can be selected via dropdown
-  serviceName?: string;
-}
-
-type ServiceOptionFormValues = z.infer<typeof serviceOptionSchema>;
+import {
+  ServiceOptionFormValues,
+  serviceOptionSchema,
+} from '@/lib/validations';
+import { ServiceOptionsFormProps } from '@/lib/types';
 
 export function ServiceOptionsForm({
   serviceId: preSelectedServiceId,
