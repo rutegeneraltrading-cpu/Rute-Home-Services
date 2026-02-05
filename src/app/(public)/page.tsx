@@ -1,5 +1,7 @@
-const Public = () => {
-  return <div>Public</div>;
+import { HomePage } from '@/components/pages';
+
+const Home = () => {
+  return <HomePage />;
 };
 
-export default Public;
+export default Home;
