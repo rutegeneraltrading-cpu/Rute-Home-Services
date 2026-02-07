@@ -84,28 +84,38 @@ const sampleOrders: Order[] = [
   },
 ];
 
-export default function DashboardPage() {
+interface DashboardPageProps {
+  basePath?: string;
+  baseLabel?: string;
+  pageTitle?: string;
+  pageDescription?: string;
+}
+
+export default function DashboardPage({
+  basePath = '/admin',
+  baseLabel = 'Admin',
+  pageTitle = 'Dashboard',
+  pageDescription = 'Welcome back! Here&apos;s your business overview.',
+}: DashboardPageProps) {
   return (
     <div className="space-y-6 py-4">
       {/* Breadcrumb */}
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
-            <BreadcrumbLink href="/admin">Admin</BreadcrumbLink>
+            <BreadcrumbLink href={basePath}>{baseLabel}</BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbPage>Dashboard</BreadcrumbPage>
+            <BreadcrumbPage>{pageTitle}</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
 
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Welcome back! Here&apos;s your business overview.
-        </p>
+        <h1 className="text-3xl font-bold tracking-tight">{pageTitle}</h1>
+        <p className="text-muted-foreground">{pageDescription}</p>
       </div>
 
       {/* Stats Cards */}
