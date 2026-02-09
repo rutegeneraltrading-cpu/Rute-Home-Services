@@ -1,3 +1,5 @@
+import PublicNavbar from '@/components/common/PublicNavbar';
+
 export default function RootLayout({
   children,
 }: {
@@ -5,7 +7,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <PublicNavbar />
+        {children}
+      </body>
     </html>
   );
 }
