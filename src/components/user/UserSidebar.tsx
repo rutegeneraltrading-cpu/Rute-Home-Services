@@ -1,6 +1,6 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
   CalendarCheck,
@@ -62,12 +62,15 @@ const UserSidebar = () => {
       isActive: pathname.startsWith('/user/profile'),
     },
   ];
-
+  const router = useRouter();
   return (
     <Sidebar collapsible="icon" variant="sidebar">
       <SidebarHeader className="gap-2">
         <div className="flex items-center justify-between  py-1.5">
-          <div className="flex items-center gap-2">
+          <div
+            className="flex items-center gap-2 cursor-pointer"
+            onClick={() => router.push('/')}
+          >
             <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground text-sm font-bold">
               R
             </div>

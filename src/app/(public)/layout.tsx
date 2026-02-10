@@ -1,4 +1,5 @@
 import PublicNavbar from '@/components/common/PublicNavbar';
+import PublicFooter from '@/components/common/PublicFooter';
 
 export default function RootLayout({
   children,
@@ -9,7 +10,8 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <PublicNavbar />
-        {children}
+        <div className="h-screen">{children}</div>
+        <PublicFooter />
       </body>
     </html>
   );
