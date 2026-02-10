@@ -8,6 +8,7 @@ import {
   Users,
   Wrench,
   TrendingUp,
+  Contact,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -81,6 +82,12 @@ const AdminSidebar = () => {
         { title: 'Reports', url: '/admin/reports' },
         { title: 'Revenue', url: '/admin/revenue' },
       ],
+    },
+    {
+      title: 'Contacts',
+      url: '/admin/contacts',
+      icon: <Contact className="size-4" />,
+      isActive: pathname === '/admin/contacts',
     },
   ];
 

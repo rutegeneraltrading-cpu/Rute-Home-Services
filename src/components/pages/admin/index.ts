@@ -10,6 +10,7 @@ import RevenuePage from './RevenuePage';
 import ServicesPage from './ServicesPage';
 import UsersPage from './UsersPage';
 import WorkersPage from './WorkersPage';
+import ContactsPage from './ContactsPage';
 
 export {
   BookingPage,
@@ -24,4 +25,5 @@ export {
   ServicesPage,
   UsersPage,
   WorkersPage,
+  ContactsPage,
 };

@@ -8,12 +8,16 @@ import {
   CreditCard,
   Bell,
   UserRound,
+  CircleQuestionMark,
 } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
   SidebarRail,
   SidebarSeparator,
   SidebarTrigger,
@@ -90,8 +94,19 @@ const UserSidebar = () => {
         <NavMain items={navItems} />
       </SidebarContent>
 
+      <SidebarMenu className="pl-2 mb-2">
+        <SidebarMenuItem>
+          <SidebarMenuButton
+            tooltip="Help"
+            className="cursor-pointer"
+            onClick={() => router.push('/contact-us')}
+          >
+            <CircleQuestionMark className="size-4" />
+            <span>Help</span>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      </SidebarMenu>
       <SidebarSeparator />
-
       <SidebarFooter>
         <UserNav />
       </SidebarFooter>
