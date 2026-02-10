@@ -7,7 +7,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
     const workerId = id;
 
     // Get worker from workers table first
@@ -26,15 +26,23 @@ export async function GET(
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('*')
-      .eq('auth_id', worker.profile_id)
+      .eq('id', worker.profile_id)
       .single();
 
     if (profileError) throw profileError;
 
+    const { data: primaryAddress } = await supabase
+      .from('user_addresses')
+      .select('*')
+      .eq('profile_id', profile.id)
+      .eq('is_primary', true)
+      .maybeSingle();
+
     return NextResponse.json({
       worker: {
-        ...worker,
         ...profile,
+        ...worker,
+        primary_address: primaryAddress || null,
       },
     });
   } catch (error) {
@@ -52,7 +60,7 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
     const workerId = id;
     const body = await request.json();
 
@@ -74,6 +82,7 @@ export async function PUT(
       avatar_url,
       status,
       service_id,
+      address,
       ...workerFields
     } = body;
 
@@ -87,7 +96,7 @@ export async function PUT(
           ...(avatar_url !== undefined && { avatar_url }),
           ...(status && { status }),
         })
-        .eq('auth_id', worker.profile_id);
+        .eq('id', worker.profile_id);
 
       if (profileError) throw profileError;
     } else if (status) {
@@ -95,7 +104,7 @@ export async function PUT(
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ status })
-        .eq('auth_id', worker.profile_id);
+        .eq('id', worker.profile_id);
 
       if (profileError) throw profileError;
     }
@@ -130,17 +139,92 @@ export async function PUT(
       if (insertWorkerServiceError) throw insertWorkerServiceError;
     }
 
+    // Update worker address
+    let primaryAddress = null;
+    if (address) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', worker.profile_id)
+        .single();
+
+      if (profile?.id) {
+        const { data: existingPrimary } = await supabase
+          .from('user_addresses')
+          .select('*')
+          .eq('profile_id', profile.id)
+          .eq('is_primary', true)
+          .maybeSingle();
+
+        if (existingPrimary) {
+          const { data: updatedAddress, error: addressUpdateError } =
+            await supabase
+              .from('user_addresses')
+              .update({
+                label: address.label || existingPrimary.label,
+                recipient_name:
+                  address.recipient_name ||
+                  full_name ||
+                  existingPrimary.recipient_name,
+                phone:
+                  address.phone || workerFields.phone || existingPrimary.phone,
+                line1: address.line1,
+                line2: address.line2 || null,
+                city: address.city,
+                state_province: address.state_province,
+                postal_code: address.postal_code,
+                country: address.country,
+                is_primary: true,
+              })
+              .eq('id', existingPrimary.id)
+              .select('*')
+              .single();
+
+          if (addressUpdateError) throw addressUpdateError;
+          primaryAddress = updatedAddress;
+        } else {
+          const { data: createdAddress, error: addressCreateError } =
+            await supabase
+              .from('user_addresses')
+              .insert({
+                profile_id: profile.id,
+                label: address.label || 'home',
+                recipient_name: address.recipient_name || full_name || null,
+                phone: address.phone || workerFields.phone || null,
+                line1: address.line1,
+                line2: address.line2 || null,
+                city: address.city,
+                state_province: address.state_province,
+                postal_code: address.postal_code,
+                country: address.country,
+                is_primary: true,
+              })
+              .select('*')
+              .single();
+
+          if (addressCreateError) throw addressCreateError;
+          primaryAddress = createdAddress;
+        }
+
+        await supabase
+          .from('profiles')
+          .update({ phone: address.phone || workerFields.phone || null })
+          .eq('id', worker.profile_id);
+      }
+    }
+
     // Get updated profile
     const { data: profile } = await supabase
       .from('profiles')
       .select('*')
-      .eq('auth_id', worker.profile_id)
+      .eq('id', worker.profile_id)
       .single();
 
     return NextResponse.json({
       worker: {
-        ...updatedWorker,
         ...profile,
+        ...updatedWorker,
+        primary_address: primaryAddress || null,
       },
     });
   } catch (error) {
@@ -158,7 +242,7 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
     const workerId = id;
     const { action } = await request.json();
 
@@ -184,7 +268,7 @@ export async function PATCH(
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .update({ status: newStatus })
-      .eq('auth_id', worker.profile_id)
+      .eq('id', worker.profile_id)
       .select()
       .single();
 
@@ -199,8 +283,8 @@ export async function PATCH(
 
     return NextResponse.json({
       worker: {
-        ...updatedWorker,
         ...profile,
+        ...updatedWorker,
       },
     });
   } catch (error) {
@@ -218,7 +302,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
     const adminClient = await createAdminClient();
 
     // Get worker to find profile_id
@@ -249,18 +333,25 @@ export async function DELETE(
 
     if (deleteWorkerError) throw deleteWorkerError;
 
+    const { data: profileForAuth } = await supabase
+      .from('profiles')
+      .select('auth_id')
+      .eq('id', worker.profile_id)
+      .maybeSingle();
+
     // Delete profile record
     const { error: deleteProfileError } = await supabase
       .from('profiles')
       .delete()
-      .eq('auth_id', worker.profile_id);
+      .eq('id', worker.profile_id);
 
     if (deleteProfileError) throw deleteProfileError;
 
     // Delete auth user (admin API)
-    const { error: deleteAuthError } = await adminClient.auth.admin.deleteUser(
-      worker.profile_id,
-    );
+    const authId = profileForAuth?.auth_id;
+    const { error: deleteAuthError } = authId
+      ? await adminClient.auth.admin.deleteUser(authId)
+      : { error: null };
 
     if (deleteAuthError) {
       console.error('Error deleting auth user:', deleteAuthError);

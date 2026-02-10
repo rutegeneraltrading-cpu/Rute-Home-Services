@@ -1,14 +1,27 @@
 import { NextResponse, NextRequest } from 'next/server';
+import crypto from 'crypto';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/server';
 
 export async function POST(request: NextRequest) {
   try {
     const supabaseAdmin = await createAdminClient();
-    const supabase = await createClient();
 
     const body = await request.json();
-    const { full_name, email, phone, address, service_id, hourly_rate } = body;
+    const {
+      full_name,
+      email,
+      phone,
+      address,
+      service_id,
+      hourly_rate,
+      profile_status,
+    } = body;
+
+    const statusToSet: 'active' | 'inactive' | 'suspended' =
+      profile_status === 'inactive' || profile_status === 'suspended'
+        ? profile_status
+        : 'active';
 
     // Validate required fields
     if (!full_name || !email || !service_id) {
@@ -18,114 +31,142 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if profile already exists
+    if (
+      !address ||
+      !address.line1 ||
+      !address.city ||
+      !address.state_province ||
+      !address.postal_code ||
+      !address.country
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'Missing required address fields: line1, city, state_province, postal_code, country',
+        },
+        { status: 400 },
+      );
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+
     const { data: existingProfile, error: existingProfileError } =
-      await supabase
+      await supabaseAdmin
         .from('profiles')
-        .select('auth_id, role')
-        .eq('email', email)
+        .select('id')
+        .eq('email', normalizedEmail)
         .maybeSingle();
 
     if (existingProfileError) throw existingProfileError;
 
-    let auth_id: string;
-    let profile: {
-      auth_id: string;
-      full_name: string;
-      email: string;
-      role: string;
-      status: string;
-    } | null = null;
-
     if (existingProfile) {
-      auth_id = existingProfile.auth_id;
+      return NextResponse.json(
+        { error: 'Worker already exists with this email' },
+        { status: 409 },
+      );
+    }
 
-      // Ensure profile is set to worker role
-      const { data: updatedProfile, error: updateProfileError } = await supabase
-        .from('profiles')
-        .update({
-          full_name,
-          role: 'worker',
-          status: 'active',
-        })
-        .eq('auth_id', auth_id)
-        .select()
-        .single();
+    let existingAuthUser = null as null | { id: string; email?: string };
+    let page = 1;
+    let hasMore = true;
 
-      if (updateProfileError) throw updateProfileError;
-      profile = updatedProfile;
+    while (hasMore && page <= 5 && !existingAuthUser) {
+      const { data: authUsers, error: existingAuthError } =
+        await supabaseAdmin.auth.admin.listUsers({
+          page,
+          perPage: 200,
+        });
 
-      // Keep auth metadata in sync
-      await supabaseAdmin.auth.admin.updateUserById(auth_id, {
+      if (existingAuthError) {
+        console.error('Auth lookup error:', existingAuthError);
+        throw new Error('Unable to verify email uniqueness');
+      }
+
+      const users = authUsers?.users || [];
+      existingAuthUser =
+        users.find((user) => user.email?.toLowerCase() === normalizedEmail) ||
+        null;
+
+      hasMore = users.length === 200;
+      page += 1;
+    }
+
+    if (existingAuthUser?.id) {
+      return NextResponse.json(
+        { error: 'Worker already exists with this email' },
+        { status: 409 },
+      );
+    }
+
+    // Generate a strong random password for the worker
+    const tempPassword = crypto.randomBytes(16).toString('base64url');
+
+    console.log('Creating worker with email:', email);
+
+    // Step 1: Create auth user via admin client
+    const { data: authData, error: authError } =
+      await supabaseAdmin.auth.admin.createUser({
+        email: normalizedEmail,
+        password: tempPassword,
         user_metadata: {
           full_name,
           role: 'worker',
         },
       });
-    } else {
-      // Generate a random password for the worker
-      const tempPassword = Math.random().toString(36).slice(-16);
 
-      console.log('Creating worker with email:', email);
+    if (authError) {
+      console.error('Auth creation error:', authError);
+      throw new Error(authError.message || 'Failed to create auth user');
+    }
 
-      // Step 1: Create auth user via admin client
-      const { data: authData, error: authError } =
-        await supabaseAdmin.auth.admin.createUser({
-          email,
-          password: tempPassword,
-          user_metadata: {
-            full_name,
-            role: 'worker',
-          },
-        });
+    const auth_id = authData.user.id;
+    console.log('Auth user created:', auth_id);
 
-      if (authError) {
-        console.error('Auth creation error:', authError);
-        throw new Error(authError.message || 'Failed to create auth user');
-      }
+    // Step 2: Create profile record
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .upsert(
+        {
+          auth_id,
+          full_name,
+          email: normalizedEmail,
+          role: 'worker',
+          status: statusToSet,
+        },
+        { onConflict: 'auth_id' },
+      )
+      .select()
+      .single();
 
-      auth_id = authData.user.id;
-      console.log('Auth user created:', auth_id);
+    if (profileError) throw profileError;
+    console.log('Profile created:', profile.auth_id);
 
-      // Step 2: Create profile record
-      const { data: createdProfile, error: profileError } = await supabase
-        .from('profiles')
-        .upsert(
-          {
-            auth_id,
-            full_name,
-            email,
-            role: 'worker',
-            status: 'active',
-          },
-          { onConflict: 'auth_id' },
-        )
-        .select()
-        .single();
-
-      if (profileError) throw profileError;
-      profile = createdProfile;
-      console.log('Profile created:', createdProfile.auth_id);
+    const profileId = profile?.id;
+    if (!profileId) {
+      return NextResponse.json(
+        { error: 'Profile ID missing' },
+        { status: 500 },
+      );
     }
 
     // Step 3: Create or reuse worker record
-    const { data: existingWorker, error: existingWorkerError } = await supabase
-      .from('workers')
-      .select('id')
-      .eq('profile_id', auth_id)
-      .maybeSingle();
+    const { data: existingWorker, error: existingWorkerError } =
+      await supabaseAdmin
+        .from('workers')
+        .select('id')
+        .eq('profile_id', profileId)
+        .maybeSingle();
 
     if (existingWorkerError) throw existingWorkerError;
 
     let workerId = existingWorker?.id;
 
     if (!workerId) {
-      const { data: worker, error: workerError } = await supabase
+      const { data: worker, error: workerError } = await supabaseAdmin
         .from('workers')
         .insert({
-          profile_id: auth_id,
+          profile_id: profileId,
           phone: phone || null,
-          address: address || null,
           hourly_rate: hourly_rate || 0,
           is_active: true,
         })
@@ -139,7 +180,7 @@ export async function POST(request: NextRequest) {
 
     // Step 4: Create worker_services entry if missing
     const { data: existingWorkerService, error: existingWorkerServiceError } =
-      await supabase
+      await supabaseAdmin
         .from('worker_services')
         .select('id')
         .eq('worker_id', workerId)
@@ -149,7 +190,7 @@ export async function POST(request: NextRequest) {
     if (existingWorkerServiceError) throw existingWorkerServiceError;
 
     if (!existingWorkerService) {
-      const { error: workerServiceError } = await supabase
+      const { error: workerServiceError } = await supabaseAdmin
         .from('worker_services')
         .insert({
           worker_id: workerId,
@@ -161,6 +202,39 @@ export async function POST(request: NextRequest) {
       console.log('Worker service created');
     }
 
+    // Step 5: Save worker address in user_addresses
+    if (address) {
+      const { error: resetError } = await supabaseAdmin
+        .from('user_addresses')
+        .update({ is_primary: false })
+        .eq('profile_id', profileId);
+
+      if (resetError) throw resetError;
+
+      const { error: addressError } = await supabaseAdmin
+        .from('user_addresses')
+        .insert({
+          profile_id: profileId,
+          label: address.label || 'home',
+          recipient_name: address.recipient_name || full_name || null,
+          phone: address.phone || phone || null,
+          line1: address.line1,
+          line2: address.line2 || null,
+          city: address.city,
+          state_province: address.state_province,
+          postal_code: address.postal_code,
+          country: address.country,
+          is_primary: true,
+        });
+
+      if (addressError) throw addressError;
+
+      await supabaseAdmin
+        .from('profiles')
+        .update({ phone: address.phone || phone || null })
+        .eq('id', profileId);
+    }
+
     if (!workerId) {
       throw new Error('Worker record not found or created');
     }
@@ -169,7 +243,7 @@ export async function POST(request: NextRequest) {
       {
         worker: {
           ...profile,
-          profile_id: auth_id,
+          profile_id: profileId,
           id: workerId,
         },
         message:

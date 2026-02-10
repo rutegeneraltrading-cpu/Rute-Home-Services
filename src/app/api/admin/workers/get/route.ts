@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 
 export async function GET() {
   try {
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
 
     // Get all workers with their profile data
     const { data: workers, error: workersError } = await supabase
@@ -13,12 +13,12 @@ export async function GET() {
         id,
         profile_id,
         phone,
-        address,
         rating_avg,
         hourly_rate,
         is_active,
         created_at,
         profiles:profile_id (
+          id,
           auth_id,
           full_name,
           email,
@@ -42,6 +42,20 @@ export async function GET() {
     if (workersError) throw workersError;
 
     // Flatten the response
+    const profileIds = (workers || [])
+      .map((w: any) => w?.profiles?.id)
+      .filter(Boolean);
+
+    const { data: addresses } = await supabase
+      .from('user_addresses')
+      .select('*')
+      .in('profile_id', profileIds)
+      .eq('is_primary', true);
+
+    const addressMap = new Map(
+      (addresses || []).map((addr: any) => [addr.profile_id, addr]),
+    );
+
     const formattedWorkers = (workers || []).map((w: any) => {
       const workerServices = w.worker_services || [];
       const serviceNames = workerServices
@@ -55,8 +69,9 @@ export async function GET() {
         .filter(Boolean);
 
       return {
-        ...w,
         ...w.profiles,
+        ...w,
+        primary_address: addressMap.get(w?.profiles?.id) || null,
         service_names: Array.from(new Set(serviceNames)),
         service_category_names: Array.from(new Set(categoryNames)),
         service_ids: Array.from(new Set(serviceIds)),

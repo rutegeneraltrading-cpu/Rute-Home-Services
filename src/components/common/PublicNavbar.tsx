@@ -1,9 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import Link from 'next/link';
 import { Menu, X } from 'lucide-react';
-import { Button } from '@/components/ui';
+import { useRouter } from 'next/navigation';
+import { useGetMe, useSignOut } from '@/lib/client/api';
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui';
 
 const navItems = [
   { label: 'Home', href: '/' },
@@ -16,19 +29,58 @@ const navItems = [
 
 const PublicNavbar = () => {
   const [open, setOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const router = useRouter();
+  const { data: user } = useGetMe();
+  const signOutMutation = useSignOut();
+
+  const initials = user?.email
+    ? user.email.split('@')[0].split('').slice(0, 2).join('').toUpperCase()
+    : 'U';
+
+  const dashboardPath = user?.role === 'admin' ? '/admin' : '/user';
+  const profilePath =
+    user?.role === 'admin' ? '/admin/profile' : '/user/profile';
+
+  const handleSignOut = async () => {
+    try {
+      await signOutMutation.mutateAsync();
+      router.push('/login');
+    } catch (error) {
+      console.error('Sign out error:', error);
+    }
+  };
+
+  const handleUserMenuEnter = () => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+    setUserMenuOpen(true);
+  };
+
+  const handleUserMenuLeave = () => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+    }
+    closeTimeoutRef.current = setTimeout(() => {
+      setUserMenuOpen(false);
+    }, 120);
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-white/90 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 md:px-8">
+      <div className="flex h-16 container mx-auto items-center justify-between">
         <Link
           href="/"
-          className="text-xl font-bold text-slate-900"
+          className="text-3xl font-bold text-slate-900"
           aria-label="Home Services"
         >
           RUTE<span className="text-green-600">.</span>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-6 text-sm text-slate-700">
+        <nav className="hidden md:flex items-center gap-6 text-base text-slate-700">
           {navItems.map((item) => (
             <Link
               key={item.href}
@@ -41,12 +93,76 @@ const PublicNavbar = () => {
         </nav>
 
         <div className="hidden md:flex items-center gap-2">
-          <Button asChild variant="outline">
-            <Link href="/login">Login</Link>
-          </Button>
-          <Button asChild>
-            <Link href="/signup">Sign up</Link>
-          </Button>
+          {!user ? (
+            <>
+              <Button asChild variant="outline">
+                <Link href="/login">Login</Link>
+              </Button>
+              <Button asChild>
+                <Link href="/signup">Sign up</Link>
+              </Button>
+            </>
+          ) : (
+            <DropdownMenu open={userMenuOpen} modal={false}>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="flex items-center gap-2 rounded-md px-2 py-1 text-sm cursor-pointer border-none outline-none focus-visible:ring-0"
+                  onPointerEnter={handleUserMenuEnter}
+                  onPointerLeave={handleUserMenuLeave}
+                >
+                  {user.avatar_url ? (
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage
+                        src={user.avatar_url}
+                        alt={user.name || 'User'}
+                      />
+                      <AvatarFallback>{initials}</AvatarFallback>
+                    </Avatar>
+                  ) : (
+                    <div className="flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-semibold">
+                      {initials}
+                    </div>
+                  )}
+                  <span className="text-sm font-medium text-slate-700">
+                    {user.name || 'User'}
+                  </span>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                className="w-48"
+                align="end"
+                sideOffset={0}
+                onPointerEnter={handleUserMenuEnter}
+                onPointerLeave={handleUserMenuLeave}
+              >
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium">
+                      {user.name || 'User'}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {user.email}
+                    </span>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild className="cursor-pointer">
+                  <Link href={dashboardPath}>Dashboard</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="cursor-pointer">
+                  <Link href={profilePath}>Profile</Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleSignOut}
+                  className="cursor-pointer"
+                >
+                  Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
 
         <button
@@ -76,16 +192,65 @@ const PublicNavbar = () => {
               ))}
             </nav>
             <div className="flex md:flex-row flex-col items-center gap-2">
-              <Button asChild variant="outline" className="w-full">
-                <Link href="/login" onClick={() => setOpen(false)}>
-                  Login
-                </Link>
-              </Button>
-              <Button asChild className="w-full">
-                <Link href="/signup" onClick={() => setOpen(false)}>
-                  Sign up
-                </Link>
-              </Button>
+              {!user ? (
+                <>
+                  <Button asChild variant="outline" className="w-full">
+                    <Link href="/login" onClick={() => setOpen(false)}>
+                      Login
+                    </Link>
+                  </Button>
+                  <Button asChild className="w-full">
+                    <Link href="/signup" onClick={() => setOpen(false)}>
+                      Sign up
+                    </Link>
+                  </Button>
+                </>
+              ) : (
+                <div className="flex w-full flex-col gap-2">
+                  <div className="flex items-center gap-2 rounded-md border px-3 py-2">
+                    {user.avatar_url ? (
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage
+                          src={user.avatar_url}
+                          alt={user.name || 'User'}
+                        />
+                        <AvatarFallback>{initials}</AvatarFallback>
+                      </Avatar>
+                    ) : (
+                      <div className="flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-semibold">
+                        {initials}
+                      </div>
+                    )}
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium text-slate-700">
+                        {user.name || 'User'}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {user.email}
+                      </span>
+                    </div>
+                  </div>
+                  <Button asChild variant="outline" className="w-full">
+                    <Link href={dashboardPath} onClick={() => setOpen(false)}>
+                      Dashboard
+                    </Link>
+                  </Button>
+                  <Button asChild variant="outline" className="w-full">
+                    <Link href={profilePath} onClick={() => setOpen(false)}>
+                      Profile
+                    </Link>
+                  </Button>
+                  <Button
+                    className="w-full"
+                    onClick={() => {
+                      setOpen(false);
+                      handleSignOut();
+                    }}
+                  >
+                    Sign out
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </div>

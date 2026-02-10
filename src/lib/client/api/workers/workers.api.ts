@@ -1,4 +1,5 @@
 import { httpClient } from '@/lib/client/http';
+import type { CreateUserAddressDTO, UserAddress } from '@/lib/types';
 
 export interface WorkerProfile {
   id: string;
@@ -6,13 +7,13 @@ export interface WorkerProfile {
   full_name: string;
   email: string;
   phone?: string | null;
-  address?: string | null;
   avatar_url?: string | null;
   rating_avg?: number;
   hourly_rate?: number;
   is_active?: boolean;
   status?: 'active' | 'inactive' | 'suspended';
   role: 'worker';
+  primary_address?: UserAddress | null;
   service_ids?: string[];
   service_names?: string[];
   service_category_names?: string[];
@@ -24,20 +25,21 @@ export interface CreateWorkerDTO {
   full_name: string;
   email: string;
   phone?: string;
-  address?: string;
   service_id: string;
   hourly_rate?: number;
+  address: CreateUserAddressDTO;
+  profile_status?: 'active' | 'inactive' | 'suspended';
 }
 
 export interface UpdateWorkerDTO {
   full_name?: string;
   email?: string;
   phone?: string;
-  address?: string;
   hourly_rate?: number;
   avatar_url?: string;
   status?: 'active' | 'inactive' | 'suspended';
   service_id?: string;
+  address?: CreateUserAddressDTO;
 }
 
 /**

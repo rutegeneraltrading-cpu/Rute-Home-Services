@@ -1,4 +1,5 @@
 import { createServerClient } from '@supabase/ssr';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 
 export async function createClient() {
@@ -25,33 +26,17 @@ export async function createClient() {
 }
 
 export async function createAdminClient() {
-  const cookieStore = await cookies();
-
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!serviceRoleKey) {
-    console.warn('SUPABASE_SERVICE_ROLE_KEY not found, using anon key');
-    return createClient();
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY is missing');
   }
 
-  return createServerClient(
+  return createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     serviceRoleKey,
     {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options),
-            );
-          } catch {
-            // Ignore cookie errors in server components
-          }
-        },
-      },
+      auth: { persistSession: false, autoRefreshToken: false },
     },
   );
 }

@@ -1,18 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import {
-  Dialog,
-  DialogHeader,
-  DialogTitle,
-  DialogContent,
-  DialogDescription,
-} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/components/ui/use-toast';
 import {
   Select,
   SelectContent,
@@ -20,16 +15,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { WorkerFormProps } from '@/lib/types';
 import { useCreateWorker, useGetServices } from '@/lib/client/api';
 import { workerFormSchema, WorkerFormValues } from '@/lib/validations';
 
-export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
+const RegisterWorkerPage = () => {
+  const router = useRouter();
+  const { toast } = useToast();
   const createWorkerMutation = useCreateWorker();
   const { data: services, isLoading: servicesLoading } = useGetServices();
   const [selectedServiceId, setSelectedServiceId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState<'base' | 'address'>('base');
 
   const {
     register,
@@ -86,6 +81,7 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
         hourly_rate: data.hourly_rate
           ? parseFloat(data.hourly_rate)
           : undefined,
+        profile_status: 'inactive',
         address: {
           ...data.address,
           recipient_name:
@@ -97,8 +93,11 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
 
       reset();
       setSelectedServiceId('');
-      onSuccess?.();
-      onOpenChange(false);
+      toast({
+        title: 'Worker account created',
+        description: 'Your worker account has been created successfully.',
+      });
+      router.push('/');
     } catch (error) {
       console.error('Error creating worker:', error);
     } finally {
@@ -107,149 +106,113 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className=" sm:w-full max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Add New Worker</DialogTitle>
-          <DialogDescription>
-            Create a new worker account. Workers can accept service bookings.
-          </DialogDescription>
-        </DialogHeader>
+    <div className="py-10">
+      <div className="max-w-3xl mx-auto">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold">Worker Account</h1>
+          <p className="text-sm text-muted-foreground">
+            Create your worker account with base details and address.
+          </p>
+        </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          <div className="inline-flex rounded-lg border bg-muted/30 p-1">
-            <button
-              type="button"
-              onClick={() => setActiveTab('base')}
-              className={`px-3 py-1.5 text-sm rounded-md transition ${
-                activeTab === 'base'
-                  ? 'bg-white shadow text-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Base Details
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('address')}
-              className={`px-3 py-1.5 text-sm rounded-md transition ${
-                activeTab === 'address'
-                  ? 'bg-white shadow text-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Address
-            </button>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <Label htmlFor="full_name">Full Name *</Label>
+              <Input
+                id="full_name"
+                placeholder="John Doe"
+                className="h-10"
+                {...register('full_name')}
+              />
+              {formErrors.full_name && (
+                <p className="text-sm text-red-500 mt-1">
+                  {formErrors.full_name.message}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <Label htmlFor="email">Email *</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="john@example.com"
+                className="h-10"
+                {...register('email')}
+              />
+              {formErrors.email && (
+                <p className="text-sm text-red-500 mt-1">
+                  {formErrors.email.message}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <Label htmlFor="phone">Phone</Label>
+              <Input
+                id="phone"
+                placeholder="+27 11 123 4567"
+                className="h-10"
+                {...register('phone')}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="service_id">Service *</Label>
+              <Select
+                value={selectedServiceId}
+                onValueChange={(value) => {
+                  setSelectedServiceId(value);
+                  setValue('service_id', value, { shouldValidate: true });
+                }}
+                disabled={servicesLoading || isSubmitting}
+              >
+                <SelectTrigger id="service_id" className="h-10">
+                  <SelectValue placeholder="Select a service" />
+                </SelectTrigger>
+                <SelectContent>
+                  {servicesLoading ? (
+                    <SelectItem value="loading" disabled>
+                      Loading services...
+                    </SelectItem>
+                  ) : services && services.length > 0 ? (
+                    services.map((service) => (
+                      <SelectItem key={service.id} value={service.id}>
+                        {service.name} (R{service.base_price})
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="none" disabled>
+                      No services available
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+              {formErrors.service_id && (
+                <p className="text-sm text-red-500 mt-1">
+                  {formErrors.service_id.message}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <Label htmlFor="hourly_rate">Hourly Rate (ZAR)</Label>
+              <Input
+                id="hourly_rate"
+                type="number"
+                placeholder="250"
+                className="h-10"
+                {...register('hourly_rate')}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Optional - default rate per hour
+              </p>
+            </div>
           </div>
 
-          {activeTab === 'base' && (
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900">
-                  Base Details
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  Worker account information and service assignment.
-                </p>
-              </div>
-
-              <div>
-                <Label htmlFor="full_name">Full Name *</Label>
-                <Input
-                  id="full_name"
-                  placeholder="John Doe"
-                  {...register('full_name')}
-                />
-                {formErrors.full_name && (
-                  <p className="text-sm text-red-500 mt-1">
-                    {formErrors.full_name.message}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="email">Email *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="john@example.com"
-                  {...register('email')}
-                />
-                {formErrors.email && (
-                  <p className="text-sm text-red-500 mt-1">
-                    {formErrors.email.message}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="phone">Phone</Label>
-                <Input
-                  id="phone"
-                  placeholder="+27 11 123 4567"
-                  {...register('phone')}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="service_id">Service *</Label>
-                <Select
-                  value={selectedServiceId}
-                  onValueChange={(value) => {
-                    setSelectedServiceId(value);
-                    setValue('service_id', value, { shouldValidate: true });
-                  }}
-                  disabled={servicesLoading || isSubmitting}
-                >
-                  <SelectTrigger id="service_id" className="mt-2">
-                    <SelectValue placeholder="Select a service" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {servicesLoading ? (
-                      <SelectItem value="loading" disabled>
-                        Loading services...
-                      </SelectItem>
-                    ) : services && services.length > 0 ? (
-                      services.map((service) => (
-                        <SelectItem key={service.id} value={service.id}>
-                          {service.name} (R{service.base_price})
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="none" disabled>
-                        No services available
-                      </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-                {formErrors.service_id && (
-                  <p className="text-sm text-red-500 mt-1">
-                    {formErrors.service_id.message}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="hourly_rate">Hourly Rate (ZAR)</Label>
-                <Input
-                  id="hourly_rate"
-                  type="number"
-                  placeholder="250"
-                  {...register('hourly_rate')}
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Optional - default rate per hour
-                </p>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'address' && (
-            <div className="space-y-4 rounded-lg border border-dashed border-gray-200 p-4">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm font-semibold">Worker Address</Label>
-              </div>
-
+          <div className="rounded-lg border border-dashed border-gray-200 p-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
                 <Label className="text-sm">Label</Label>
                 <Select
@@ -264,7 +227,7 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
                     )
                   }
                 >
-                  <SelectTrigger className="mt-2">
+                  <SelectTrigger className="h-10">
                     <SelectValue placeholder="Select label" />
                   </SelectTrigger>
                   <SelectContent>
@@ -280,6 +243,7 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
                 <Input
                   id="address.recipient_name"
                   placeholder="Recipient name"
+                  className="h-10"
                   {...register('address.recipient_name')}
                 />
               </div>
@@ -292,6 +256,7 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
                   inputMode="numeric"
                   pattern="[0-9]*"
                   placeholder="e.g., 0111234567"
+                  className="h-10"
                   {...register('address.phone')}
                 />
                 {formErrors.address?.phone && (
@@ -306,6 +271,7 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
                 <Input
                   id="address.line1"
                   placeholder="Street address"
+                  className="h-10"
                   {...register('address.line1')}
                 />
                 {formErrors.address?.line1 && (
@@ -320,6 +286,7 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
                 <Input
                   id="address.line2"
                   placeholder="Apartment, suite, etc."
+                  className="h-10"
                   {...register('address.line2')}
                 />
               </div>
@@ -329,6 +296,7 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
                 <Input
                   id="address.city"
                   placeholder="City"
+                  className="h-10"
                   {...register('address.city')}
                 />
                 {formErrors.address?.city && (
@@ -343,6 +311,7 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
                 <Input
                   id="address.state_province"
                   placeholder="Province or state"
+                  className="h-10"
                   {...register('address.state_province')}
                 />
                 {formErrors.address?.state_province && (
@@ -360,6 +329,7 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
                   inputMode="numeric"
                   pattern="[0-9]*"
                   placeholder="Postal code"
+                  className="h-10"
                   {...register('address.postal_code')}
                 />
                 {formErrors.address?.postal_code && (
@@ -374,6 +344,7 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
                 <Input
                   id="address.country"
                   placeholder="Country"
+                  className="h-10"
                   {...register('address.country')}
                 />
                 {formErrors.address?.country && (
@@ -383,7 +354,8 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
                 )}
               </div>
             </div>
-          )}
+          </div>
+
           <div className="flex justify-end gap-3 pt-4">
             {isDirty && (
               <Button
@@ -394,9 +366,8 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
                   setSelectedServiceId('');
                 }}
                 disabled={isSubmitting}
-                className="cursor-pointer"
               >
-                Cancel
+                Reset
               </Button>
             )}
             <Button
@@ -407,7 +378,9 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
             </Button>
           </div>
         </form>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
-}
+};
+
+export default RegisterWorkerPage;

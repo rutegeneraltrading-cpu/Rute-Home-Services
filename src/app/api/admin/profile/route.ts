@@ -51,19 +51,20 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { full_name, avatar_url } = body;
+    const { full_name, avatar_url, phone } = body;
 
     // Validate input
-    if (!full_name && !avatar_url) {
+    if (!full_name && !avatar_url && !phone) {
       return NextResponse.json(
         { error: 'No fields to update' },
         { status: 400 },
       );
     }
 
-    const updateData: Record<string, string> = {};
+    const updateData: Record<string, string | null> = {};
     if (full_name) updateData.full_name = full_name;
     if (avatar_url) updateData.avatar_url = avatar_url;
+    if (phone !== undefined) updateData.phone = phone;
 
     // Update profile
     const { data: profile, error } = await supabase

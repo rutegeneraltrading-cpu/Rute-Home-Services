@@ -40,6 +40,7 @@ export interface Profile {
   auth_id: string;
   full_name: string;
   email: string;
+  phone?: string | null;
   avatar_url: string | null;
   role: 'admin' | 'user' | 'worker';
   status: 'active' | 'inactive' | 'suspended';
@@ -50,4 +51,5 @@ export interface Profile {
 export interface UpdateProfileRequest {
   full_name?: string;
   avatar_url?: string;
+  phone?: string | null;
 }
