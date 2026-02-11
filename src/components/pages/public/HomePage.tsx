@@ -1,7 +1,22 @@
+import {
+  FAQSection,
+  HeroSection,
+  AboutUsSection,
+  ProductsSection,
+  ServicesSection,
+  TestimonialsSection,
+} from '@/components/common';
+
 const HomePage = () => {
   return (
-    <div className="flex items-center justify-center text-6xl font-bold py-20">
-      Under Development
+    <div>
+      <HeroSection />
+      <ServicesSection />
+      <ProductsSection />
+      <AboutUsSection />
+      {/* <WhyChooseUsSection /> */}
+      <TestimonialsSection />
+      <FAQSection />
     </div>
   );
 };

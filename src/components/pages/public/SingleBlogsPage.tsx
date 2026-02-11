@@ -8,7 +8,7 @@ interface SingleBlogsPageProps {
   blog: IBlogs;
 }
 
-const SingleBlogsPage = ({ blog }: SingleBlogsPageProps) => {
+const SingleBlogsPage = ({ blog }: SingleBlogsPageProps | any) => {
   return (
     <div className="container mx-auto flex flex-col items-center text-slate-900 md:py-16 py-14">
       <div className="flex flex-col md:gap-16 gap-8 xl:w-[70%] lg:w-[75%]">
@@ -21,11 +21,7 @@ const SingleBlogsPage = ({ blog }: SingleBlogsPageProps) => {
             <div className="flex md:flex-row flex-col md:items-center md:justify-between py-3 gap-1">
               <div className="flex flex-row items-center justify-center gap-3">
                 <Image
-                  src={
-                    blog?.auther_image?.fields?.file?.url
-                      ? `https:${blog.auther_image.fields.file.url}`
-                      : 'https://images.ctfassets.net/f5mq357xxj80/5ZBxFnsbUIfhDA1ABqryHU/a607b9906774c3986a5a006282d73346/HomePageImage.webp'
-                  }
+                  src={`https:${blog.auther_image.fields.file.url}`}
                   width={60}
                   height={60}
                   alt={blog.auther || 'Author'}
@@ -62,11 +58,7 @@ const SingleBlogsPage = ({ blog }: SingleBlogsPageProps) => {
               </span>
             </div>
             <Image
-              src={
-                blog?.image?.fields?.file?.url
-                  ? `https:${blog.image.fields.file.url}`
-                  : 'https://images.ctfassets.net/f5mq357xxj80/5ZBxFnsbUIfhDA1ABqryHU/a607b9906774c3986a5a006282d73346/HomePageImage.webp'
-              }
+              src={`https:${blog.image.fields.file.url}`}
               width={800}
               height={400}
               alt={blog.title}

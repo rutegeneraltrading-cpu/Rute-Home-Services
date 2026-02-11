@@ -131,16 +131,12 @@ const BlogCard: FC<BlogCardProps> = ({ data, loading, col }) => {
         ref={blogsRef}
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
       >
-        {currentData?.map((item) => (
+        {currentData?.map((item: any) => (
           <Link href={`/blogs/${item.slug}`} key={item.id} className="group">
             <Card className="h-full overflow-hidden transition-all hover:shadow-lg border-slate-200 hover:border-slate-300 pt-0 pb-6">
               <div className="relative w-full aspect-video overflow-hidden">
                 <Image
-                  src={
-                    item?.image?.fields?.file?.url
-                      ? `https:${item.image.fields.file.url}`
-                      : 'https://images.ctfassets.net/f5mq357xxj80/5ZBxFnsbUIfhDA1ABqryHU/a607b9906774c3986a5a006282d73346/HomePageImage.webp'
-                  }
+                  src={`https:${item.image.fields.file.url}`}
                   alt={item?.image?.fields?.title || 'Blog Image'}
                   fill
                   className="object-cover transition-transform duration-300 group-hover:scale-105"
@@ -161,11 +157,7 @@ const BlogCard: FC<BlogCardProps> = ({ data, loading, col }) => {
                 <div className="flex items-center gap-3">
                   <div className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-slate-200">
                     <Image
-                      src={
-                        item?.auther_image?.fields?.file?.url
-                          ? `https:${item.auther_image.fields.file.url}`
-                          : 'https://images.ctfassets.net/f5mq357xxj80/5ZBxFnsbUIfhDA1ABqryHU/a607b9906774c3986a5a006282d73346/HomePageImage.webp'
-                      }
+                      src={`https:${item.auther_image.fields.file.url}`}
                       alt={item.auther || 'Author'}
                       fill
                       className="object-cover"
