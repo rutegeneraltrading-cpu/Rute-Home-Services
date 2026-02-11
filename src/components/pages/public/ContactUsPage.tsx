@@ -134,7 +134,7 @@ const ContactUsPage = () => {
                         {...register('name')}
                       />
                       {errors.name && (
-                        <p className="text-xs text-rose-100 mt-1 leading-snug break-words">
+                        <p className="text-xs text-rose-100 mt-1 leading-snug wrap-break-word">
                           {getShortErrorMessage(errors.name.message)}
                         </p>
                       )}
@@ -151,7 +151,7 @@ const ContactUsPage = () => {
                         {...register('email')}
                       />
                       {errors.email && (
-                        <p className="text-xs text-rose-100 mt-1 leading-snug break-words">
+                        <p className="text-xs text-rose-100 mt-1 leading-snug wrap-break-word">
                           {getShortErrorMessage(errors.email.message)}
                         </p>
                       )}
@@ -209,7 +209,7 @@ const ContactUsPage = () => {
                         )}
                       />
                       {errors.subject && (
-                        <p className="text-xs text-rose-100 mt-1 leading-snug break-words">
+                        <p className="text-xs text-rose-100 mt-1 leading-snug wrap-break-word">
                           {getShortErrorMessage(errors.subject.message)}
                         </p>
                       )}
@@ -228,7 +228,7 @@ const ContactUsPage = () => {
                       {...register('message')}
                     />
                     {errors.message && (
-                      <p className="text-xs text-rose-100 mt-1 leading-snug break-words">
+                      <p className="text-xs text-rose-100 mt-1 leading-snug wrap-break-word">
                         {getShortErrorMessage(errors.message.message)}
                       </p>
                     )}
