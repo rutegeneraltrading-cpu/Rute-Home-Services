@@ -26,6 +26,7 @@ export default function AdminLayout({
       { path: '/admin/reports', title: 'Reports' },
       { path: '/admin/revenue', title: 'Revenue' },
       { path: '/admin/profile', title: 'Profile' },
+      { path: '/admin/contacts', title: 'Contacts' },
     ];
 
     if (pathname === '/admin') return 'Dashboard';

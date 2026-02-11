@@ -1,7 +1,7 @@
-import { SingleBlogsPage } from '@/components/pages';
+import { SingleProductsPage } from '@/components/pages';
 
 const SingleProduct = () => {
-  return <SingleBlogsPage />;
+  return <SingleProductsPage />;
 };
 
 export default SingleProduct;

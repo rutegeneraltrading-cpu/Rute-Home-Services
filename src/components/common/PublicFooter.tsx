@@ -14,9 +14,9 @@ const PublicFooter = () => {
 
   return (
     <footer className="border-t border-gray-200 bg-black text-white">
-      <div className="container mx-auto py-14 h-80">
-        <div className="grid grid-cols-12 h-full">
-          <div className="flex flex-col justify-between h-full col-span-4">
+      <div className="container mx-auto py-14 md:h-80">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-12 md:h-full">
+          <div className="flex flex-col justify-between md:h-full md:col-span-4">
             <h3 className="text-3xl font-bold text-white">
               RUTE<span className="text-green-600">.</span>
             </h3>
@@ -59,7 +59,7 @@ const PublicFooter = () => {
               </Link>
             </div>
           </div>
-          <div className="col-span-2">
+          <div className="md:col-span-2">
             <h4 className="text-sm font-semibold text-white">Company</h4>
             <ul className="mt-4 space-y-2 text-sm text-gray-300">
               <li>
@@ -79,7 +79,7 @@ const PublicFooter = () => {
               </li>
             </ul>
           </div>
-          <div className="col-span-2">
+          <div className="md:col-span-2">
             <h4 className="text-sm font-semibold text-white">Services</h4>
             <ul className="mt-4 space-y-2 text-sm text-gray-300">
               <li>
@@ -99,7 +99,7 @@ const PublicFooter = () => {
               </li>
             </ul>
           </div>
-          <div className="col-span-2">
+          <div className="md:col-span-2">
             <h4 className="text-sm font-semibold text-white">Legal</h4>
             <ul className="mt-4 space-y-2 text-sm text-gray-300">
               <li>
@@ -119,7 +119,7 @@ const PublicFooter = () => {
               </li>
             </ul>
           </div>
-          <div className="col-span-2">
+          <div className="md:col-span-2">
             <h4 className="text-sm font-semibold text-white">Contact Us</h4>
             <ul className="mt-4 space-y-3 text-sm text-gray-300">
               <li className="flex items-center gap-3">

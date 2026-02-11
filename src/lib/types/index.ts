@@ -3,6 +3,7 @@ export * from './admin';
 export * from './common';
 export * from './table';
 export * from './user';
+export * from './blogs';
 
 // Re-export types from API modules for backward compatibility
 export type {
