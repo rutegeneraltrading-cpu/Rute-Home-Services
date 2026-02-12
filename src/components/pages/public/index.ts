@@ -11,7 +11,7 @@ import RefundPolicyPage from './RefundPolicyPage';
 import SingleServicePage from './SingleServicePage';
 import SingleProductsPage from './SingleProductPage';
 import TermsAndConditionPage from './TermsAndConditionPage';
-
+import PrivacyPolicyPage from './PrivacyPolicyPage';
 export {
   ShopPage,
   HomePage,
@@ -23,6 +23,7 @@ export {
   HowItWorksPage,
   SingleBlogsPage,
   RefundPolicyPage,
+  PrivacyPolicyPage,
   SingleServicePage,
   SingleProductsPage,
   TermsAndConditionPage,

@@ -93,8 +93,8 @@ const PublicFooter = () => {
                 </Link>
               </li>
               <li>
-                <Link className="hover:text-green-600" href="/checkout">
-                  Checkout
+                <Link className="hover:text-green-600" href="/cart">
+                  Cart
                 </Link>
               </li>
             </ul>
@@ -103,7 +103,7 @@ const PublicFooter = () => {
             <h4 className="text-sm font-semibold text-white">Legal</h4>
             <ul className="mt-4 space-y-2 text-sm text-gray-300">
               <li>
-                <Link className="hover:text-green-600" href="/terms-conditions">
+                <Link className="hover:text-green-600" href="/terms-and-conditions">
                   Terms & conditions
                 </Link>
               </li>
@@ -113,7 +113,7 @@ const PublicFooter = () => {
                 </Link>
               </li>
               <li>
-                <Link className="hover:text-green-600" href="/privacy">
+                <Link className="hover:text-green-600" href="/privacy-policy">
                   Privacy policy
                 </Link>
               </li>
