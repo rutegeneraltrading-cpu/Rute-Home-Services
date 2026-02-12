@@ -119,7 +119,7 @@ export const deleteProductApi = (id: string): Promise<void> =>
 
 // GET - Fetch all categories
 export const getProductCategoriesApi = (): Promise<ProductCategory[]> =>
-  httpClient.get(`${ADMIN_BASE_URL}/product-categories`);
+  httpClient.get(`/api/product-categories`);
 
 // GET - Fetch single category
 export const getProductCategoryApi = (id: string): Promise<ProductCategory> =>
