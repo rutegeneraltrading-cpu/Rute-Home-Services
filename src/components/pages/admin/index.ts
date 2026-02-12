@@ -1,4 +1,4 @@
-import BookingPage from './BookingPage';
+import BookingsPage from './BookingsPage';
 import DashboardPage from './DashboardPage';
 import NewProductPage from './NewProductPage';
 import NewServicePage from './NewServicePage';
@@ -13,7 +13,7 @@ import WorkersPage from './WorkersPage';
 import ContactsPage from './ContactsPage';
 
 export {
-  BookingPage,
+  BookingsPage,
   DashboardPage,
   NewProductPage,
   NewServicePage,

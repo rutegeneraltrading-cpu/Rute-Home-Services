@@ -91,7 +91,7 @@ const mockBookings: Booking[] = [
   },
 ];
 
-const BookingPage = () => {
+const BookingsPage = () => {
   const [activeTab, setActiveTab] = useState<'calendar' | 'list'>('calendar');
   const [bookings, setBookings] = useState<Booking[]>(mockBookings);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -275,4 +275,4 @@ const BookingPage = () => {
   );
 };
 
-export default BookingPage;
+export default BookingsPage;

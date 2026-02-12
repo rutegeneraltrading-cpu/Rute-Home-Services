@@ -1,5 +1,7 @@
+import { ServicesSection } from '@/components/pages';
+
 const Services = () => {
-  return <div>Services</div>;
+  return <ServicesSection />;
 };
 
 export default Services;

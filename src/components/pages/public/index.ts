@@ -1,30 +1,31 @@
 import ShopPage from './ShopPage';
 import HomePage from './HomePage';
-import BlogsPage from './BlogsPage';
 import CartPage from './CartPage';
-import ServicePage from './ServicesPage';
+import BlogsPage from './BlogsPage';
+import BookingPage from './BookingPage';
 import CheckoutPage from './CheckoutPage';
 import ContactUsPage from './ContactUsPage';
 import HowItWorksPage from './HowItWorksPage';
+import ServicesSection from './ServicesSection';
 import SingleBlogsPage from './SingleBlogsPage';
 import RefundPolicyPage from './RefundPolicyPage';
-import SingleServicePage from './SingleServicePage';
+import PrivacyPolicyPage from './PrivacyPolicyPage';
 import SingleProductsPage from './SingleProductPage';
 import TermsAndConditionPage from './TermsAndConditionPage';
-import PrivacyPolicyPage from './PrivacyPolicyPage';
+
 export {
   ShopPage,
   HomePage,
   BlogsPage,
   CartPage,
-  ServicePage,
+  BookingPage,
   CheckoutPage,
   ContactUsPage,
   HowItWorksPage,
   SingleBlogsPage,
+  ServicesSection,
   RefundPolicyPage,
   PrivacyPolicyPage,
-  SingleServicePage,
   SingleProductsPage,
   TermsAndConditionPage,
 };

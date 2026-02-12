@@ -5,6 +5,7 @@ import { PasswordInput } from './password-input';
 import { Separator } from './separator';
 import { Skeleton } from './skeleton';
 import { Avatar, AvatarImage, AvatarFallback } from './avatar';
+import { RadioGroup, RadioGroupItem } from './radio-group';
 import { Toaster } from './toaster';
 import { useToast } from './use-toast';
 import {
@@ -223,6 +224,8 @@ export {
   Avatar,
   AvatarImage,
   AvatarFallback,
+  RadioGroup,
+  RadioGroupItem,
   Toaster,
   useToast,
 };

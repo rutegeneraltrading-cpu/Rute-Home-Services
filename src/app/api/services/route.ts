@@ -7,7 +7,12 @@ export async function GET() {
 
     const { data, error } = await supabase
       .from('services')
-      .select('*')
+      .select(
+        `
+        *,
+        category:service_categories(id, name, slug)
+      `,
+      )
       .eq('is_active', true)
       .order('created_at', { ascending: false });
 
