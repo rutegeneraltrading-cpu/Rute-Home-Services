@@ -32,7 +32,7 @@ const ServicesSection = () => {
   );
   return (
     <section className="py-16 bg-slate-50">
-      <div className="container mx-auto px-4">
+      <div className="container mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h2 className="text-3xl font-bold text-slate-900">

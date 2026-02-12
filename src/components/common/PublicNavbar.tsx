@@ -2,9 +2,10 @@
 
 import { useRef, useState } from 'react';
 import Link from 'next/link';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, ShoppingCart } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useGetMe, useSignOut } from '@/lib/client/api';
+import { useCart } from '@/lib/contexts';
 import {
   Avatar,
   AvatarFallback,
@@ -16,6 +17,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  Badge,
 } from '@/components/ui';
 
 const navItems = [
@@ -34,6 +36,7 @@ const PublicNavbar = () => {
   const router = useRouter();
   const { data: user } = useGetMe();
   const signOutMutation = useSignOut();
+  const { totalItems } = useCart();
 
   const initials = user?.email
     ? user.email.split('@')[0].split('').slice(0, 2).join('').toUpperCase()
@@ -93,6 +96,24 @@ const PublicNavbar = () => {
         </nav>
 
         <div className="hidden md:flex items-center gap-2">
+          <Link href="/cart" className="relative">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative cursor-pointer"
+            >
+              <ShoppingCart className="h-5 w-5" />
+              {totalItems > 0 && (
+                <Badge
+                  variant="destructive"
+                  className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                >
+                  {totalItems}
+                </Badge>
+              )}
+            </Button>
+          </Link>
+
           {!user ? (
             <>
               <Button asChild variant="outline">
@@ -192,6 +213,28 @@ const PublicNavbar = () => {
               ))}
             </nav>
             <div className="flex md:flex-row flex-col items-center gap-2">
+              <Link
+                href="/cart"
+                className="w-full"
+                onClick={() => setOpen(false)}
+              >
+                <Button
+                  variant="outline"
+                  className="w-full relative cursor-pointer"
+                >
+                  <ShoppingCart className="h-5 w-5 mr-2" />
+                  Cart
+                  {totalItems > 0 && (
+                    <Badge
+                      variant="destructive"
+                      className="ml-2 h-5 px-2 flex items-center justify-center text-xs"
+                    >
+                      {totalItems}
+                    </Badge>
+                  )}
+                </Button>
+              </Link>
+
               {!user ? (
                 <>
                   <Button asChild variant="outline" className="w-full">

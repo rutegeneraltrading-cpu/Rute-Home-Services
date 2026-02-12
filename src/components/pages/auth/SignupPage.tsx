@@ -6,7 +6,19 @@ import { useRouter } from 'next/navigation';
 import { useSignUp } from '@/lib/client/api';
 import { Button, Input, PasswordInput } from '@/components/ui';
 
-const SignupPage = () => {
+interface SignupPageProps {
+  redirectTo?: string;
+  onSuccess?: () => void;
+  hideFooterLinks?: boolean;
+  className?: string;
+}
+
+const SignupPage = ({
+  redirectTo,
+  onSuccess,
+  hideFooterLinks = false,
+  className,
+}: SignupPageProps) => {
   const router = useRouter();
   const signUpMutation = useSignUp();
   const [name, setName] = useState('');
@@ -37,7 +49,13 @@ const SignupPage = () => {
         name,
       });
       await new Promise((resolve) => setTimeout(resolve, 500));
-      if (response?.user?.role === 'admin') {
+      if (onSuccess) {
+        onSuccess();
+        return;
+      }
+      if (redirectTo) {
+        router.push(redirectTo);
+      } else if (response?.user?.role === 'admin') {
         router.push('/admin');
       } else {
         router.push('/user');
@@ -48,7 +66,11 @@ const SignupPage = () => {
   };
 
   return (
-    <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-8 shadow-lg mt-16 lg:mt-0">
+    <div
+      className={`w-full max-w-md rounded-lg border border-slate-200 bg-white p-8 shadow-lg mt-16 lg:mt-0 ${
+        className || ''
+      }`}
+    >
       <h1 className="text-2xl font-bold text-center mb-2">Create Account</h1>
       <p className="text-center text-slate-600 mb-6">Sign up to get started</p>
 
@@ -124,15 +146,17 @@ const SignupPage = () => {
         </Button>
       </form>
 
-      <p className="text-center text-slate-600 text-sm mt-4">
-        Already have an account?{' '}
-        <Link
-          href="/login"
-          className="text-slate-900 font-medium hover:underline"
-        >
-          Sign in
-        </Link>
-      </p>
+      {!hideFooterLinks && (
+        <p className="text-center text-slate-600 text-sm mt-4">
+          Already have an account?{' '}
+          <Link
+            href="/login"
+            className="text-slate-900 font-medium hover:underline"
+          >
+            Sign in
+          </Link>
+        </p>
+      )}
     </div>
   );
 };

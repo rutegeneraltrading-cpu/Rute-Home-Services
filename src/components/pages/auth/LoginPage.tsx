@@ -6,7 +6,19 @@ import { useRouter } from 'next/navigation';
 import { useSignIn } from '@/lib/client/api';
 import { Button, Input, PasswordInput } from '@/components/ui';
 
-export default function LoginPage() {
+interface LoginPageProps {
+  redirectTo?: string;
+  onSuccess?: () => void;
+  hideFooterLinks?: boolean;
+  className?: string;
+}
+
+export default function LoginPage({
+  redirectTo,
+  onSuccess,
+  hideFooterLinks = false,
+  className,
+}: LoginPageProps) {
   const router = useRouter();
   const signInMutation = useSignIn();
   const [email, setEmail] = useState('');
@@ -18,7 +30,13 @@ export default function LoginPage() {
     try {
       const response = await signInMutation.mutateAsync({ email, password });
       await new Promise((resolve) => setTimeout(resolve, 500));
-      if (response?.user?.role === 'admin') {
+      if (onSuccess) {
+        onSuccess();
+        return;
+      }
+      if (redirectTo) {
+        router.push(redirectTo);
+      } else if (response?.user?.role === 'admin') {
         router.push('/admin');
       } else {
         router.push('/user');
@@ -29,7 +47,11 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-8 shadow-lg mt-16 lg:mt-0">
+    <div
+      className={`w-full max-w-md rounded-lg border border-slate-200 bg-white p-8 shadow-lg mt-16 lg:mt-0 ${
+        className || ''
+      }`}
+    >
       <h1 className="text-2xl font-bold text-center mb-2">Welcome Back</h1>
       <p className="text-center text-slate-600 mb-6">
         Sign in to access your account
@@ -79,15 +101,17 @@ export default function LoginPage() {
         </Button>
       </form>
 
-      <p className="text-center text-slate-600 text-sm mt-4">
-        Don&apos;t have an account?{' '}
-        <Link
-          href="/signup"
-          className="text-slate-900 font-medium hover:underline"
-        >
-          Sign up
-        </Link>
-      </p>
+      {!hideFooterLinks && (
+        <p className="text-center text-slate-600 text-sm mt-4">
+          Don&apos;t have an account?{' '}
+          <Link
+            href="/signup"
+            className="text-slate-900 font-medium hover:underline"
+          >
+            Sign up
+          </Link>
+        </p>
+      )}
     </div>
   );
 }
