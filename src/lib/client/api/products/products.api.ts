@@ -4,14 +4,26 @@ import { httpClient } from '@/lib/client/http';
 // TYPES
 // ============================================
 
+export interface ProductImage {
+  id: string;
+  url: string;
+  sort_order?: number | null;
+  is_primary?: boolean | null;
+}
+
 export interface Product {
   id: string;
   name: string;
+  slug?: string | null;
   description?: string;
   price: number;
+  sale_price?: number | null;
+  brand?: string | null;
+  sku?: string | null;
+  attributes?: Record<string, unknown> | null;
   stock: number;
   category_id: string;
-  image_url?: string;
+  images?: ProductImage[];
   is_active?: boolean;
   created_at: string;
   updated_at?: string;
@@ -23,20 +35,30 @@ export interface Product {
 
 export interface CreateProductDTO {
   name: string;
+  slug?: string;
   description?: string;
   price: number;
+  sale_price?: number | null;
+  brand?: string | null;
+  sku?: string | null;
+  attributes?: Record<string, unknown> | null;
   stock: number;
   category_id: string;
-  image_url?: string;
+  images?: string[];
 }
 
 export interface UpdateProductDTO {
   name?: string;
+  slug?: string;
   description?: string;
   price?: number;
+  sale_price?: number | null;
+  brand?: string | null;
+  sku?: string | null;
+  attributes?: Record<string, unknown> | null;
   stock?: number;
   category_id?: string;
-  image_url?: string;
+  images?: string[];
   is_active?: boolean;
 }
 

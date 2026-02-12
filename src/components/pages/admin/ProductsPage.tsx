@@ -42,11 +42,47 @@ const ProductsPage = () => {
       ),
     },
     {
+      id: 'slug',
+      header: 'Slug',
+      accessorKey: 'slug',
+      sortable: true,
+      cell: (value) => (
+        <span className="text-xs text-slate-600">{value || '—'}</span>
+      ),
+    },
+    {
+      id: 'sku',
+      header: 'SKU',
+      accessorKey: 'sku',
+      sortable: true,
+      cell: (value) => (
+        <span className="text-xs font-medium text-slate-700">
+          {value || '—'}
+        </span>
+      ),
+    },
+    {
+      id: 'brand',
+      header: 'Brand',
+      accessorKey: 'brand',
+      sortable: true,
+      cell: (value) => (
+        <span className="text-xs text-slate-600">{value || '—'}</span>
+      ),
+    },
+    {
       id: 'price',
       header: 'Price',
       accessorKey: 'price',
       sortable: true,
       cell: (value) => `R${parseFloat(value).toFixed(2)}`,
+    },
+    {
+      id: 'sale_price',
+      header: 'Sale Price',
+      accessorKey: 'sale_price',
+      sortable: true,
+      cell: (value) => (value ? `R${parseFloat(value).toFixed(2)}` : '—'),
     },
     {
       id: 'stock',

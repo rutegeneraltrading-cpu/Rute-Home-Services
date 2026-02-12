@@ -78,9 +78,24 @@
 ├──────────────────────┤
 │ id (PK)              │
 │ name, description    │
-│ price, stock         │
+│ slug                 │
+│ price, sale_price    │
+│ brand, sku           │
+│ attributes (JSONB)   │
+│ stock                │
 │ category_id (FK)     │
+│ image_url (primary)  │
 │ is_active            │
+└──────────────────────┘
+
+┌──────────────────────┐
+│ product_images       │
+├──────────────────────┤
+│ id (PK)              │
+│ product_id (FK)      │
+│ url                  │
+│ sort_order           │
+│ is_primary           │
 └──────────────────────┘
 
 
@@ -425,8 +440,13 @@ CREATE TABLE product_categories (
 CREATE TABLE products (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(255) NOT NULL,
+  slug VARCHAR(255) UNIQUE,
   description TEXT,
   price DECIMAL(10, 2) NOT NULL CHECK (price >= 0),
+  sale_price DECIMAL(10, 2) CHECK (sale_price >= 0),
+  brand VARCHAR(255),
+  sku VARCHAR(100),
+  attributes JSONB,
   stock INT NOT NULL DEFAULT 0 CHECK (stock >= 0),
   category_id UUID NOT NULL REFERENCES product_categories(id),
   image_url TEXT,
@@ -445,7 +465,27 @@ COMMENT ON COLUMN products.stock IS 'Inventory count - decremented on order';
 CREATE INDEX idx_products_category_id ON products(category_id);
 CREATE INDEX idx_products_is_active ON products(is_active);
 CREATE INDEX idx_products_name ON products(name);
+CREATE INDEX idx_products_slug ON products(slug);
+CREATE UNIQUE INDEX idx_products_sku ON products(sku);
 ```
+
+#### `product_images`
+
+```sql
+CREATE TABLE product_images (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  url TEXT NOT NULL,
+  sort_order INT DEFAULT 0,
+  is_primary BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_product_images_product_id ON product_images(product_id);
+CREATE INDEX idx_product_images_primary ON product_images(product_id, is_primary);
+```
+
+````
 
 ---
 
@@ -468,7 +508,7 @@ CREATE TABLE orders (
 );
 
 COMMENT ON TABLE orders IS 'E-commerce product orders (not service bookings)';
-```
+````
 
 **Indexes:**
 

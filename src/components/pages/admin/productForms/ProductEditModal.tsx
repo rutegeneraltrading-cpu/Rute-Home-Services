@@ -44,8 +44,9 @@ export function ProductEditModal({
   const { data: categories = [] } = useGetProductCategories();
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string>('');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const [existingImages, setExistingImages] = useState<string[]>([]);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isImageDirty, setIsImageDirty] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -53,8 +54,15 @@ export function ProductEditModal({
   const defaultValues = useMemo(
     () => ({
       name: product?.name || '',
+      slug: product?.slug || '',
       description: product?.description || '',
       price: product?.price ? String(product.price) : '',
+      sale_price: product?.sale_price ? String(product.sale_price) : '',
+      brand: product?.brand || '',
+      sku: product?.sku || '',
+      attributes: product?.attributes
+        ? JSON.stringify(product.attributes, null, 2)
+        : '',
       category_id: product?.category_id || '',
       stock: product?.stock ? String(product.stock) : '',
     }),
@@ -76,8 +84,12 @@ export function ProductEditModal({
     if (product) {
       reset(defaultValues);
       setSelectedCategoryId(product.category_id || '');
-      setSelectedFile(null);
-      setPreviewUrl(product.image_url || '');
+      const currentImages = product.images
+        ? product.images.map((image) => image.url)
+        : [];
+      setExistingImages(currentImages);
+      setSelectedFiles([]);
+      setPreviewUrls([]);
       setIsImageDirty(false);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -86,26 +98,31 @@ export function ProductEditModal({
   }, [product, reset, defaultValues]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
 
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please select an image file');
-      return;
-    }
+    const validFiles: File[] = [];
+    const previews: string[] = [];
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image must be less than 5MB');
-      return;
-    }
+    files.forEach((file) => {
+      if (!file.type.startsWith('image/')) {
+        toast.error('Only image files are allowed');
+        return;
+      }
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setPreviewUrl(reader.result as string);
-    };
-    reader.readAsDataURL(file);
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Each image must be less than 5MB');
+        return;
+      }
 
-    setSelectedFile(file);
+      validFiles.push(file);
+      previews.push(URL.createObjectURL(file));
+    });
+
+    if (!validFiles.length) return;
+
+    setSelectedFiles((prev) => [...prev, ...validFiles]);
+    setPreviewUrls((prev) => [...prev, ...previews]);
     setIsImageDirty(true);
   };
 
@@ -113,22 +130,35 @@ export function ProductEditModal({
     if (!product) return;
     setIsSubmitting(true);
     try {
-      let imageUrl = product.image_url;
+      let uploadedUrls: string[] = [];
 
-      if (selectedFile) {
+      if (selectedFiles.length > 0) {
         setIsUploadingImage(true);
-        toast.loading('Uploading image...');
-        imageUrl = await uploadProductImage(selectedFile);
+        toast.loading('Uploading images...');
+        uploadedUrls = await Promise.all(
+          selectedFiles.map((file) => uploadProductImage(file)),
+        );
         toast.dismiss();
       }
 
+      const attributesValue = data.attributes
+        ? JSON.parse(data.attributes)
+        : undefined;
+
+      const imagesPayload = [...existingImages, ...uploadedUrls];
+
       await updateProductMutation.mutateAsync({
         name: data.name,
+        slug: data.slug || undefined,
         description: data.description || undefined,
         price: parseFloat(data.price),
+        sale_price: data.sale_price ? parseFloat(data.sale_price) : null,
+        brand: data.brand || null,
+        sku: data.sku || null,
+        attributes: attributesValue,
         category_id: data.category_id,
         stock: parseInt(data.stock, 10),
-        image_url: imageUrl,
+        images: imagesPayload,
       });
 
       toast.success('Product updated successfully');
@@ -165,6 +195,66 @@ export function ProductEditModal({
             {formErrors.name && (
               <p className="text-sm text-red-500 mt-1">
                 {formErrors.name.message}
+              </p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <Label htmlFor="slug">Slug (SEO)</Label>
+              <Input id="slug" {...register('slug')} className="mt-2" />
+              {formErrors.slug && (
+                <p className="text-sm text-red-500 mt-1">
+                  {formErrors.slug.message}
+                </p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="brand">Brand</Label>
+              <Input id="brand" {...register('brand')} className="mt-2" />
+              {formErrors.brand && (
+                <p className="text-sm text-red-500 mt-1">
+                  {formErrors.brand.message}
+                </p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="sku">SKU</Label>
+              <Input id="sku" {...register('sku')} className="mt-2" />
+              {formErrors.sku && (
+                <p className="text-sm text-red-500 mt-1">
+                  {formErrors.sku.message}
+                </p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="sale_price">Sale Price (R)</Label>
+              <Input
+                id="sale_price"
+                type="number"
+                step="0.01"
+                {...register('sale_price')}
+                className="mt-2"
+              />
+              {formErrors.sale_price && (
+                <p className="text-sm text-red-500 mt-1">
+                  {formErrors.sale_price.message}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="attributes">Attributes (JSON)</Label>
+            <textarea
+              id="attributes"
+              {...register('attributes')}
+              className="mt-2 w-full px-3 py-2 border rounded-md bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              rows={3}
+            />
+            {formErrors.attributes && (
+              <p className="text-sm text-red-500 mt-1">
+                {formErrors.attributes.message}
               </p>
             )}
           </div>
@@ -252,21 +342,48 @@ export function ProductEditModal({
           </div>
 
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 bg-gray-50">
-            <Label htmlFor="image">Product Image</Label>
+            <Label htmlFor="image">Product Images</Label>
             <p className="text-sm text-gray-500 mt-1 mb-4">
-              Upload an image for your product
+              Upload one or more images (first image becomes primary)
             </p>
 
-            {previewUrl && (
-              <div className="mb-4 relative w-full h-48 rounded-md overflow-hidden">
-                <Image
-                  src={previewUrl}
-                  alt="Product preview"
-                  width={400}
-                  height={400}
-                  className="w-48 rounded-lg"
-                  priority
-                />
+            {[...existingImages, ...previewUrls].length > 0 && (
+              <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {[...existingImages, ...previewUrls].map((url, index) => (
+                  <div
+                    key={`${url}-${index}`}
+                    className="relative h-24 w-full overflow-hidden rounded-md border"
+                  >
+                    <Image
+                      src={url}
+                      alt={`Product preview ${index + 1}`}
+                      fill
+                      className="object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (index < existingImages.length) {
+                          setExistingImages((prev) =>
+                            prev.filter((_, i) => i !== index),
+                          );
+                        } else {
+                          const newIndex = index - existingImages.length;
+                          setPreviewUrls((prev) =>
+                            prev.filter((_, i) => i !== newIndex),
+                          );
+                          setSelectedFiles((prev) =>
+                            prev.filter((_, i) => i !== newIndex),
+                          );
+                        }
+                        setIsImageDirty(true);
+                      }}
+                      className="absolute top-1 right-1 rounded-full bg-white/90 text-xs px-2 py-0.5 shadow"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
 
@@ -278,15 +395,18 @@ export function ProductEditModal({
                 disabled={isSubmitting || isUploadingImage}
                 className="flex-1"
               >
-                {previewUrl ? 'Change Image' : 'Choose Image'}
+                {existingImages.length + previewUrls.length
+                  ? 'Add More Images'
+                  : 'Choose Images'}
               </Button>
-              {previewUrl && (
+              {existingImages.length + previewUrls.length > 0 && (
                 <Button
                   type="button"
                   variant="ghost"
                   onClick={() => {
-                    setPreviewUrl('');
-                    setSelectedFile(null);
+                    setExistingImages([]);
+                    setPreviewUrls([]);
+                    setSelectedFiles([]);
                     setIsImageDirty(true);
                     if (fileInputRef.current) {
                       fileInputRef.current.value = '';
@@ -294,7 +414,7 @@ export function ProductEditModal({
                   }}
                   disabled={isSubmitting || isUploadingImage}
                 >
-                  Remove
+                  Clear All
                 </Button>
               )}
             </div>
@@ -303,6 +423,7 @@ export function ProductEditModal({
               ref={fileInputRef}
               type="file"
               accept="image/*"
+              multiple
               onChange={handleFileSelect}
               className="hidden"
               id="image"

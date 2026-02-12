@@ -1,5 +1,3 @@
-
-
 // export interface Product extends BaseEntity {
 //   name: string;
 //   description: string;
@@ -29,11 +27,16 @@ export interface ProductCategoryFormProps {
 
 export interface CreateProductDTO {
   name: string;
+  slug?: string;
   description?: string;
   price: number;
+  sale_price?: number | null;
+  brand?: string | null;
+  sku?: string | null;
+  attributes?: Record<string, unknown> | null;
   stock: number;
   category_id: string;
-  image_url?: string;
+  images?: string[];
 }
 
 export type UpdateProductDTO = Partial<CreateProductDTO>;
@@ -41,11 +44,21 @@ export type UpdateProductDTO = Partial<CreateProductDTO>;
 export interface Product {
   id: string;
   name: string;
+  slug?: string | null;
   description?: string;
   price: number;
+  sale_price?: number | null;
+  brand?: string | null;
+  sku?: string | null;
+  attributes?: Record<string, unknown> | null;
   stock: number;
   category_id: string;
-  image_url?: string;
+  images?: {
+    id: string;
+    url: string;
+    sort_order?: number | null;
+    is_primary?: boolean | null;
+  }[];
   is_active?: boolean;
   created_at: string;
   updated_at?: string;

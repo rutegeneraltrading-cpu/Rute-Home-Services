@@ -46,7 +46,7 @@ const ProductsSection = () => {
               >
                 <div className="relative h-44 bg-slate-100">
                   <Image
-                    src={product?.image_url}
+                    src={product?.images?.[0]?.url || '/image.png'}
                     alt={product?.name || 'Product'}
                     fill
                     className="object-cover"
@@ -64,9 +64,22 @@ const ProductsSection = () => {
                   <Badge variant="secondary">
                     {product?.category?.name || 'Essentials'}
                   </Badge>
-                  <span className="text-sm font-semibold text-green-700">
-                    {product?.price ? `R${product.price}` : '—'}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {product?.sale_price ? (
+                      <>
+                        <span className="text-xs text-slate-400 line-through">
+                          R{product.price}
+                        </span>
+                        <span className="text-sm font-semibold text-green-700">
+                          R{product.sale_price}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-sm font-semibold text-green-700">
+                        {product?.price ? `R${product.price}` : '—'}
+                      </span>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             ),
