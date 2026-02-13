@@ -2,7 +2,7 @@ const TermsAndConditionPage = () => {
   return (
     <main className="bg-white">
       <section className="border-b border-slate-100 bg-slate-50">
-        <div className="container mx-auto py-14 md:py-20">
+        <div className="container mx-auto py-14 md:py-20 xl:px-0 px-4">
           <div className="max-w-3xl">
             <p className="text-sm font-semibold uppercase tracking-wider text-green-700">
               Terms & conditions
@@ -19,7 +19,7 @@ const TermsAndConditionPage = () => {
         </div>
       </section>
 
-      <section className="container mx-auto py-12 md:py-16">
+      <section className="container mx-auto py-12 md:py-16 xl:px-0 px-4">
         <div className="grid gap-10 lg:grid-cols-[1.6fr_1fr]">
           <div className="space-y-8">
             <div>

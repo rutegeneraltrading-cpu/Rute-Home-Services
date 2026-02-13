@@ -121,8 +121,8 @@ const ProfilePage = () => {
   }
 
   return (
-    <div className="py-12 px-4">
-      <div className="max-w-md mx-auto bg-white rounded-lg shadow-md p-6">
+    <div className="py-12 md:px-4">
+      <div className="md:max-w-md md:mx-auto md:bg-white md:rounded-lg md:shadow-md md:p-6">
         <h1 className="text-2xl font-bold mb-6 text-gray-900">Admin Profile</h1>
 
         {/* Profile Avatar Section */}

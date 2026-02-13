@@ -112,7 +112,7 @@ const ShopPage = () => {
     sortBy !== 'name-asc';
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
+    <div className="min-h-screen bg-gray-50 py-12 px-4">
       <div className="container mx-auto py-8">
         {/* Header */}
         <div className="mb-8">

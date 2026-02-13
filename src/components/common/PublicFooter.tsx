@@ -13,10 +13,10 @@ const PublicFooter = () => {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="border-t border-gray-200 bg-black text-white">
-      <div className="container mx-auto py-14 md:h-80">
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-12 md:h-full">
-          <div className="flex flex-col justify-between md:h-full md:col-span-4">
+    <footer className="border-t border-gray-200 bg-black text-white px-4">
+      <div className="container mx-auto py-14 lg:h-80">
+        <div className="sm:grid grid-cols-1 gap-8 md:grid-cols-12 md:h-full flex flex-col">
+          <div className="flex flex-col justify-between md:h-full xl:col-span-4 lg:col-span-3 col-span-12">
             <h3 className="text-3xl font-bold text-white">
               RUTE<span className="text-green-600">.</span>
             </h3>
@@ -59,7 +59,7 @@ const PublicFooter = () => {
               </Link>
             </div>
           </div>
-          <div className="md:col-span-2">
+          <div className="lg:col-span-2 md:col-span-3 col-span-12">
             <h4 className="text-sm font-semibold text-white">Company</h4>
             <ul className="mt-4 space-y-2 text-sm text-gray-300">
               <li>
@@ -79,7 +79,7 @@ const PublicFooter = () => {
               </li>
             </ul>
           </div>
-          <div className="md:col-span-2">
+          <div className="lg:col-span-2 md:col-span-3 col-span-12">
             <h4 className="text-sm font-semibold text-white">Services</h4>
             <ul className="mt-4 space-y-2 text-sm text-gray-300">
               <li>
@@ -99,7 +99,7 @@ const PublicFooter = () => {
               </li>
             </ul>
           </div>
-          <div className="md:col-span-2">
+          <div className="lg:col-span-2 md:col-span-3 col-span-12">
             <h4 className="text-sm font-semibold text-white">Legal</h4>
             <ul className="mt-4 space-y-2 text-sm text-gray-300">
               <li>
@@ -119,7 +119,7 @@ const PublicFooter = () => {
               </li>
             </ul>
           </div>
-          <div className="md:col-span-2">
+          <div className="lg:col-span-2 md:col-span-3 col-span-12">
             <h4 className="text-sm font-semibold text-white">Contact Us</h4>
             <ul className="mt-4 space-y-3 text-sm text-gray-300">
               <li className="flex items-center gap-3">
@@ -138,7 +138,7 @@ const PublicFooter = () => {
                 </a>
               </li>
               <li className="flex items-start gap-3">
-                <MapPin className="h-8 w-8 text-green-600" />
+                <MapPin className="md:h-8 md:w-8 h-4 w-4 text-green-600" />
                 <span>
                   Office 45, Long Street, Cape Town, 8001, South Africa
                 </span>

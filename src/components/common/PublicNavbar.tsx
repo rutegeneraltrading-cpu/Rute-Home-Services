@@ -73,7 +73,7 @@ const PublicNavbar = () => {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-white/90 backdrop-blur">
+    <header className="sticky top-0 z-50 w-full border-b bg-white/90 backdrop-blur px-4">
       <div className="flex h-16 container mx-auto items-center justify-between">
         <Link
           href="/"
@@ -83,7 +83,7 @@ const PublicNavbar = () => {
           RUTE<span className="text-green-600">.</span>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-6 text-base text-slate-700">
+        <nav className="hidden lg:flex items-center gap-6 text-base text-slate-700">
           {navItems.map((item) => (
             <Link
               key={item.href}
@@ -95,7 +95,7 @@ const PublicNavbar = () => {
           ))}
         </nav>
 
-        <div className="hidden md:flex items-center gap-2">
+        <div className="hidden lg:flex items-center gap-2">
           <Link href="/cart" className="relative">
             <Button
               variant="ghost"
@@ -185,20 +185,37 @@ const PublicNavbar = () => {
             </DropdownMenu>
           )}
         </div>
-
-        <button
-          type="button"
-          className="md:hidden inline-flex items-center justify-center rounded-md p-2 text-slate-700 hover:bg-slate-100"
-          aria-label="Toggle navigation"
-          aria-expanded={open}
-          onClick={() => setOpen((prev) => !prev)}
-        >
-          {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
+        <div className="flex lg:hidden items-center justify-center gap-2">
+          <Link href="/cart" className="" onClick={() => setOpen(false)}>
+            <Button
+              variant="outline"
+              className="w-full relative cursor-pointer"
+            >
+              <ShoppingCart className="h-5 w-5" />
+              {totalItems > 0 && (
+                <Badge
+                  variant="destructive"
+                  className="ml-2 h-5 px-2 flex items-center justify-center text-xs"
+                >
+                  {totalItems}
+                </Badge>
+              )}
+            </Button>
+          </Link>
+          <button
+            type="button"
+            className="lg:hidden inline-flex items-center justify-center rounded-md p-2 text-slate-700 hover:bg-slate-100"
+            aria-label="Toggle navigation"
+            aria-expanded={open}
+            onClick={() => setOpen((prev) => !prev)}
+          >
+            {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
+        </div>
       </div>
 
       {open && (
-        <div className="md:hidden border-t bg-white">
+        <div className="lg:hidden border-t bg-white">
           <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4">
             <nav className="flex flex-col gap-3 text-sm text-slate-700">
               {navItems.map((item) => (
@@ -212,10 +229,10 @@ const PublicNavbar = () => {
                 </Link>
               ))}
             </nav>
-            <div className="flex md:flex-row flex-col items-center gap-2">
+            <div className="flex lg:flex-row flex-col items-center gap-2">
               <Link
                 href="/cart"
-                className="w-full"
+                className="w-full lg:flex hidden"
                 onClick={() => setOpen(false)}
               >
                 <Button

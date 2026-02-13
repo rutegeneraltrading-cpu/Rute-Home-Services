@@ -99,6 +99,10 @@ export function DataTable<T extends Record<string, any>>({
   const rows = table.getRowModel().rows;
   const pageCount = table.getPageCount();
   const currentPage = table.getState().pagination.pageIndex + 1;
+  const minTableWidth =
+    (config.columns.length +
+      (config.actions && config.actions.length > 0 ? 1 : 0)) *
+    160;
 
   return (
     <div className="space-y-4">
@@ -181,142 +185,153 @@ export function DataTable<T extends Record<string, any>>({
 
       {/* Table */}
       <div className="rounded-md border overflow-x-auto">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead
-                    key={header.id}
-                    onClick={header.column.getToggleSortingHandler()}
-                    className={
-                      header.column.getCanSort()
-                        ? 'cursor-pointer select-none'
-                        : ''
-                    }
-                  >
-                    <div className="flex items-center gap-2">
-                      {flexRender(
-                        header.column.columnDef.header,
-                        header.getContext(),
-                      )}
-                      {header.column.getCanSort() && (
-                        <span className="text-xs">
-                          {header.column.getIsSorted() === 'desc'
-                            ? ' ↓'
-                            : header.column.getIsSorted() === 'asc'
-                              ? ' ↑'
-                              : ' ⇅'}
-                        </span>
-                      )}
-                    </div>
-                  </TableHead>
-                ))}
-                {config.actions && config.actions.length > 0 && (
-                  <TableHead className="w-20 text-right">Actions</TableHead>
-                )}
-              </TableRow>
-            ))}
-          </TableHeader>
-
-          <TableBody>
-            {config.isLoading ? (
-              <TableRow>
-                <TableCell
-                  colSpan={
-                    table.getAllColumns().length + (config.actions ? 1 : 0)
-                  }
-                  className="text-center py-8"
-                >
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
-                    Loading...
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : rows.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={
-                    table.getAllColumns().length + (config.actions ? 1 : 0)
-                  }
-                  className="text-center py-8"
-                >
-                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                    {config.emptyState?.icon && (
-                      <config.emptyState.icon className="h-8 w-8 opacity-50" />
-                    )}
-                    <div>
-                      <p className="font-semibold text-foreground">
-                        {config.emptyState?.title || 'No data'}
-                      </p>
-                      {config.emptyState?.description && (
-                        <p className="text-sm">
-                          {config.emptyState.description}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : (
-              rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  onClick={() => config.onRowClick?.(row.original)}
-                  className={
-                    config.onRowClick ? 'cursor-pointer hover:bg-accent' : ''
-                  }
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext(),
-                      )}
-                    </TableCell>
-                  ))}
-
-                  {/* Actions column */}
-                  {config.actions && config.actions.length > 0 && (
-                    <TableCell className="text-right">
-                      <div className="flex gap-1 justify-end">
-                        {config.actions
-                          .filter(
-                            (action) =>
-                              !action.showWhen || action.showWhen(row.original),
-                          )
-                          .map((action) => (
-                            <Button
-                              key={action.id}
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                action.onClick(row.original);
-                              }}
-                              title={action.label}
-                            >
-                              {action.icon ? (
-                                <action.icon className="h-4 w-4" />
-                              ) : (
-                                action.label
-                              )}
-                            </Button>
-                          ))}
+        <div className="max-h-[70vh] overflow-y-auto">
+          <Table
+            className="w-full table-fixed"
+            style={{ minWidth: minTableWidth }}
+          >
+            <TableHeader>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <TableHead
+                      key={header.id}
+                      onClick={header.column.getToggleSortingHandler()}
+                      className={
+                        header.column.getCanSort()
+                          ? 'cursor-pointer select-none min-w-[160px] max-w-[220px] truncate'
+                          : 'min-w-[160px] max-w-[220px] truncate'
+                      }
+                    >
+                      <div className="flex items-center gap-2">
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext(),
+                        )}
+                        {header.column.getCanSort() && (
+                          <span className="text-xs">
+                            {header.column.getIsSorted() === 'desc'
+                              ? ' ↓'
+                              : header.column.getIsSorted() === 'asc'
+                                ? ' ↑'
+                                : ' ⇅'}
+                          </span>
+                        )}
                       </div>
-                    </TableCell>
+                    </TableHead>
+                  ))}
+                  {config.actions && config.actions.length > 0 && (
+                    <TableHead className="w-20 min-w-[96px] text-right">
+                      Actions
+                    </TableHead>
                   )}
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ))}
+            </TableHeader>
+
+            <TableBody>
+              {config.isLoading ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={
+                      table.getAllColumns().length + (config.actions ? 1 : 0)
+                    }
+                    className="text-center py-8"
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
+                      Loading...
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : rows.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={
+                      table.getAllColumns().length + (config.actions ? 1 : 0)
+                    }
+                    className="text-center py-8"
+                  >
+                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                      {config.emptyState?.icon && (
+                        <config.emptyState.icon className="h-8 w-8 opacity-50" />
+                      )}
+                      <div>
+                        <p className="font-semibold text-foreground">
+                          {config.emptyState?.title || 'No data'}
+                        </p>
+                        {config.emptyState?.description && (
+                          <p className="text-sm">
+                            {config.emptyState.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                rows.map((row) => (
+                  <TableRow
+                    key={row.id}
+                    onClick={() => config.onRowClick?.(row.original)}
+                    className={
+                      config.onRowClick ? 'cursor-pointer hover:bg-accent' : ''
+                    }
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell
+                        key={cell.id}
+                        className="min-w-[160px] max-w-[220px] truncate"
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
+                      </TableCell>
+                    ))}
+
+                    {/* Actions column */}
+                    {config.actions && config.actions.length > 0 && (
+                      <TableCell className="text-right min-w-[96px]">
+                        <div className="flex gap-1 justify-end">
+                          {config.actions
+                            .filter(
+                              (action) =>
+                                !action.showWhen ||
+                                action.showWhen(row.original),
+                            )
+                            .map((action) => (
+                              <Button
+                                key={action.id}
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  action.onClick(row.original);
+                                }}
+                                title={action.label}
+                              >
+                                {action.icon ? (
+                                  <action.icon className="h-4 w-4" />
+                                ) : (
+                                  action.label
+                                )}
+                              </Button>
+                            ))}
+                        </div>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
       {/* Pagination */}
       {config.showPagination !== false && (
-        <div className="flex items-center justify-between py-4">
+        <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="text-sm text-muted-foreground">
             Showing{' '}
             {rows.length === 0
@@ -330,7 +345,7 @@ export function DataTable<T extends Record<string, any>>({
             of {config.data.length} entries
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-2">
             {/* Page size selector */}
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">

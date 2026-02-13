@@ -173,13 +173,13 @@ const TestimonialsSection = () => {
           {/* Scroll Buttons */}
           <button
             onClick={() => scroll('left')}
-            className="absolute -left-5 top-1/2 -translate-y-1/2 z-20 hidden md:flex h-12 w-12 rounded-full bg-white shadow-lg border border-slate-200 items-center justify-center hover:bg-slate-50 transition-colors"
+            className="absolute -left-5 top-1/2 -translate-y-1/2 z-20 flex h-12 w-12 rounded-full bg-white shadow-lg border border-slate-200 items-center justify-center hover:bg-slate-50 transition-colors ml-1.5"
           >
             <ChevronLeft className="h-6 w-6 text-slate-600" />
           </button>
           <button
             onClick={() => scroll('right')}
-            className="absolute -right-5 top-1/2 -translate-y-1/2 z-20 hidden md:flex h-12 w-12 rounded-full bg-white shadow-lg border border-slate-200 items-center justify-center hover:bg-slate-50 transition-colors"
+            className="absolute -right-5 top-1/2 -translate-y-1/2 z-20 flex h-12 w-12 rounded-full bg-white shadow-lg border border-slate-200 items-center justify-center hover:bg-slate-50 transition-colors mr-1.5"
           >
             <ChevronRight className="h-6 w-6 text-slate-600" />
           </button>

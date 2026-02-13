@@ -113,7 +113,7 @@ const SingleProductPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto py-8">
+      <div className="container mx-auto py-8 xl:px-0 px-4">
         {/* Back Button */}
         <Button
           variant="ghost"

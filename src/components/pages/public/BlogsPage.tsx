@@ -33,7 +33,7 @@ const BlogsPage = () => {
         selectedCategory={category}
         onCategoryChange={setCategory}
       />
-      <div className="container mx-auto py-10">
+      <div className="container mx-auto py-10 xl:px-0 px-4">
         <BlogCard data={data} loading={loading} />
       </div>
     </div>

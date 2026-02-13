@@ -264,7 +264,7 @@ const CheckoutPage = () => {
   return (
     <>
       <div className="min-h-screen bg-gray-50 py-8">
-        <div className="container mx-auto">
+        <div className="container mx-auto xl:px-0 px-4">
           {/* Header */}
           <div className="mb-8">
             <Button

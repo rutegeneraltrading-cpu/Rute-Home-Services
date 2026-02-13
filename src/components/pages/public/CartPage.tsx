@@ -53,7 +53,7 @@ const CartPage = () => {
   return (
     <>
       <div className="min-h-screen bg-gray-50 py-16">
-        <div className="container mx-auto">
+        <div className="container mx-auto xl:px-0 px-4">
           {/* Header */}
           <div className="mb-8">
             <h1 className="text-4xl font-bold text-slate-900 mb-2">

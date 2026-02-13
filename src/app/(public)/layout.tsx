@@ -11,7 +11,7 @@ export default function RootLayout({
       <body>
         <CartProvider>
           <PublicNavbar />
-          <div className="min-h-screen">{children}</div>
+          {children}
           <PublicFooter />
         </CartProvider>
       </body>

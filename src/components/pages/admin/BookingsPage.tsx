@@ -255,8 +255,10 @@ const BookingsPage = () => {
       </div>
 
       {activeTab === 'calendar' ? (
-        <div className="relative rounded-lg border bg-white p-4 shadow-sm">
-          <CustomCalendar events={calendarEvents} loading={false} />
+        <div className="relative rounded-lg border bg-white p-4 shadow-sm overflow-x-auto">
+          <div className="min-w-240">
+            <CustomCalendar events={calendarEvents} loading={false} />
+          </div>
         </div>
       ) : (
         <DataTable<Booking>

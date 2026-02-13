@@ -10,7 +10,7 @@ interface SingleBlogsPageProps {
 
 const SingleBlogsPage = ({ blog }: SingleBlogsPageProps | any) => {
   return (
-    <div className="container mx-auto flex flex-col items-center text-slate-900 md:py-16 py-14">
+    <div className="container mx-auto flex flex-col items-center text-slate-900 md:py-16 py-14 px-4">
       <div className="flex flex-col md:gap-16 gap-8 xl:w-[70%] lg:w-[75%]">
         <div className="flex flex-col md:gap-8 gap-4 md:px-6 w-full">
           <h1 className="md:text-4xl text-2xl font-bold text-slate-800 capitalize text-start">

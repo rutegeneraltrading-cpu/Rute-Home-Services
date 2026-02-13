@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { ProtectedLayout } from '@/components/admin';
 import { UserSidebar } from '@/components/user';
@@ -34,9 +34,28 @@ export default function UserLayout({
     return match?.title ?? 'User';
   }, [pathname]);
 
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  useEffect(() => {
+    const mql = window.matchMedia('(max-width: 1023px)');
+    const onChange = (event: MediaQueryListEvent | MediaQueryList) => {
+      setSidebarOpen(!event.matches);
+    };
+    onChange(mql);
+    mql.addEventListener(
+      'change',
+      onChange as (event: MediaQueryListEvent) => void,
+    );
+    return () =>
+      mql.removeEventListener(
+        'change',
+        onChange as (event: MediaQueryListEvent) => void,
+      );
+  }, []);
+
   return (
     <ProtectedLayout>
-      <SidebarProvider>
+      <SidebarProvider open={sidebarOpen} onOpenChange={setSidebarOpen}>
         <UserSidebar />
         <SidebarInset>
           <header className="fixed flex h-15.25 items-center gap-2 border-b w-full px-4 bg-white z-50">

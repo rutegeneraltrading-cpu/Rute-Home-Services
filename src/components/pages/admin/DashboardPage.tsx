@@ -122,7 +122,7 @@ export default function DashboardPage({
       <StatsCards />
 
       {/* Tables Grid */}
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="lg:grid hidden gap-6 md:grid-cols-2">
         {/* Products Table */}
         <div className="rounded-lg border p-4">
           <DataTable

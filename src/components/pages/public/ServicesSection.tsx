@@ -5,10 +5,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useQuery } from '@tanstack/react-query';
 import {
-  Badge,
   Button,
   Card,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
@@ -43,7 +41,7 @@ const ServicesSection = () => {
 
   return (
     <section
-      className={`py-16 ${pathname === '/services' ? '' : 'bg-slate-50'}`}
+      className={`py-16 px-4 ${pathname === '/services' ? '' : 'bg-slate-50'}`}
     >
       <div className="container mx-auto">
         <div className="flex items-center justify-between mb-6">

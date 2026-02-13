@@ -1,7 +1,7 @@
 const HowItWorksPage = () => {
   return (
     <main className="bg-white">
-      <section className="relative overflow-hidden border-b border-slate-100">
+      <section className="relative overflow-hidden border-b border-slate-100 px-4">
         <div className="absolute inset-0 bg-linear-to-br from-green-50 via-emerald-50 to-white" />
         <div className="container mx-auto relative py-14 md:py-20">
           <div className="max-w-3xl">

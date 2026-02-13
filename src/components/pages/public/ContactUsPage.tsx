@@ -58,7 +58,7 @@ const ContactUsPage = () => {
 
   return (
     <section className="pt-28 pb-16">
-      <div className="container mx-auto">
+      <div className="container mx-auto xl:px-0 px-4">
         <div className="grid grid-cols-1 gap-12 lg:grid-cols-2">
           <div className="flex flex-col gap-8">
             <div className="inline-flex items-center gap-2 rounded-full bg-green-50 px-4 py-2 text-sm font-medium text-green-700 w-fit">
@@ -112,7 +112,7 @@ const ContactUsPage = () => {
           </div>
 
           <div className="lg:pl-6">
-            <div className="rounded-2xl bg-linear-to-b from-green-600 via-green-700 to-emerald-800 text-white shadow-xl p-8 md:p-10">
+            <div className="rounded-2xl bg-linear-to-b from-green-600 via-green-700 to-emerald-800 text-white shadow-xl p-4 md:p-10">
               <div className="flex flex-col gap-2">
                 <h2 className="text-3xl font-bold">Send Rute a message</h2>
                 <p className="text-sm md:text-base text-white/90">
@@ -121,7 +121,7 @@ const ContactUsPage = () => {
                 </p>
               </div>
               <form onSubmit={handleSubmit(onSubmit)} className="mt-6">
-                <div className="rounded-2xl bg-white/10 border border-white/20 p-4 md:p-6 backdrop-blur-sm flex flex-col gap-4">
+                <div className="md:rounded-2xl md:bg-white/10 md:border md:border-white/20 md:p-6 md:backdrop-blur-sm flex flex-col gap-4">
                   <div className="grid grid-cols-12 gap-4">
                     <div className="col-span-12 flex flex-col gap-1 md:col-span-6">
                       <Label htmlFor="name" className="text-white/90 text-sm">

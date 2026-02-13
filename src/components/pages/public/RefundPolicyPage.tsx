@@ -2,7 +2,7 @@ const RefundPolicyPage = () => {
   return (
     <main className="bg-white">
       <section className="border-b border-slate-100 bg-slate-50">
-        <div className="container mx-auto py-14 md:py-20">
+        <div className="container mx-auto py-14 md:py-20 xl:px-0 px-4">
           <div className="max-w-3xl">
             <p className="text-sm font-semibold uppercase tracking-wider text-green-700">
               Refund policy
@@ -18,7 +18,7 @@ const RefundPolicyPage = () => {
         </div>
       </section>
 
-      <section className="container mx-auto py-12 md:py-16">
+      <section className="container mx-auto py-12 md:py-16 xl:px-0 px-4">
         <div className="grid gap-8 lg:grid-cols-2">
           <div className="space-y-6">
             <h2 className="text-xl font-semibold text-slate-900">

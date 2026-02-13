@@ -46,7 +46,7 @@ const NewServicePage = () => {
       </div>
 
       {/* Content */}
-      <Card className="p-6">
+      <Card className="md:p-6 md:border border-hidden md:shadow-sm shadow-none">
         {step === 'category' && (
           <div>
             <h2 className="text-2xl font-semibold mb-6">Service Category</h2>

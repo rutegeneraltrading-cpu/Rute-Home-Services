@@ -188,7 +188,7 @@ const BookingPage = () => {
 
   return (
     <div className="py-12 bg-slate-50">
-      <div className="container mx-auto max-w-5xl">
+      <div className="container mx-auto px-4 max-w-5xl">
         {/* Progress Steps */}
         <div className="mb-8">
           <div className="flex items-center justify-between">

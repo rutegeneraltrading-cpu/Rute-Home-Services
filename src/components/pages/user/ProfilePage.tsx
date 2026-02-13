@@ -252,9 +252,9 @@ const ProfilePage = () => {
   }
 
   return (
-    <div className="py-10 px-4">
+    <div className="py-10 md:px-4">
       <div className="max-w-4xl mx-auto space-y-8">
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="bg-white md:rounded-lg md:shadow-md md:p-6">
           <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Your Profile</h1>
@@ -332,7 +332,7 @@ const ProfilePage = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="bg-white md:rounded-lg md:shadow-md md:p-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
             <div>
               <h2 className="text-xl font-semibold text-gray-900">

@@ -96,7 +96,7 @@ export function ServiceCategoryForm() {
 
   return (
     <>
-      <div className="bg-card border rounded-lg p-6">
+      <div className="bg-card md:border md:rounded-lg md:p-6">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {/* Category Name */}
           <div>
