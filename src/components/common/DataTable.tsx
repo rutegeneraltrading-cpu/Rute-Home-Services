@@ -199,8 +199,8 @@ export function DataTable<T extends Record<string, any>>({
                       onClick={header.column.getToggleSortingHandler()}
                       className={
                         header.column.getCanSort()
-                          ? 'cursor-pointer select-none min-w-[160px] max-w-[220px] truncate'
-                          : 'min-w-[160px] max-w-[220px] truncate'
+                          ? 'cursor-pointer select-none min-w-40 max-w-55 truncate'
+                          : 'min-w-40 max-w-55 truncate'
                       }
                     >
                       <div className="flex items-center gap-2">
@@ -221,7 +221,7 @@ export function DataTable<T extends Record<string, any>>({
                     </TableHead>
                   ))}
                   {config.actions && config.actions.length > 0 && (
-                    <TableHead className="w-20 min-w-[96px] text-right">
+                    <TableHead className="w-20 min-w-24 text-right">
                       Actions
                     </TableHead>
                   )}
@@ -281,7 +281,7 @@ export function DataTable<T extends Record<string, any>>({
                     {row.getVisibleCells().map((cell) => (
                       <TableCell
                         key={cell.id}
-                        className="min-w-[160px] max-w-[220px] truncate"
+                        className="min-w-40 max-w-55 truncate"
                       >
                         {flexRender(
                           cell.column.columnDef.cell,
@@ -292,7 +292,7 @@ export function DataTable<T extends Record<string, any>>({
 
                     {/* Actions column */}
                     {config.actions && config.actions.length > 0 && (
-                      <TableCell className="text-right min-w-[96px]">
+                      <TableCell className="text-right min-w-24">
                         <div className="flex gap-1 justify-end">
                           {config.actions
                             .filter(
