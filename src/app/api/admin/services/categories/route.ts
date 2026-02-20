@@ -8,8 +8,7 @@ export async function GET() {
     const { data: categories, error } = await supabase
       .from('service_categories')
       .select('*')
-      .eq('is_active', true)
-      .order('display_order', { ascending: true });
+      .eq('is_active', true);
 
     if (error) throw error;
 
@@ -45,7 +44,8 @@ export async function POST(request: NextRequest) {
         description: body.description || null,
         image_url: body.image_url || null,
         is_active: body.is_active !== false,
-        display_order: body.display_order || 0,
+        bookings: body.bookings ?? 0,
+        charge_type: body.charge_type ?? 'hourly',
       })
       .select()
       .single();

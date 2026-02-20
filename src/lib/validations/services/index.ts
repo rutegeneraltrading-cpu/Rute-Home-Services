@@ -1,9 +1,9 @@
-import z from 'zod';
+import z from "zod";
 
 export const categoryEditServiceSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   description: z.string().optional(),
-  display_order: z.string().optional(),
+  charge_type: z.enum(['hourly', 'day']),
 });
 
 export type CategoryEditServiceValues = z.infer<
@@ -14,7 +14,7 @@ export const categoryFormSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   description: z.string().optional(),
   image_url: z.string().url('Must be a valid URL').optional().or(z.literal('')),
-  display_order: z.string().optional(),
+  charge_type: z.enum(['hourly', 'day']),
 });
 
 export type CategoryFormValues = z.infer<typeof categoryFormSchema>;
@@ -50,8 +50,8 @@ export const optionEditSchema = z.object({
   price: z.string().min(1, 'Price is required'),
   duration_minutes: z.string().optional(),
   is_required: z.boolean(),
-  display_order: z.string().optional(),
   is_active: z.boolean(),
+  display_order: z.string().optional(),
 });
 
 export type OptionEditValues = z.infer<typeof optionEditSchema>;

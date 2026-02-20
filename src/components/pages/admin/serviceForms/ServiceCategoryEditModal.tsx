@@ -40,11 +40,8 @@ export function ServiceCategoryEditModal({
     () => ({
       name: category?.name || '',
       description: category?.description || '',
-      display_order:
-        category?.display_order !== null &&
-        category?.display_order !== undefined
-          ? String(category.display_order)
-          : '0',
+      image_url: category?.image_url || '',
+      charge_type: category?.charge_type || 'hourly',
     }),
     [category],
   );
@@ -62,6 +59,11 @@ export function ServiceCategoryEditModal({
   useEffect(() => {
     if (category) {
       reset(defaultValues);
+    }
+  }, [category, reset, defaultValues]);
+
+  useEffect(() => {
+    if (category) {
       setSelectedFile(null);
       setPreviewUrl(category.image_url || '');
       setIsImageDirty(false);
@@ -69,7 +71,9 @@ export function ServiceCategoryEditModal({
         fileInputRef.current.value = '';
       }
     }
-  }, [category, reset, defaultValues]);
+    // Only run when category changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [category]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -120,7 +124,7 @@ export function ServiceCategoryEditModal({
         name: data.name,
         description: data.description || undefined,
         image_url: imageUrl || undefined,
-        display_order: data.display_order ? parseInt(data.display_order) : 0,
+        charge_type: data.charge_type,
       },
       {
         onSuccess: () => {
@@ -172,13 +176,23 @@ export function ServiceCategoryEditModal({
           </div>
 
           <div>
-            <Label htmlFor="category-display-order">Display Order</Label>
-            <Input
-              id="category-display-order"
-              type="number"
-              {...register('display_order')}
-              className="mt-2"
-            />
+            <Label htmlFor="category-charge-type">Charge Type</Label>
+            <select
+              id="category-charge-type"
+              {...register('charge_type')}
+              className="mt-2 border rounded-md px-3 py-2 bg-background text-foreground"
+            >
+              <option value="hourly">Hourly</option>
+              <option value="day">Day</option>
+            </select>
+            {formErrors.charge_type && (
+              <p className="text-sm text-red-500 mt-1">
+                {formErrors.charge_type.message}
+              </p>
+            )}
+            <p className="text-xs text-muted-foreground mt-1">
+              Select how this category is charged (per hour or per day)
+            </p>
           </div>
 
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 bg-gray-50">

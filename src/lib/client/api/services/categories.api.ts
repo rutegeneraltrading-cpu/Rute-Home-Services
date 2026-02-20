@@ -5,7 +5,8 @@ export interface UpdateServiceCategoryDTO {
   name?: string;
   description?: string;
   image_url?: string;
-  display_order?: number;
+  bookings?: number;
+  charge_type?: 'hourly' | 'day';
 }
 
 export const getCategoriesApi = (): Promise<{

@@ -179,9 +179,6 @@ export default function ServicesPage() {
                       {category.description}
                     </p>
                   )}
-                  <p className="text-xs text-gray-400">
-                    Display Order: {category.display_order || 0}
-                  </p>
                 </div>
               </div>
             ))}

@@ -1,6 +1,13 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
@@ -23,6 +30,8 @@ export function ServiceCategoryForm() {
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors: formErrors, isDirty },
   } = useForm<CategoryFormValues>({
     resolver: zodResolver(categoryFormSchema),
@@ -30,7 +39,7 @@ export function ServiceCategoryForm() {
       name: '',
       description: '',
       image_url: '',
-      display_order: '0',
+      charge_type: 'hourly',
     },
   });
 
@@ -77,7 +86,7 @@ export function ServiceCategoryForm() {
         name: data.name,
         description: data.description,
         image_url: imageUrl,
-        display_order: data.display_order ? parseInt(data.display_order) : 0,
+        charge_type: data.charge_type,
       });
 
       // Clear form after success
@@ -131,6 +140,34 @@ export function ServiceCategoryForm() {
             )}
             <p className="text-xs text-muted-foreground mt-1">
               Optional - describe what services are included
+            </p>
+          </div>
+
+          {/* Category Charge Type */}
+          <div>
+            <Label htmlFor="charge_type">Charge Type</Label>
+            <Select
+              value={watch('charge_type') || 'hourly'}
+              onValueChange={(value) => {
+                setValue('charge_type', value as 'hourly' | 'day', { shouldValidate: true });
+              }}
+              disabled={isSubmitting}
+            >
+              <SelectTrigger id="charge_type" className="mt-2">
+                <SelectValue placeholder="Select charge type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="hourly">Hourly</SelectItem>
+                <SelectItem value="day">Day</SelectItem>
+              </SelectContent>
+            </Select>
+            {formErrors.charge_type && (
+              <p className="text-sm text-red-500 mt-1">
+                {formErrors.charge_type.message}
+              </p>
+            )}
+            <p className="text-xs text-muted-foreground mt-1">
+              Select how this category is charged (per hour or per day)
             </p>
           </div>
 
@@ -190,27 +227,6 @@ export function ServiceCategoryForm() {
               className="hidden"
               id="image"
             />
-          </div>
-
-          {/* Display Order */}
-          <div>
-            <Label htmlFor="display_order">Display Order</Label>
-            <Input
-              id="display_order"
-              type="number"
-              placeholder="0"
-              {...register('display_order')}
-              className="mt-2"
-            />
-            {formErrors.display_order && (
-              <p className="text-sm text-red-500 mt-1">
-                {formErrors.display_order.message}
-              </p>
-            )}
-            <p className="text-xs text-muted-foreground mt-1">
-              Optional - controls the order categories appear (lower numbers
-              first)
-            </p>
           </div>
 
           {/* Form Actions */}
