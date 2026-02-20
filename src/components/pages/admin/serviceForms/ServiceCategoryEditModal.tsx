@@ -22,6 +22,13 @@ import {
   CategoryEditServiceValues,
 } from '@/lib/validations';
 import { ServiceCategoryEditModalProps } from '@/lib/types';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui';
 
 export function ServiceCategoryEditModal({
   open,
@@ -50,7 +57,9 @@ export function ServiceCategoryEditModal({
     register,
     handleSubmit,
     reset,
-    formState: { errors: formErrors, isDirty },
+    setValue,
+    watch,
+    formState: { errors: formErrors, isDirty, isSubmitting, dirtyFields },
   } = useForm<CategoryEditServiceValues>({
     resolver: zodResolver(categoryEditServiceSchema),
     defaultValues,
@@ -137,7 +146,7 @@ export function ServiceCategoryEditModal({
   };
 
   if (!category) return null;
-  const canSubmit = isDirty || isImageDirty;
+  const canSubmit = isDirty || isImageDirty || dirtyFields.charge_type;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -176,15 +185,25 @@ export function ServiceCategoryEditModal({
           </div>
 
           <div>
-            <Label htmlFor="category-charge-type">Charge Type</Label>
-            <select
-              id="category-charge-type"
-              {...register('charge_type')}
-              className="mt-2 border rounded-md px-3 py-2 bg-background text-foreground"
+            <Label htmlFor="charge_type">Charge Type</Label>
+            <Select
+              value={watch('charge_type') || 'hourly'}
+              onValueChange={(value) => {
+                setValue('charge_type', value as 'hourly' | 'day', {
+                  shouldValidate: true,
+                  shouldDirty: true,
+                });
+              }}
+              disabled={isSubmitting}
             >
-              <option value="hourly">Hourly</option>
-              <option value="day">Day</option>
-            </select>
+              <SelectTrigger id="charge_type" className="mt-2">
+                <SelectValue placeholder="Select charge type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="hourly">Hourly</SelectItem>
+                <SelectItem value="day">Day</SelectItem>
+              </SelectContent>
+            </Select>
             {formErrors.charge_type && (
               <p className="text-sm text-red-500 mt-1">
                 {formErrors.charge_type.message}
