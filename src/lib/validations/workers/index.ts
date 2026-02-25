@@ -8,7 +8,6 @@ const workerAddressSchema = userAddressSchema.extend({
 export const workerEditSchema = z.object({
   full_name: z.string().min(2, 'Name must be at least 2 characters'),
   phone: z.string().optional(),
-  hourly_rate: z.string().optional(),
   service_id: z.string().min(1, 'Service is required'),
   status: z.enum(['active', 'inactive', 'suspended']),
   address: workerAddressSchema,
@@ -21,7 +20,6 @@ export const workerFormSchema = z.object({
   email: z.string().email('Invalid email address'),
   phone: z.string().optional(),
   service_id: z.string().min(1, 'Please select a service'),
-  hourly_rate: z.string().optional(),
   address: workerAddressSchema,
 });
 

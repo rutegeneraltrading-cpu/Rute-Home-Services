@@ -40,7 +40,6 @@ const RegisterWorkerPage = () => {
       email: '',
       phone: '',
       service_id: '',
-      hourly_rate: '',
       address: {
         label: 'home',
         recipient_name: '',
@@ -78,9 +77,6 @@ const RegisterWorkerPage = () => {
         email: data.email,
         phone: data.phone,
         service_id: data.service_id,
-        hourly_rate: data.hourly_rate
-          ? parseFloat(data.hourly_rate)
-          : undefined,
         profile_status: 'inactive',
         address: {
           ...data.address,
@@ -194,20 +190,6 @@ const RegisterWorkerPage = () => {
                   {formErrors.service_id.message}
                 </p>
               )}
-            </div>
-
-            <div>
-              <Label htmlFor="hourly_rate">Hourly Rate (ZAR)</Label>
-              <Input
-                id="hourly_rate"
-                type="number"
-                placeholder="250"
-                className="h-10"
-                {...register('hourly_rate')}
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Optional - default rate per hour
-              </p>
             </div>
           </div>
 

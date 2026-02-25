@@ -9,7 +9,6 @@ export interface WorkerProfile {
   phone?: string | null;
   avatar_url?: string | null;
   rating_avg?: number;
-  hourly_rate?: number;
   is_active?: boolean;
   status?: 'active' | 'inactive' | 'suspended';
   role: 'worker';
@@ -26,7 +25,6 @@ export interface CreateWorkerDTO {
   email: string;
   phone?: string;
   service_id: string;
-  hourly_rate?: number;
   address: CreateUserAddressDTO;
   profile_status?: 'active' | 'inactive' | 'suspended';
 }
@@ -35,7 +33,6 @@ export interface UpdateWorkerDTO {
   full_name?: string;
   email?: string;
   phone?: string;
-  hourly_rate?: number;
   avatar_url?: string;
   status?: 'active' | 'inactive' | 'suspended';
   service_id?: string;

@@ -1,6 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
 import crypto from 'crypto';
-import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/server';
 
 export async function POST(request: NextRequest) {
@@ -14,7 +13,6 @@ export async function POST(request: NextRequest) {
       phone,
       address,
       service_id,
-      hourly_rate,
       profile_status,
     } = body;
 
@@ -167,7 +165,6 @@ export async function POST(request: NextRequest) {
         .insert({
           profile_id: profileId,
           phone: phone || null,
-          hourly_rate: hourly_rate || 0,
           is_active: true,
         })
         .select()

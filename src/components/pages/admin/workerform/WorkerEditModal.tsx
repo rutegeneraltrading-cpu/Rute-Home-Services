@@ -51,7 +51,6 @@ export function WorkerEditModal({
       reset({
         full_name: worker.full_name || '',
         phone: worker.phone || '',
-        hourly_rate: worker.hourly_rate ? String(worker.hourly_rate) : '',
         service_id: worker.service_ids?.[0] || '',
         status:
           (worker.status as 'active' | 'inactive' | 'suspended') || 'active',
@@ -77,9 +76,6 @@ export function WorkerEditModal({
       {
         full_name: data.full_name,
         phone: data.phone || undefined,
-        hourly_rate: data.hourly_rate
-          ? parseFloat(data.hourly_rate)
-          : undefined,
         status: data.status,
         service_id: data.service_id,
         address: {
@@ -184,17 +180,6 @@ export function WorkerEditModal({
                   {...register('phone')}
                 />
               </div>
-
-              <div>
-                <Label htmlFor="hourly_rate">Hourly Rate (ZAR)</Label>
-                <Input
-                  id="hourly_rate"
-                  type="number"
-                  placeholder="250"
-                  {...register('hourly_rate')}
-                />
-              </div>
-
               <div>
                 <Label htmlFor="service_id">Service *</Label>
                 <Controller

@@ -14,7 +14,6 @@ export async function GET() {
         profile_id,
         phone,
         rating_avg,
-        hourly_rate,
         is_active,
         created_at,
         profiles:profile_id (

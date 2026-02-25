@@ -32,7 +32,6 @@
 │ profile_id│─┘ │ phone       │  │
 │ address   │   │ address_id  │  │ 1:1
 │ rating    │   │ payment_method
-│ hourly_rate   │
 └───────────┘   └──────────────┘
 
 
@@ -479,7 +478,8 @@ Available Slots =
 | **Auth Table**      | `profiles` - single source of identity                                         |
 | **Admin**           | Just a profile with role='admin', no extra fields                              |
 | **User**            | Profile + user_profile (phone, address, payment)                               |
-| **Worker**          | Profile + workers (phone, address, rating, hourly_rate) - **No category_id**   |
+| **Worker**          | Profile + workers (phone, address, rating) 
+- **No category_id**   |
 | **Services Flow**   | **service_categories → services → service_options (linked together)**          |
 | **Worker-Services** | **⭐ Replaces old design: worker_services links workers to specific services** |
 | **Multi-Category**  | **Worker can provide services from ANY category via worker_services**          |
@@ -532,9 +532,9 @@ Step 3: CREATE service_options (customizations)
 
 ```
 Step 4: CREATE workers (register new workers)
-   INSERT → Ahmed (profile_id: auth_123, hourly_rate: $15)
-   INSERT → Fatima (profile_id: auth_456, hourly_rate: $18)
-   INSERT → Malik (profile_id: auth_789, hourly_rate: $20)
+   INSERT → Ahmed (profile_id: auth_123)
+   INSERT → Fatima (profile_id: auth_456)
+   INSERT → Malik (profile_id: auth_789)
 
 Step 5: ASSIGN SERVICES TO WORKERS ⭐ (Can be from ANY category!)
    INSERT worker_services → Ahmed + "Basic Clean" (✓ active) [House Cleaning]

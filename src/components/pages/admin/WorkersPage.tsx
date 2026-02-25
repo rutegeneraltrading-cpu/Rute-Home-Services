@@ -56,13 +56,6 @@ const WorkersPage = () => {
         Array.isArray(value) && value.length > 0 ? value.join(', ') : '-',
     },
     {
-      id: 'hourly_rate',
-      header: 'Hourly Rate',
-      accessorKey: 'hourly_rate',
-      sortable: true,
-      cell: (value) => (value ? `R${parseFloat(value).toFixed(2)}` : '-'),
-    },
-    {
       id: 'rating_avg',
       header: 'Rating',
       accessorKey: 'rating_avg',

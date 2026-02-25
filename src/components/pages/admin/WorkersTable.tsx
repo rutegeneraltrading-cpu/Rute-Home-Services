@@ -77,9 +77,6 @@ export function WorkersTable({
               <TableCell>{worker.email}</TableCell>
               <TableCell>{worker.phone || '-'}</TableCell>
               <TableCell>
-                {worker.hourly_rate ? `R${worker.hourly_rate.toFixed(2)}` : '-'}
-              </TableCell>
-              <TableCell>
                 {worker.rating_avg
                   ? `${worker.rating_avg.toFixed(1)} ⭐`
                   : 'N/A'}
