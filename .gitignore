@@ -42,6 +42,4 @@ yarn-error.log*
 next-env.d.ts
 
 # Plan and guideline files & folders
-/oldhomeServices*
-/plenumpro*
 /plan*

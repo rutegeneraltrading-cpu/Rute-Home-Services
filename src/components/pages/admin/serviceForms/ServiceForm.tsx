@@ -35,6 +35,7 @@ export function ServiceForm({ onServiceCreated }: ServiceFormProps) {
     defaultValues: {
       category_id: '',
       name: '',
+      slug: '',
       description: '',
       base_price: '0',
       duration_minutes: '60',
@@ -44,6 +45,7 @@ export function ServiceForm({ onServiceCreated }: ServiceFormProps) {
   const onSubmit: SubmitHandler<ServiceFormValues> = (data) => {
     const payload: CreateServiceDTO = {
       name: data.name,
+      slug: data.slug,
       description: data.description || undefined,
       base_price: parseFloat(data.base_price),
       category_id: data.category_id,
@@ -125,6 +127,26 @@ export function ServiceForm({ onServiceCreated }: ServiceFormProps) {
           )}
           <p className="text-xs text-muted-foreground mt-1">
             What is this service called?
+          </p>
+        </div>
+
+        {/* Slug */}
+        <div>
+          <Label htmlFor="slug">Slug (SEO) *</Label>
+          <Input
+            id="slug"
+            placeholder="e.g., basic-house-clean"
+            className="mt-2"
+            disabled={createMutation.isPending}
+            {...register('slug')}
+          />
+          {errors.slug && (
+            <p className="text-sm text-red-500 mt-1">
+              {errors.slug.message as string}
+            </p>
+          )}
+          <p className="text-xs text-muted-foreground mt-1">
+            URL-friendly identifier (e.g., basic-house-clean)
           </p>
         </div>
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -40,6 +40,7 @@ export function ServiceEditModal({
     () => ({
       category_id: service?.category_id || '',
       name: service?.name || '',
+      slug: service?.slug || '',
       description: service?.description || '',
       base_price: service?.base_price ? String(service.base_price) : '',
       duration_minutes: service?.duration_minutes
@@ -74,6 +75,7 @@ export function ServiceEditModal({
       {
         category_id: data.category_id,
         name: data.name,
+        slug: data.slug,
         description: data.description || undefined,
         base_price: parseFloat(data.base_price),
         duration_minutes: parseInt(data.duration_minutes, 10),
@@ -101,6 +103,7 @@ export function ServiceEditModal({
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          {/* ...existing form fields... */}
           <div>
             <Label htmlFor="category_id">Service Category *</Label>
             <Select
@@ -147,6 +150,14 @@ export function ServiceEditModal({
             <Input id="name" {...register('name')} className="mt-2" />
             {errors.name && (
               <p className="text-sm text-red-500 mt-1">{errors.name.message}</p>
+            )}
+          </div>
+
+          <div>
+            <Label htmlFor="slug">Slug (SEO) *</Label>
+            <Input id="slug" {...register('slug')} className="mt-2" />
+            {errors.slug && (
+              <p className="text-sm text-red-500 mt-1">{errors.slug.message}</p>
             )}
           </div>
 

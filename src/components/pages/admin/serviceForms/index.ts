@@ -4,3 +4,5 @@ export * from './ServiceOptionsForm';
 export * from './ServiceCategoryForm';
 export * from './ServiceOptionEditModal';
 export * from './ServiceCategoryEditModal';
+export * from './ServiceOptionVariantsEditModal';
+export * from './ServiceVariantsForm';

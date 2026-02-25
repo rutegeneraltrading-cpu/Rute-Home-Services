@@ -1,3 +1,27 @@
+// ============================================
+// SERVICE OPTION VARIANTS QUERIES
+// ============================================
+import {
+  getServiceOptionVariantsApi,
+  getServiceOptionVariantApi,
+} from './services.api';
+
+export const useGetServiceOptionVariants = () => {
+  return useQuery({
+    queryKey: ['service_option_variants'],
+    queryFn: getServiceOptionVariantsApi,
+    staleTime: 5 * 60 * 1000,
+  });
+};
+
+export const useGetServiceOptionVariant = (variantId: string) => {
+  return useQuery({
+    queryKey: ['service_option_variant', variantId],
+    queryFn: () => getServiceOptionVariantApi(variantId),
+    enabled: !!variantId,
+    staleTime: 5 * 60 * 1000,
+  });
+};
 import { useQuery } from '@tanstack/react-query';
 import {
   getServicesApi,

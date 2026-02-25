@@ -76,6 +76,7 @@ export function ServiceOptionsForm({
       duration_minutes: '0',
       is_required: false,
       display_order: '0',
+      type: '',
     },
   });
 
@@ -87,6 +88,7 @@ export function ServiceOptionsForm({
       duration_minutes: parseInt(data.duration_minutes || '0'),
       is_required: data.is_required,
       display_order: parseInt(data.display_order || '0'),
+      type: data.type,
     };
 
     createMutation.mutate(payload, {
@@ -365,6 +367,38 @@ export function ServiceOptionsForm({
                     <p className="text-xs text-muted-foreground mt-1">
                       Position in the list (0, 1, 2, ...)
                     </p>
+                  </div>
+
+                  {/* Type Dropdown */}
+                  <div>
+                    <Label htmlFor="type">Type *</Label>
+                    <Select
+                      value={undefined}
+                      onValueChange={(val) => {
+                        // set value in react-hook-form
+                        register('type').onChange({ target: { value: val } });
+                      }}
+                      disabled={createMutation.isPending}
+                    >
+                      <SelectTrigger id="type" className="mt-2">
+                        <SelectValue placeholder="Select a type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="core_task">Core Task</SelectItem>
+                        <SelectItem value="add_on">Add-on</SelectItem>
+                        <SelectItem value="size">Size</SelectItem>
+                        <SelectItem value="type">Type</SelectItem>
+                        <SelectItem value="property_size">
+                          Property Size
+                        </SelectItem>
+                        <SelectItem value="truck_size">Truck Size</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {errors.type && (
+                      <p className="text-sm text-red-500 mt-1">
+                        {errors.type.message as string}
+                      </p>
+                    )}
                   </div>
 
                   {/* Submit Buttons */}

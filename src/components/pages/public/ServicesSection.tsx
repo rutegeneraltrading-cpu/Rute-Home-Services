@@ -4,13 +4,7 @@ import { useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useQuery } from '@tanstack/react-query';
-import {
-  Button,
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '../../ui';
+import { Button, Card, CardDescription, CardHeader, CardTitle } from '../../ui';
 import { usePathname } from 'next/navigation';
 
 const ServicesSection = () => {
@@ -34,10 +28,8 @@ const ServicesSection = () => {
     staleTime: 10 * 60 * 1000,
   });
 
-  const featuredCategories = useMemo(
-    () => categoriesData.slice(0, 8),
-    [categoriesData],
-  );
+  // Show all categories
+  const allCategories = useMemo(() => categoriesData, [categoriesData]);
 
   return (
     <section
@@ -60,40 +52,39 @@ const ServicesSection = () => {
           )}
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {(categoriesLoading
-            ? Array.from({ length: 8 })
-            : featuredCategories
-          ).map((category: any, index) => (
-            <Link
-              key={category?.id || index}
-              href={`/booking?category=${category?.slug || ''}`}
-            >
-              <Card className="h-full cursor-pointer transition-all duration-200 hover:shadow-md pt-0">
-                {category?.image_url ? (
-                  <div className="relative h-full w-full flex items-center justify-center p-4">
-                    <Image
-                      src={category.image_url}
-                      alt={category.name || 'Service category'}
-                      width={150}
-                      height={150}
-                      className="object-cover rounded-lg"
-                    />
-                  </div>
-                ) : (
-                  <div className="h-40 bg-slate-200 rounded-t-lg" />
-                )}
-                <CardHeader>
-                  <CardTitle className="text-lg">
-                    {category?.name || 'Loading...'}
-                  </CardTitle>
-                  <CardDescription className="line-clamp-2">
-                    {category?.description ||
-                      'Popular services in this category'}
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            </Link>
-          ))}
+          {(categoriesLoading ? Array.from({ length: 8 }) : allCategories).map(
+            (category: any, index) => (
+              <Link
+                key={category?.id || index}
+                href={`/booking?category=${category?.slug || ''}`}
+              >
+                <Card className="h-full cursor-pointer transition-all duration-200 hover:shadow-md pt-0">
+                  {category?.image_url ? (
+                    <div className="relative h-full w-full flex items-center justify-center p-4">
+                      <Image
+                        src={category.image_url}
+                        alt={category.name || 'Service category'}
+                        width={150}
+                        height={150}
+                        className="object-cover rounded-lg"
+                      />
+                    </div>
+                  ) : (
+                    <div className="h-40 bg-slate-200 rounded-t-lg" />
+                  )}
+                  <CardHeader>
+                    <CardTitle className="text-lg">
+                      {category?.name || 'Loading...'}
+                    </CardTitle>
+                    <CardDescription className="line-clamp-2">
+                      {category?.description ||
+                        'Popular services in this category'}
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              </Link>
+            ),
+          )}
         </div>
       </div>
     </section>

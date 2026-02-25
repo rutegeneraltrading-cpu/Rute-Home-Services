@@ -1,3 +1,59 @@
+// ============================================
+// SERVICE OPTION VARIANTS MUTATIONS
+// ============================================
+import {
+  createServiceOptionVariantApi,
+  updateServiceOptionVariantApi,
+  deleteServiceOptionVariantApi,
+} from './services.api';
+import type {
+  CreateServiceOptionVariantDTO,
+  UpdateServiceOptionVariantDTO,
+} from '@/lib/types/admin/services/variant';
+
+export const useCreateServiceOptionVariant = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateServiceOptionVariantDTO) =>
+      createServiceOptionVariantApi(data),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries();
+      toast.success(`Variant "${data.name}" added successfully!`);
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || 'Failed to add variant');
+    },
+  });
+};
+
+export const useUpdateServiceOptionVariant = (variantId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: UpdateServiceOptionVariantDTO) =>
+      updateServiceOptionVariantApi(variantId, data),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries();
+      toast.success(`Variant "${data.name}" updated successfully!`);
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || 'Failed to update variant');
+    },
+  });
+};
+
+export const useDeleteServiceOptionVariant = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (variantId: string) => deleteServiceOptionVariantApi(variantId),
+    onSuccess: () => {
+      queryClient.invalidateQueries();
+      toast.success('Variant deleted successfully!');
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || 'Failed to delete variant');
+    },
+  });
+};
 import { toast } from 'sonner';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {

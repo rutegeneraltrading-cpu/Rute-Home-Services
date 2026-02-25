@@ -17,13 +17,17 @@ import {
   ServiceEditModal,
   ServiceOptionEditModal,
   ServiceCategoryEditModal,
+  ServiceOptionVariantsEditModal,
 } from '@/components/pages/admin/serviceForms';
 import { DeleteConfirmationDialog, DataTable } from '@/components/common';
 import { Button } from '@/components/ui';
 import type { TableColumn, TableAction } from '@/lib/types';
 import Image from 'next/image';
+import { useQuery } from '@tanstack/react-query';
+import { useGetServiceOptionVariants } from '@/lib/client/api/services/services.query';
+import { useDeleteServiceOptionVariant } from '@/lib/client/api/services/services.mutation';
 
-type TabKey = 'categories' | 'services' | 'options';
+type TabKey = 'categories' | 'services' | 'options' | 'variants';
 
 export default function ServicesPage() {
   const { data: categoriesData, isLoading: categoriesLoading } =
@@ -32,19 +36,15 @@ export default function ServicesPage() {
   const deleteCategoryMutation = useDeleteServiceCategory();
   const deleteServiceMutation = useDeleteService();
   const deleteOptionMutation = useDeleteServiceOption();
-  // Fetch all service options (not filtered by serviceId)
+  const deleteVariantMutation = useDeleteServiceOptionVariant();
   const { data: optionsData, isLoading: optionsLoading } =
     useGetAllServiceOptions();
-  // If you want to remove activeServiceId state entirely, also remove this:
-  // const [activeServiceId, setActiveServiceId] = useState<string>('');
 
   const categories = useMemo(
     () => categoriesData?.categories || [],
     [categoriesData],
   );
   const services = useMemo(() => servicesData || [], [servicesData]);
-
-  // Auto-select first category, but allow manual override
 
   const [editingCategory, setEditingCategory] = useState<
     (typeof categories)[0] | null
@@ -62,10 +62,89 @@ export default function ServicesPage() {
     null,
   );
   const [deleteOption, setDeleteOption] = useState<ServiceOption | null>(null);
-
+  const [variantsModalOption, setVariantsModalOption] =
+    useState<ServiceOption | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>('categories');
 
-  // DataTable columns and actions for each tab (ProductsPage style)
+  // Variants tab logic
+  // Flatten variant data for table
+  const { data: rawVariantsData = [], isLoading: variantsLoading } =
+    useGetServiceOptionVariants();
+  const variantsData = useMemo(
+    () =>
+      rawVariantsData.map((v: any) => ({
+        ...v,
+        service_option_name: v.service_option?.name || '',
+        service_name: v.service_option?.service?.name || '',
+        category_name: v.service_option?.service?.category?.name || '',
+      })),
+    [rawVariantsData],
+  );
+  const variantColumns: TableColumn<any>[] = [
+    { id: 'name', header: 'Variant Name', accessorKey: 'name', sortable: true },
+    {
+      id: 'service_option_name',
+      header: 'Service Option',
+      accessorKey: 'service_option_name',
+      sortable: true,
+    },
+    {
+      id: 'service_name',
+      header: 'Service',
+      accessorKey: 'service_name',
+      sortable: true,
+    },
+    {
+      id: 'category_name',
+      header: 'Category',
+      accessorKey: 'category_name',
+      sortable: true,
+    },
+    { id: 'type', header: 'Type', accessorKey: 'type', sortable: true },
+    {
+      id: 'price',
+      header: 'Price',
+      accessorKey: 'price',
+      sortable: true,
+      cell: (value) => `R${parseFloat(value).toFixed(2)}`,
+    },
+    {
+      id: 'duration_minutes',
+      header: 'Duration (min)',
+      accessorKey: 'duration_minutes',
+      sortable: true,
+    },
+    {
+      id: 'is_active',
+      header: 'Active',
+      accessorKey: 'is_active',
+      cell: (v) => (v ? 'Yes' : 'No'),
+    },
+    {
+      id: 'display_order',
+      header: 'Order',
+      accessorKey: 'display_order',
+      sortable: true,
+    },
+  ];
+  const [editingVariant, setEditingVariant] = useState<any | null>(null);
+  const [deleteVariant, setDeleteVariant] = useState<any | null>(null);
+  const variantActions: TableAction[] = [
+    {
+      id: 'edit',
+      label: 'Edit',
+      icon: Edit2,
+      onClick: (row) => setEditingVariant(row),
+    },
+    {
+      id: 'delete',
+      label: 'Delete',
+      icon: Trash2,
+      onClick: (row) => setDeleteVariant(row),
+      variant: 'destructive',
+    },
+  ];
+
   const categoryColumns: TableColumn<any>[] = [
     {
       id: 'image',
@@ -204,6 +283,18 @@ export default function ServicesPage() {
       sortable: true,
     },
     {
+      id: 'type',
+      header: 'Type',
+      accessorKey: 'type',
+      sortable: true,
+      cell: (value) => {
+        if (!value) return '—';
+        return value
+          .replace(/_/g, ' ')
+          .replace(/\b\w/g, (l: string) => l.toUpperCase());
+      },
+    },
+    {
       id: 'service',
       header: 'Service',
       accessorKey: 'service_id',
@@ -267,6 +358,11 @@ export default function ServicesPage() {
   ];
   const optionActions: TableAction[] = [
     {
+      id: 'variants',
+      label: 'Variants',
+      onClick: (row) => setVariantsModalOption(row),
+    },
+    {
       id: 'edit',
       label: 'Edit',
       icon: Edit2,
@@ -317,8 +413,31 @@ export default function ServicesPage() {
           >
             Options
           </Button>
+          <Button
+            variant={activeTab === 'variants' ? 'default' : 'outline'}
+            onClick={() => setActiveTab('variants')}
+          >
+            Variants
+          </Button>
         </div>
         {/* Tab Content */}
+        {activeTab === 'variants' && (
+          <DataTable
+            config={{
+              data: variantsData,
+              columns: variantColumns,
+              actions: variantActions,
+              isLoading: variantsLoading,
+              pageSize: 10,
+              showSearch: true,
+              showPagination: true,
+              emptyState: {
+                title: 'No variants',
+                description: 'No service option variants found.',
+              },
+            }}
+          />
+        )}
         {activeTab === 'categories' && (
           <DataTable
             config={{
@@ -373,7 +492,6 @@ export default function ServicesPage() {
           />
         )}
       </div>
-
       <ServiceCategoryEditModal
         open={!!editingCategory}
         category={editingCategory}
@@ -382,7 +500,6 @@ export default function ServicesPage() {
         }}
         onSuccess={() => setEditingCategory(null)}
       />
-
       <ServiceEditModal
         open={!!editingService}
         service={editingService}
@@ -391,7 +508,6 @@ export default function ServicesPage() {
         }}
         onSuccess={() => setEditingService(null)}
       />
-
       <ServiceOptionEditModal
         open={!!editingOption}
         option={editingOption}
@@ -400,7 +516,39 @@ export default function ServicesPage() {
         }}
         onSuccess={() => setEditingOption(null)}
       />
-
+      {/* Edit Variant Modal (for variants tab) */}
+      {editingVariant && (
+        <ServiceOptionVariantsEditModal
+          open={!!editingVariant}
+          variant={editingVariant}
+          onOpenChange={(open) => {
+            if (!open) setEditingVariant(null);
+          }}
+          onSuccess={() => setEditingVariant(null)}
+        />
+      )}
+      {/* Delete Variant Dialog (for variants tab) */}
+      <DeleteConfirmationDialog
+        open={!!deleteVariant}
+        onOpenChange={(open) => {
+          if (!open) setDeleteVariant(null);
+        }}
+        title="Delete Variant"
+        itemName={deleteVariant?.name}
+        onConfirm={() => {
+          if (!deleteVariant) return;
+          deleteVariantMutation.mutate(deleteVariant.id, {
+            onSuccess: () => {
+              setDeleteVariant(null);
+              toast.success('Variant deleted successfully');
+            },
+            onError: (error) => {
+              toast.error(error.message || 'Failed to delete variant');
+            },
+          });
+        }}
+        isDeleting={deleteVariantMutation.isPending}
+      />
       <DeleteConfirmationDialog
         open={!!deleteCategory}
         onOpenChange={(open) => {
@@ -423,7 +571,6 @@ export default function ServicesPage() {
         }}
         isDeleting={deleteCategoryMutation.isPending}
       />
-
       <DeleteConfirmationDialog
         open={!!deleteService}
         onOpenChange={(open) => {
@@ -446,7 +593,6 @@ export default function ServicesPage() {
         }}
         isDeleting={deleteServiceMutation.isPending}
       />
-
       <DeleteConfirmationDialog
         open={!!deleteOption}
         onOpenChange={(open) => {

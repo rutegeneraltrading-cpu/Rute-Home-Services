@@ -27,6 +27,7 @@ export async function PUT(
       is_required,
       display_order,
       is_active,
+      type,
     } = body;
 
     if (!name || price === undefined) {
@@ -47,6 +48,7 @@ export async function PUT(
         is_required: !!is_required,
         display_order: display_order ?? 0,
         is_active: is_active !== false,
+        type,
       })
       .eq('id', id)
       .select()

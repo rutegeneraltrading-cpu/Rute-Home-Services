@@ -1,15 +1,3 @@
-// import { BaseEntity } from '../../common';
-
-// export interface Service extends BaseEntity {
-//   name: string;
-//   description: string;
-//   price: number;
-//   image_url: string;
-//   category: string;
-//   duration_minutes: number;
-//   is_active: boolean;
-// }
-
 export interface ServiceCategory {
   id: string;
   name: string;
@@ -29,6 +17,7 @@ export interface ServiceItem {
   id: string;
   category_id: string;
   name: string;
+  slug: string;
   description?: string | null;
   base_price: number;
   duration_minutes: number;
@@ -49,6 +38,7 @@ export interface ServiceFormProps {
 export type ServiceFormValues = {
   category_id: string;
   name: string;
+  slug: string;
   description: string;
   base_price: string;
   duration_minutes: string;
@@ -64,8 +54,8 @@ export interface ServiceOptionItem {
   is_required?: boolean;
   is_active?: boolean;
   display_order?: number;
+  type: string;
 }
-
 
 export interface ServiceOptionEditModalProps {
   open: boolean;
@@ -103,6 +93,7 @@ export interface CreateServiceCategoryDTO {
 export interface Service {
   id: string;
   name: string;
+  slug: string;
   description?: string;
   base_price: number;
   category_id: string;
@@ -119,6 +110,7 @@ export interface Service {
 
 export interface CreateServiceDTO {
   name: string;
+  slug: string;
   description?: string;
   base_price: number;
   category_id: string;
@@ -144,3 +136,5 @@ export interface CreateServiceOptionDTO {
   duration_minutes?: number;
   is_required?: boolean;
 }
+
+export * from './variant';

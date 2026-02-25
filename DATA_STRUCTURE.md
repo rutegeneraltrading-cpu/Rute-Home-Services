@@ -73,43 +73,70 @@
 └────────────────────┘
 
 
-┌──────────────────────┐
-│ products             │
-├──────────────────────┤
-│ id (PK)              │
-│ name, description    │
-│ slug                 │
-│ price, sale_price    │
-│ brand, sku           │
-│ attributes (JSONB)   │
-│ stock                │
-│ category_id (FK)     │
-│ image_url (primary)  │
-│ is_active            │
-└──────────────────────┘
-
-┌──────────────────────┐
-│ product_images       │
-├──────────────────────┤
-│ id (PK)              │
-│ product_id (FK)      │
-│ url                  │
-│ sort_order           │
-│ is_primary           │
-└──────────────────────┘
-
-
-┌──────────────────────────────────────────────────────────────┐
-│                    SERVICE HIERARCHY                          │
-└──────────────────────────────────────────────────────────────┘
-
 ┌──────────────────────────────────┐
 │ service_categories               │
 ├──────────────────────────────────┤
-│ id (PK)                          │
-│ name (House Cleaning, etc)       │
-│ slug, description, image_url     │
-│ is_active
+│ id (uuid, PK)                    │
+│ name (text)                      │
+│ slug (varchar)                   │
+│ description (text)               │
+│ image_url (text)                 │
+│ is_active (bool)                 │
+│ created_at (timestamp)           │
+│ charge_type (enum)               │
+│ bookings (int4)                  │
+└──────────────────────────────────┘
+       ▲
+       │
+    1:N  │
+       │
+┌──────────────────────────────────────┐
+│ services                             │
+├──────────────────────────────────────┤
+│ id (uuid, PK)                        │
+│ name (text)                          │
+│ description (text)                   │
+│ base_price (numeric)                 │
+│ category_id (uuid, FK) ◄─┘           │
+│ duration_minutes (int4)              │
+│ is_active (bool)                     │
+│ created_at (timestamp)               │
+│ updated_at (timestamp)               │
+│ slug (varchar)                       │
+└──────────────────────────────────────┘
+       │
+       │ 1:N
+       │
+┌──────────────────────────────┐
+│ service_options              │
+├──────────────────────────────┤
+│ id (uuid, PK)                │
+│ service_id (uuid, FK) ◄──┘   │
+│ name (varchar)               │
+│ description (text)           │
+│ price (numeric)              │
+│ duration_minutes (int4)      │
+│ is_required (bool)           │
+│ display_order (int4)         │
+│ is_active (bool)             │
+│ created_at (timestamp)       │
+└──────────────────────────────┘
+       │
+       │ 1:N
+       │
+┌──────────────────────────────────────┐
+│ service_option_variants              │
+├──────────────────────────────────────┤
+│ id (uuid, PK)                        │
+│ service_option_id (uuid, FK) ◄──┘    │
+│ name (text)                          │
+│ type (text)                          │
+│ price (numeric)                      │
+│ duration_minutes (int4)              │
+│ is_active (bool)                     │
+│ display_order (int4)                 │
+│ created_at (timestamptz)             │
+└──────────────────────────────────────┘
 | bookings                         │
 │ charge_type (ENUM: 'hourly', 'day') │
 └──────────────────────────────────┘
@@ -120,7 +147,8 @@
 ┌──────────────────────────────────────┐
 │ services                             │
 ├──────────────────────────────────────┤
-│ id (PK)                              │
+│ id (PK)                              |
+| slug                                 │
 │ name (Basic Clean, Deep Clean)       │
 │ base_price                           │
 │ category_id (FK) ◄─┘                 │
@@ -271,7 +299,6 @@
 ```
 
 ---
-
 
 ## 📍 Key Relationships Summary
 

@@ -1,8 +1,53 @@
+// ============================================
+// SERVICE OPTION VARIANTS API
+// ============================================
+import type {
+  ServiceOptionVariant,
+  CreateServiceOptionVariantDTO,
+  UpdateServiceOptionVariantDTO,
+} from '@/lib/types/admin/services/variant';
+
+// Get all variants (admin, with joins)
+export const getServiceOptionVariantsApi = async (): Promise<
+  ServiceOptionVariant[]
+> => {
+  return httpClient.get('/api/admin/services/variants');
+};
+
+// Get single variant
+export const getServiceOptionVariantApi = async (
+  variantId: string,
+): Promise<ServiceOptionVariant> => {
+  return httpClient.get(`/api/admin/services/variants/${variantId}`);
+};
+
+// Create variant
+export const createServiceOptionVariantApi = async (
+  data: CreateServiceOptionVariantDTO,
+): Promise<ServiceOptionVariant> => {
+  return httpClient.post('/api/admin/services/variants', data);
+};
+
+// Update variant
+export const updateServiceOptionVariantApi = async (
+  variantId: string,
+  data: UpdateServiceOptionVariantDTO,
+): Promise<ServiceOptionVariant> => {
+  return httpClient.put(`/api/admin/services/variants/${variantId}`, data);
+};
+
+// Delete variant
+export const deleteServiceOptionVariantApi = async (
+  variantId: string,
+): Promise<void> => {
+  return httpClient.delete(`/api/admin/services/variants/${variantId}`);
+};
 import { httpClient } from '@/lib/client/http/client';
 
 export interface Service {
   id: string;
   name: string;
+  slug: string;
   description?: string;
   base_price: number;
   category_id: string;
@@ -19,6 +64,7 @@ export interface Service {
 
 export interface CreateServiceDTO {
   name: string;
+  slug: string;
   description?: string;
   base_price: number;
   category_id: string;
@@ -27,6 +73,7 @@ export interface CreateServiceDTO {
 
 export interface UpdateServiceDTO {
   name?: string;
+  slug?: string;
   description?: string;
   base_price?: number;
   category_id?: string;
@@ -45,6 +92,7 @@ export interface ServiceOption {
   display_order?: number;
   is_active: boolean;
   created_at: string;
+  type: string;
 }
 
 export interface CreateServiceOptionDTO {
@@ -54,6 +102,7 @@ export interface CreateServiceOptionDTO {
   duration_minutes?: number;
   is_required?: boolean;
   display_order?: number;
+  type: string;
 }
 
 export interface UpdateServiceOptionDTO {
@@ -64,6 +113,7 @@ export interface UpdateServiceOptionDTO {
   is_required?: boolean;
   display_order?: number;
   is_active?: boolean;
+  type?: string;
 }
 
 // ============================================
@@ -120,21 +170,18 @@ export const createServiceOptionApi = async (
 };
 
 export const updateServiceOptionApi = async (
-  serviceId: string,
+  _serviceId: string,
   optionId: string,
   data: UpdateServiceOptionDTO,
 ): Promise<ServiceOption> => {
-  return httpClient.put(
-    `/api/admin/services/${serviceId}/options/${optionId}`,
-    data,
-  );
+  // Use flat route for update
+  return httpClient.put(`/api/admin/services/options/${optionId}`, data);
 };
 
 export const deleteServiceOptionApi = async (
-  serviceId: string,
+  _serviceId: string,
   optionId: string,
 ): Promise<void> => {
-  return httpClient.delete(
-    `/api/admin/services/${serviceId}/options/${optionId}`,
-  );
+  // Use flat route for delete
+  return httpClient.delete(`/api/admin/services/options/${optionId}`);
 };

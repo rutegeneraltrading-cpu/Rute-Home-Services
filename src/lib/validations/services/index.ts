@@ -1,4 +1,4 @@
-import z from "zod";
+import z from 'zod';
 
 export const categoryEditServiceSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -22,6 +22,7 @@ export type CategoryFormValues = z.infer<typeof categoryFormSchema>;
 export const serviceEditSchema = z.object({
   category_id: z.string().min(1, 'Please select a service category'),
   name: z.string().min(2, 'Service name must be at least 2 characters'),
+  slug: z.string().min(2, 'Slug is required'),
   description: z.string().optional(),
   base_price: z.string().min(1, 'Price is required'),
   duration_minutes: z.string().min(1, 'Duration is required'),
@@ -33,6 +34,7 @@ export type ServiceEditValues = z.infer<typeof serviceEditSchema>;
 export const serviceSchema = z.object({
   category_id: z.string().min(1, 'Please select a service category'),
   name: z.string().min(2, 'Service name must be at least 2 characters'),
+  slug: z.string().min(2, 'Slug is required'),
   description: z.string(),
   base_price: z.string().refine((val) => !Number.isNaN(parseFloat(val)), {
     message: 'Price must be a valid number',
@@ -52,6 +54,7 @@ export const optionEditSchema = z.object({
   is_required: z.boolean(),
   is_active: z.boolean(),
   display_order: z.string().optional(),
+  type: z.string().min(1, 'Type is required'),
 });
 
 export type OptionEditValues = z.infer<typeof optionEditSchema>;
@@ -70,6 +73,7 @@ export const serviceOptionSchema = z.object({
     }),
   is_required: z.boolean().default(false),
   display_order: z.string().default('0'),
+  type: z.string().min(1, 'Type is required'),
 });
 
 export type ServiceOptionFormValues = z.infer<typeof serviceOptionSchema>;

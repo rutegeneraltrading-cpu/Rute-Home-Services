@@ -34,11 +34,17 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient();
 
     const body = await request.json();
-    const { name, description, base_price, category_id, duration_minutes } =
-      body;
+    const {
+      name,
+      slug,
+      description,
+      base_price,
+      category_id,
+      duration_minutes,
+    } = body;
 
     // Validate required fields
-    if (!name || !category_id || base_price === undefined) {
+    if (!name || !slug || !category_id || base_price === undefined) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 },
@@ -51,6 +57,7 @@ export async function POST(request: NextRequest) {
       .insert([
         {
           name,
+          slug,
           description,
           base_price: parseFloat(base_price),
           category_id,

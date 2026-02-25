@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -81,6 +81,7 @@ export function ServiceOptionEditModal({
           ? String(option.display_order)
           : '0',
       is_active: option?.is_active ?? true,
+      type: option?.type || '',
     }),
     [option, selectedCategoryId],
   );
@@ -90,6 +91,7 @@ export function ServiceOptionEditModal({
     handleSubmit,
     reset,
     setValue,
+    watch,
     formState: { errors, isDirty },
   } = useForm<OptionEditValues>({
     resolver: zodResolver(optionEditSchema),
@@ -118,6 +120,7 @@ export function ServiceOptionEditModal({
           ? parseInt(data.display_order, 10)
           : 0,
         is_active: data.is_active,
+        type: data.type,
       },
       {
         onSuccess: () => {
@@ -238,6 +241,36 @@ export function ServiceOptionEditModal({
             <Input id="option-name" {...register('name')} className="mt-2" />
             {errors.name && (
               <p className="text-sm text-red-500 mt-1">{errors.name.message}</p>
+            )}
+          </div>
+
+          {/* Type Dropdown */}
+          <div>
+            <Label htmlFor="type">Type *</Label>
+            <Select
+              value={watch('type')}
+              onValueChange={(val) =>
+                setValue('type', val, {
+                  shouldValidate: true,
+                  shouldDirty: true,
+                })
+              }
+              disabled={updateOptionMutation.isPending}
+            >
+              <SelectTrigger id="type" className="mt-2">
+                <SelectValue placeholder="Select a type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="core_task">Core Task</SelectItem>
+                <SelectItem value="add_on">Add-on</SelectItem>
+                <SelectItem value="size">Size</SelectItem>
+                <SelectItem value="type">Type</SelectItem>
+                <SelectItem value="property_size">Property Size</SelectItem>
+                <SelectItem value="truck_size">Truck Size</SelectItem>
+              </SelectContent>
+            </Select>
+            {errors.type && (
+              <p className="text-sm text-red-500 mt-1">{errors.type.message}</p>
             )}
           </div>
 

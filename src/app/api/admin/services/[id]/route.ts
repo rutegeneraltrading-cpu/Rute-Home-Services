@@ -20,6 +20,7 @@ export async function PUT(
 
     const {
       name,
+      slug,
       description,
       base_price,
       category_id,
@@ -27,7 +28,7 @@ export async function PUT(
       is_active,
     } = body;
 
-    if (!name || !category_id || base_price === undefined) {
+    if (!name || !slug || !category_id || base_price === undefined) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 },
@@ -38,6 +39,7 @@ export async function PUT(
       .from('services')
       .update({
         name,
+        slug,
         description: description ?? null,
         base_price: parseFloat(base_price),
         category_id,
