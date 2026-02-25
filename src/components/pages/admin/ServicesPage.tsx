@@ -2,16 +2,18 @@
 
 import { useState, useMemo } from 'react';
 import { Edit2, Trash2 } from 'lucide-react';
-import { toast } from 'sonner';
+import Image from 'next/image';
 import {
   useGetServices,
   useGetCategories,
   useDeleteService,
   useDeleteServiceOption,
+  useDeleteServiceOptionVariant,
+  useGetServiceOptionVariants,
+  useDeleteServiceCategory,
+  useGetAllServiceOptions,
 } from '@/lib/client/api';
-import { useGetAllServiceOptions } from '@/lib/client/api/services/serviceOptionsAll.query';
 import type { ServiceOption } from '@/lib/client/api/services';
-import { useDeleteServiceCategory } from '@/lib/client/api';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   ServiceEditModal,
@@ -22,10 +24,6 @@ import {
 import { DeleteConfirmationDialog, DataTable } from '@/components/common';
 import { Button } from '@/components/ui';
 import type { TableColumn, TableAction } from '@/lib/types';
-import Image from 'next/image';
-import { useQuery } from '@tanstack/react-query';
-import { useGetServiceOptionVariants } from '@/lib/client/api/services/services.query';
-import { useDeleteServiceOptionVariant } from '@/lib/client/api/services/services.mutation';
 
 type TabKey = 'categories' | 'services' | 'options' | 'variants';
 
@@ -62,8 +60,6 @@ export default function ServicesPage() {
     null,
   );
   const [deleteOption, setDeleteOption] = useState<ServiceOption | null>(null);
-  const [variantsModalOption, setVariantsModalOption] =
-    useState<ServiceOption | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>('categories');
 
   // Variants tab logic
@@ -357,11 +353,11 @@ export default function ServicesPage() {
     },
   ];
   const optionActions: TableAction[] = [
-    {
-      id: 'variants',
-      label: 'Variants',
-      onClick: (row) => setVariantsModalOption(row),
-    },
+    // {
+    //   id: 'variants',
+    //   label: 'Variants',
+    //   onClick: (row) => setVariantsModalOption(row),
+    // },
     {
       id: 'edit',
       label: 'Edit',
@@ -540,10 +536,6 @@ export default function ServicesPage() {
           deleteVariantMutation.mutate(deleteVariant.id, {
             onSuccess: () => {
               setDeleteVariant(null);
-              toast.success('Variant deleted successfully');
-            },
-            onError: (error) => {
-              toast.error(error.message || 'Failed to delete variant');
             },
           });
         }}
@@ -562,10 +554,6 @@ export default function ServicesPage() {
           deleteCategoryMutation.mutate(deleteCategory.id, {
             onSuccess: () => {
               setDeleteCategory(null);
-              toast.success('Category deleted successfully');
-            },
-            onError: (error) => {
-              toast.error(error.message || 'Failed to delete category');
             },
           });
         }}
@@ -584,10 +572,6 @@ export default function ServicesPage() {
           deleteServiceMutation.mutate(deleteService.id, {
             onSuccess: () => {
               setDeleteService(null);
-              toast.success('Service deleted successfully');
-            },
-            onError: (error) => {
-              toast.error(error.message || 'Failed to delete service');
             },
           });
         }}
@@ -607,10 +591,6 @@ export default function ServicesPage() {
             {
               onSuccess: () => {
                 setDeleteOption(null);
-                toast.success('Option deleted successfully');
-              },
-              onError: (error) => {
-                toast.error(error.message || 'Failed to delete option');
               },
             },
           );

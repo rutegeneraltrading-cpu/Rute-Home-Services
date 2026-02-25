@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { Controller } from 'react-hook-form';
 import { SubmitHandler, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
@@ -67,6 +68,7 @@ export function ServiceOptionsForm({
     handleSubmit,
     formState: { errors, isDirty },
     reset,
+    control,
   } = useForm<ServiceOptionFormValues>({
     resolver: zodResolver(serviceOptionSchema) as any,
     defaultValues: {
@@ -369,31 +371,36 @@ export function ServiceOptionsForm({
                     </p>
                   </div>
 
-                  {/* Type Dropdown */}
+                  {/* Type Dropdown (with Controller for react-hook-form) */}
                   <div>
                     <Label htmlFor="type">Type *</Label>
-                    <Select
-                      value={undefined}
-                      onValueChange={(val) => {
-                        // set value in react-hook-form
-                        register('type').onChange({ target: { value: val } });
-                      }}
-                      disabled={createMutation.isPending}
-                    >
-                      <SelectTrigger id="type" className="mt-2">
-                        <SelectValue placeholder="Select a type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="core_task">Core Task</SelectItem>
-                        <SelectItem value="add_on">Add-on</SelectItem>
-                        <SelectItem value="size">Size</SelectItem>
-                        <SelectItem value="type">Type</SelectItem>
-                        <SelectItem value="property_size">
-                          Property Size
-                        </SelectItem>
-                        <SelectItem value="truck_size">Truck Size</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Controller
+                      name="type"
+                      control={control}
+                      render={({ field }) => (
+                        <Select
+                          value={field.value}
+                          onValueChange={(val) => field.onChange(val)}
+                          disabled={createMutation.isPending}
+                        >
+                          <SelectTrigger id="type" className="mt-2">
+                            <SelectValue placeholder="Select a type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="core_task">Core Task</SelectItem>
+                            <SelectItem value="add_on">Add-on</SelectItem>
+                            <SelectItem value="size">Size</SelectItem>
+                            <SelectItem value="type">Type</SelectItem>
+                            <SelectItem value="property_size">
+                              Property Size
+                            </SelectItem>
+                            <SelectItem value="truck_size">
+                              Truck Size
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
                     {errors.type && (
                       <p className="text-sm text-red-500 mt-1">
                         {errors.type.message as string}
@@ -401,8 +408,8 @@ export function ServiceOptionsForm({
                     )}
                   </div>
 
-                  {/* Submit Buttons */}
-                  <div className="flex gap-3">
+                  {/* Submit Buttons (right aligned, like ServiceCategoryForm) */}
+                  <div className="flex justify-end gap-3 pt-6 border-t">
                     {isDirty && (
                       <Button
                         type="button"

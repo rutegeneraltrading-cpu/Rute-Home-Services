@@ -1,10 +1,16 @@
-// ============================================
-// SERVICE OPTION VARIANTS QUERIES
-// ============================================
 import {
   getServiceOptionVariantsApi,
   getServiceOptionVariantApi,
+  getAllServiceOptionsApi,
 } from './services.api';
+
+export const useGetAllServiceOptions = () => {
+  return useQuery({
+    queryKey: ['service_options', 'all'],
+    queryFn: getAllServiceOptionsApi,
+    staleTime: 5 * 60 * 1000,
+  });
+};
 
 export const useGetServiceOptionVariants = () => {
   return useQuery({

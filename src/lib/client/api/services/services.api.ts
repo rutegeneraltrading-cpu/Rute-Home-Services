@@ -155,6 +155,10 @@ export const getServiceOptionsApi = async (
   return httpClient.get(`/api/admin/services/${serviceId}/options`);
 };
 
+export const getAllServiceOptionsApi = async (): Promise<ServiceOption[]> => {
+  return httpClient.get('/api/admin/service_options');
+};
+
 export const getServiceOptionApi = async (
   serviceId: string,
   optionId: string,
