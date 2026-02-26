@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -14,9 +14,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { RadioGroup, RadioGroupItem } from '@/components/ui';
-import { useGetMe } from '@/lib/client/api/auth';
-import { useGetUserAddresses } from '@/lib/client/api/user-addresses';
+import { useJsApiLoader, Autocomplete } from '@react-google-maps/api';
 import type {
   Service,
   ServiceCategory,
@@ -35,10 +33,6 @@ const BookingPage = () => {
   const router = useRouter();
   const categorySlug = searchParams.get('category');
 
-  const { data: currentUser } = useGetMe();
-  const { data: addressesResponse } = useGetUserAddresses();
-  const addressesData = addressesResponse?.addresses || [];
-
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(
     null,
@@ -46,18 +40,45 @@ const BookingPage = () => {
   const [selectedOptions, setSelectedOptions] = useState<
     Record<string, boolean>
   >({});
-  const [selectedAddressId, setSelectedAddressId] = useState<string>('');
+
+  // Category-specific fields
+  const [propertySize, setPropertySize] = useState(''); // Home Cleaning, Fumigation
+  const [wallArea, setWallArea] = useState(''); // Painting
+  const [poolSize, setPoolSize] = useState(''); // Pool Cleaning
+  const [pestType, setPestType] = useState(''); // Fumigation
+  const [emergencyType, setEmergencyType] = useState('Normal'); // Fumigation
+  const [loadSize, setLoadSize] = useState(''); // Rubble Removal
+  const [locksmithType, setLocksmithType] = useState(''); // Locksmith
+  const [locksmithSubType, setLocksmithSubType] = useState(''); // Locksmith
+  const [truckSize, setTruckSize] = useState(''); // Moving
+  const [moveDistance, setMoveDistance] = useState(''); // Moving
+  const [specialItem, setSpecialItem] = useState(''); // Moving
+  // Worker availability
+  const [workerAvailable, setWorkerAvailable] = useState(true);
+  const [checkingWorker, setCheckingWorker] = useState(false);
+  const [workerError, setWorkerError] = useState('');
+  // Location picker state
+  const [selectedLocation, setSelectedLocation] = useState<{
+    lat: number | null;
+    lng: number | null;
+    city: string;
+    address: string;
+  }>({
+    lat: null,
+    lng: null,
+    city: '',
+    address: '',
+  });
+  const [locationError, setLocationError] = useState('');
+  // autocomplete declaration already exists above, remove duplicate
+
+  // Load Google Maps JS API
+  const { isLoaded } = useJsApiLoader({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'Hello',
+    libraries: ['places'],
+  });
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
-
-  // New address form
-  const [showNewAddressForm, setShowNewAddressForm] = useState(false);
-  const [newAddress, setNewAddress] = useState({
-    line1: '',
-    city: '',
-    state_province: '',
-    postal_code: '',
-  });
 
   const { data: categoriesData = [] } = useQuery({
     queryKey: ['public-service-categories'],
@@ -136,23 +157,10 @@ const BookingPage = () => {
     return duration;
   }, [selectedService, selectedOptionsArray]);
 
-  // Clear options when service changes
-  useEffect(() => {
-    if (selectedServiceId) {
-      setSelectedOptions({});
-    }
-  }, [selectedServiceId]);
+  const [autocomplete, setAutocomplete] =
+    useState<google.maps.places.Autocomplete | null>(null);
 
-  // Auto-select primary address on mount
-  useEffect(() => {
-    if (addressesData.length > 0 && !selectedAddressId) {
-      const primaryAddress = addressesData.find((addr) => addr.is_primary);
-      if (primaryAddress) {
-        setSelectedAddressId(primaryAddress.id);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Removed address auto-select logic
 
   if (!categorySlug) {
     router.push('/services');
@@ -169,9 +177,7 @@ const BookingPage = () => {
     );
   }
 
-  const selectedAddress = addressesData.find(
-    (addr) => addr.id === selectedAddressId,
-  );
+  // Removed selectedAddress logic; use selectedLocation for booking summary
 
   // Time slots (9 AM - 5 PM, hourly)
   const timeSlots = [
@@ -263,7 +269,10 @@ const BookingPage = () => {
                             ? 'border-black shadow-md'
                             : 'hover:shadow-sm'
                         }`}
-                        onClick={() => setSelectedServiceId(service.id)}
+                        onClick={() => {
+                          setSelectedServiceId(service.id);
+                          setSelectedOptions({}); // Clear options when service changes
+                        }}
                       >
                         <CardHeader>
                           <CardTitle className="text-lg">
@@ -286,7 +295,247 @@ const BookingPage = () => {
 
             {/* Step 2: Select Options */}
             {currentStep === 2 && selectedService && (
-              <div>
+              <div className="space-y-6">
+                {/* Category-specific fields */}
+                {category?.name === 'Home Cleaning' && (
+                  <div>
+                    <label className="block font-medium mb-2">
+                      Property Size
+                    </label>
+                    <select
+                      className="border rounded px-3 py-2 w-full"
+                      value={propertySize}
+                      onChange={(e) => setPropertySize(e.target.value)}
+                    >
+                      <option value="">Select size</option>
+                      <option>Studio</option>
+                      <option>1-Bed</option>
+                      <option>2-Bed</option>
+                      <option>3-Bed</option>
+                    </select>
+                  </div>
+                )}
+                {category?.name === 'Painting' && (
+                  <div>
+                    <label className="block font-medium mb-2">
+                      Wall Area (m²)
+                    </label>
+                    <input
+                      type="number"
+                      className="border rounded px-3 py-2 w-full"
+                      value={wallArea}
+                      onChange={(e) => setWallArea(e.target.value)}
+                      min={1}
+                    />
+                  </div>
+                )}
+                {category?.name === 'Pool Cleaning' && (
+                  <div>
+                    <label className="block font-medium mb-2">Pool Size</label>
+                    <select
+                      className="border rounded px-3 py-2 w-full"
+                      value={poolSize}
+                      onChange={(e) => setPoolSize(e.target.value)}
+                    >
+                      <option value="">Select size</option>
+                      <option>Small Pool</option>
+                      <option>Medium Pool</option>
+                      <option>Large Pool</option>
+                    </select>
+                  </div>
+                )}
+                {category?.name === 'Fumigation (Pest Control)' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block font-medium mb-2">
+                        Pest Type
+                      </label>
+                      <select
+                        className="border rounded px-3 py-2 w-full"
+                        value={pestType}
+                        onChange={(e) => setPestType(e.target.value)}
+                      >
+                        <option value="">Select pest</option>
+                        <option>Ants</option>
+                        <option>Cockroaches</option>
+                        <option>Fleas</option>
+                        <option>Rodents</option>
+                        <option>Termites</option>
+                        <option>Bed Bugs</option>
+                        <option>General Preventative Spray</option>
+                        <option>Commercial Fumigation</option>
+                        <option>Emergency Infestation</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block font-medium mb-2">
+                        Property Size
+                      </label>
+                      <select
+                        className="border rounded px-3 py-2 w-full"
+                        value={propertySize}
+                        onChange={(e) => setPropertySize(e.target.value)}
+                      >
+                        <option value="">Select size</option>
+                        <option>Studio / 1 Bed (&lt;50m²)</option>
+                        <option>2 Bed (50–100m²)</option>
+                        <option>3 Bed (100–150m²)</option>
+                        <option>4+ Bed (150m²+)</option>
+                        <option>Small Property</option>
+                        <option>Medium Property</option>
+                        <option>Large Property</option>
+                        <option>Single Room</option>
+                        <option>Full Apartment</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block font-medium mb-2">
+                        Emergency Type
+                      </label>
+                      <select
+                        className="border rounded px-3 py-2 w-full"
+                        value={emergencyType}
+                        onChange={(e) => setEmergencyType(e.target.value)}
+                      >
+                        <option>Normal</option>
+                        <option>Emergency</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+                {category?.name === 'Rubble Removal' && (
+                  <div>
+                    <label className="block font-medium mb-2">Load Size</label>
+                    <select
+                      className="border rounded px-3 py-2 w-full"
+                      value={loadSize}
+                      onChange={(e) => setLoadSize(e.target.value)}
+                    >
+                      <option value="">Select load size</option>
+                      <option>Small Load (Bakkie)</option>
+                      <option>Medium Load (Trailer)</option>
+                      <option>Large Load (4-Ton Truck)</option>
+                      <option>Extra Large (8-Ton)</option>
+                      <option>Custom / Bulk Removal</option>
+                    </select>
+                  </div>
+                )}
+                {category?.name === 'Locksmith' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block font-medium mb-2">
+                        Locksmith Type
+                      </label>
+                      <select
+                        className="border rounded px-3 py-2 w-full"
+                        value={locksmithType}
+                        onChange={(e) => {
+                          setLocksmithType(e.target.value);
+                          setLocksmithSubType('');
+                        }}
+                      >
+                        <option value="">Select type</option>
+                        <option>Residential Locksmith</option>
+                        <option>Commercial Locksmith</option>
+                        <option>Automotive Locksmith</option>
+                      </select>
+                    </div>
+                    {locksmithType && (
+                      <div>
+                        <label className="block font-medium mb-2">
+                          Service
+                        </label>
+                        <select
+                          className="border rounded px-3 py-2 w-full"
+                          value={locksmithSubType}
+                          onChange={(e) => setLocksmithSubType(e.target.value)}
+                        >
+                          <option value="">Select service</option>
+                          {locksmithType === 'Residential Locksmith' &&
+                            [
+                              'Door Unlocking (House / Apartment)',
+                              'Lock Replacement',
+                              'Lock Installation (New Door)',
+                              'Rekeying Locks',
+                              'Gate Lock Repair',
+                              'Garage Door Lock',
+                              'Smart Lock Installation',
+                            ].map((opt) => <option key={opt}>{opt}</option>)}
+                          {locksmithType === 'Commercial Locksmith' &&
+                            [
+                              'Office Door Unlocking',
+                              'Lock Replacement',
+                              'Master Key System Setup',
+                              'Access Control Lock',
+                              'Filing Cabinet Unlock',
+                              'Emergency Lockout',
+                            ].map((opt) => <option key={opt}>{opt}</option>)}
+                          {locksmithType === 'Automotive Locksmith' &&
+                            [
+                              'Car Unlocking',
+                              'Lost Car Key Replacement',
+                              'Key Programming',
+                              'Broken Key Extraction',
+                              'Ignition Repair',
+                            ].map((opt) => <option key={opt}>{opt}</option>)}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {category?.name === 'Moving / Removals' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block font-medium mb-2">
+                        Truck Size
+                      </label>
+                      <select
+                        className="border rounded px-3 py-2 w-full"
+                        value={truckSize}
+                        onChange={(e) => setTruckSize(e.target.value)}
+                      >
+                        <option value="">Select truck</option>
+                        <option>H1 / Small Van</option>
+                        <option>2 Ton Truck</option>
+                        <option>4 Ton Truck</option>
+                        <option>8 Ton Truck</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block font-medium mb-2">Distance</label>
+                      <select
+                        className="border rounded px-3 py-2 w-full"
+                        value={moveDistance}
+                        onChange={(e) => setMoveDistance(e.target.value)}
+                      >
+                        <option value="">Select distance</option>
+                        <option>0-10 km (included)</option>
+                        <option>10-30 km (+R700)</option>
+                        <option>30-60 km (+R1,500)</option>
+                        <option>60-100 km (+R2,500)</option>
+                        <option>100km+ (Custom Quote)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block font-medium mb-2">
+                        Special Item
+                      </label>
+                      <select
+                        className="border rounded px-3 py-2 w-full"
+                        value={specialItem}
+                        onChange={(e) => setSpecialItem(e.target.value)}
+                      >
+                        <option value="">None</option>
+                        <option>Piano</option>
+                        <option>Pool Table</option>
+                        <option>Safe</option>
+                        <option>Double Door Fridge</option>
+                        <option>Heavy Machinery (Custom Quote)</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+                {/* ...existing options UI... */}
                 {optionsLoading ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {Array.from({ length: 3 }).map((_, i) => (
@@ -345,146 +594,80 @@ const BookingPage = () => {
             {/* Step 3: Address & Date */}
             {currentStep === 3 && (
               <div className="space-y-6">
-                {/* Address Section */}
+                {/* Location Section */}
                 <div>
-                  <h3 className="text-lg font-semibold mb-4">Select Address</h3>
-                  {!currentUser ? (
-                    <div className="rounded-lg border border-dashed p-6 text-center text-slate-600">
-                      Please log in to select an address or add a new one.
-                    </div>
-                  ) : addressesData.length === 0 && !showNewAddressForm ? (
-                    <div className="rounded-lg border border-dashed p-6 text-center">
-                      <p className="text-slate-600 mb-3">
-                        No saved addresses found.
+                  <h3 className="text-lg font-semibold mb-4">
+                    Select Location
+                  </h3>
+                  {/* Google Maps location picker placeholder */}
+                  <div className="mb-4">
+                    <div className="rounded-lg border p-4">
+                      <p className="text-slate-600 mb-2">
+                        Type your address below (Johannesburg or Pretoria only):
                       </p>
-                      <Button onClick={() => setShowNewAddressForm(true)}>
-                        Add New Address
-                      </Button>
-                    </div>
-                  ) : (
-                    <>
-                      <RadioGroup
-                        value={selectedAddressId}
-                        onValueChange={setSelectedAddressId}
-                      >
-                        {addressesData.map((address) => (
-                          <div
-                            key={address.id}
-                            className="flex items-start space-x-3 rounded-lg border p-4"
-                          >
-                            <RadioGroupItem
-                              value={address.id}
-                              id={address.id}
-                            />
-                            <Label
-                              htmlFor={address.id}
-                              className="flex-1 cursor-pointer"
-                            >
-                              <div className="font-semibold">
-                                {address.label}
-                                {address.is_primary && (
-                                  <Badge className="ml-2" variant="secondary">
-                                    Primary
-                                  </Badge>
-                                )}
-                              </div>
-                              <p className="text-sm text-slate-600">
-                                {address.line1}, {address.city},{' '}
-                                {address.state_province} {address.postal_code}
-                              </p>
-                            </Label>
-                          </div>
-                        ))}
-                      </RadioGroup>
-                      {!showNewAddressForm && (
-                        <Button
-                          variant="outline"
-                          className="mt-4"
-                          onClick={() => setShowNewAddressForm(true)}
+                      {isLoaded ? (
+                        <Autocomplete
+                          onLoad={(ac) =>
+                            setAutocomplete(
+                              ac as google.maps.places.Autocomplete,
+                            )
+                          }
+                          onPlaceChanged={() => {
+                            if (!autocomplete) return;
+                            const place = autocomplete.getPlace();
+                            const address = place.formatted_address || '';
+                            const city =
+                              (place.address_components || []).find(
+                                (comp: google.maps.GeocoderAddressComponent) =>
+                                  comp.types.includes('locality'),
+                              )?.long_name || '';
+                            const lat =
+                              typeof place.geometry?.location?.lat ===
+                              'function'
+                                ? place.geometry.location.lat()
+                                : null;
+                            const lng =
+                              typeof place.geometry?.location?.lng ===
+                              'function'
+                                ? place.geometry.location.lng()
+                                : null;
+                            // Validate city
+                            if (
+                              city.toLowerCase().includes('johannesburg') ||
+                              city.toLowerCase().includes('pretoria')
+                            ) {
+                              setLocationError('');
+                              setSelectedLocation({ lat, lng, city, address });
+                            } else {
+                              setLocationError(
+                                'Currently, our service is only available in Johannesburg and Pretoria.',
+                              );
+                              setSelectedLocation({ lat, lng, city, address });
+                            }
+                          }}
                         >
-                          + Add New Address
-                        </Button>
+                          <Input
+                            placeholder="Search for your address (Johannesburg or Pretoria only)"
+                            className="w-full"
+                            value={selectedLocation.address}
+                            onChange={(e) =>
+                              setSelectedLocation({
+                                ...selectedLocation,
+                                address: e.target.value,
+                              })
+                            }
+                          />
+                        </Autocomplete>
+                      ) : (
+                        <Input placeholder="Loading Google Maps..." disabled />
                       )}
-                    </>
-                  )}
-
-                  {showNewAddressForm && (
-                    <div className="mt-4 p-4 border rounded-lg space-y-4">
-                      <h4 className="font-semibold">New Address</h4>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="sm:col-span-2">
-                          <Label htmlFor="line1">Street Address</Label>
-                          <Input
-                            id="line1"
-                            value={newAddress.line1}
-                            onChange={(e) =>
-                              setNewAddress({
-                                ...newAddress,
-                                line1: e.target.value,
-                              })
-                            }
-                            placeholder="123 Main Street"
-                          />
+                      {locationError && (
+                        <div className="text-red-600 mt-2 font-medium">
+                          {locationError}
                         </div>
-                        <div>
-                          <Label htmlFor="city">City</Label>
-                          <Input
-                            id="city"
-                            value={newAddress.city}
-                            onChange={(e) =>
-                              setNewAddress({
-                                ...newAddress,
-                                city: e.target.value,
-                              })
-                            }
-                            placeholder="Cape Town"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="state_province">Province</Label>
-                          <Input
-                            id="state_province"
-                            value={newAddress.state_province}
-                            onChange={(e) =>
-                              setNewAddress({
-                                ...newAddress,
-                                state_province: e.target.value,
-                              })
-                            }
-                            placeholder="Western Cape"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="postal_code">Postal Code</Label>
-                          <Input
-                            id="postal_code"
-                            value={newAddress.postal_code}
-                            onChange={(e) =>
-                              setNewAddress({
-                                ...newAddress,
-                                postal_code: e.target.value,
-                              })
-                            }
-                            placeholder="8001"
-                          />
-                        </div>
-                      </div>
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          setShowNewAddressForm(false);
-                          setNewAddress({
-                            line1: '',
-                            city: '',
-                            state_province: '',
-                            postal_code: '',
-                          });
-                        }}
-                      >
-                        Cancel
-                      </Button>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
 
                 {/* Date & Time Section */}
@@ -540,77 +723,128 @@ const BookingPage = () => {
             {currentStep === 4 && (
               <div className="space-y-6">
                 {/* Booking Summary */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-4">
-                    Booking Summary
-                  </h3>
-                  <div className="rounded-lg border p-4 space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-slate-600">Service:</span>
-                      <span className="font-semibold">
-                        {selectedService?.name}
-                      </span>
+                <div className="border rounded-lg p-4 bg-white">
+                  <h3 className="font-semibold mb-2">Booking Summary</h3>
+                  <div className="text-sm text-slate-700">
+                    <div>
+                      Category: <b>{category?.name}</b>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-600">Category:</span>
-                      <span>{category.name}</span>
+                    <div>
+                      Service: <b>{selectedService?.name}</b>
                     </div>
-                    {selectedOptionsArray.length > 0 && (
+                    {category?.name === 'Home Cleaning' && propertySize && (
                       <div>
-                        <span className="text-slate-600">Add-ons:</span>
-                        <ul className="mt-1 ml-4 text-sm">
-                          {selectedOptionsArray.map((opt) => (
-                            <li key={opt.id}>
-                              • {opt.name} (+R{opt.price})
-                            </li>
-                          ))}
-                        </ul>
+                        Property Size: <b>{propertySize}</b>
                       </div>
                     )}
-                    <div className="flex justify-between">
-                      <span className="text-slate-600">Address:</span>
-                      <span className="text-right text-sm">
-                        {selectedAddress ? (
-                          <>
-                            {selectedAddress.line1}, {selectedAddress.city}
-                          </>
-                        ) : (
-                          'Not selected'
+                    {category?.name === 'Painting' && wallArea && (
+                      <div>
+                        Wall Area: <b>{wallArea} m²</b>
+                      </div>
+                    )}
+                    {category?.name === 'Pool Cleaning' && poolSize && (
+                      <div>
+                        Pool Size: <b>{poolSize}</b>
+                      </div>
+                    )}
+                    {category?.name === 'Fumigation (Pest Control)' && (
+                      <>
+                        {pestType && (
+                          <div>
+                            Pest Type: <b>{pestType}</b>
+                          </div>
                         )}
-                      </span>
+                        {propertySize && (
+                          <div>
+                            Property Size: <b>{propertySize}</b>
+                          </div>
+                        )}
+                        <div>
+                          Emergency: <b>{emergencyType}</b>
+                        </div>
+                      </>
+                    )}
+                    {category?.name === 'Rubble Removal' && loadSize && (
+                      <div>
+                        Load Size: <b>{loadSize}</b>
+                      </div>
+                    )}
+                    {category?.name === 'Locksmith' && locksmithType && (
+                      <>
+                        <div>
+                          Locksmith Type: <b>{locksmithType}</b>
+                        </div>
+                        {locksmithSubType && (
+                          <div>
+                            Service: <b>{locksmithSubType}</b>
+                          </div>
+                        )}
+                      </>
+                    )}
+                    {category?.name === 'Moving / Removals' && (
+                      <>
+                        {truckSize && (
+                          <div>
+                            Truck Size: <b>{truckSize}</b>
+                          </div>
+                        )}
+                        {moveDistance && (
+                          <div>
+                            Distance: <b>{moveDistance}</b>
+                          </div>
+                        )}
+                        {specialItem && (
+                          <div>
+                            Special Item: <b>{specialItem}</b>
+                          </div>
+                        )}
+                      </>
+                    )}
+                    <div>
+                      Date: <b>{selectedDate}</b>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-600">Date & Time:</span>
-                      <span>
-                        {selectedDate && selectedTime
-                          ? `${new Date(selectedDate).toLocaleDateString()} at ${selectedTime}`
-                          : 'Not selected'}
-                      </span>
+                    <div>
+                      Time: <b>{selectedTime}</b>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-600">Duration:</span>
-                      <span>{totalDuration} minutes</span>
+                    <div>
+                      Location:{' '}
+                      <b>
+                        {selectedLocation.address}
+                        {selectedLocation.city && `, ${selectedLocation.city}`}
+                      </b>
                     </div>
-                    <div className="border-t pt-3 flex justify-between text-lg font-bold">
-                      <span>Total Amount:</span>
-                      <span className="text-green-700">
-                        R{totalPrice.toFixed(2)}
-                      </span>
+                    <div>
+                      Total Price: <b>R{totalPrice}</b>
+                    </div>
+                    <div>
+                      Total Duration: <b>{totalDuration} min</b>
                     </div>
                   </div>
                 </div>
 
+                {/* Worker Availability Check */}
+                {checkingWorker && (
+                  <div className="text-blue-600">
+                    Checking worker availability...
+                  </div>
+                )}
+                {workerError && (
+                  <div className="text-red-600 font-medium">{workerError}</div>
+                )}
+
                 {/* Payment Section */}
                 <div>
-                  <h3 className="text-lg font-semibold mb-4">Payment</h3>
-                  <div className="rounded-lg border border-dashed p-8 text-center">
-                    <p className="text-slate-600 mb-4">
-                      Click below to proceed with secure payment via Ozow
-                    </p>
-                    <Button size="lg" className="w-full sm:w-auto">
-                      Proceed to Payment - R{totalPrice.toFixed(2)}
-                    </Button>
+                  <div className="font-semibold mb-2">Payment</div>
+                  <div className="text-slate-600 mb-2">
+                    Payment integration coming soon!
                   </div>
+                  <button
+                    className="bg-black text-white px-4 py-2 rounded disabled:opacity-50"
+                    disabled={!workerAvailable || checkingWorker}
+                    onClick={() => alert('Payment integration coming soon!')}
+                  >
+                    Complete Booking
+                  </button>
                 </div>
               </div>
             )}
@@ -632,18 +866,36 @@ const BookingPage = () => {
             {currentStep === 1 ? 'Back to Categories' : 'Previous'}
           </Button>
           <Button
-            onClick={() => {
+            onClick={async () => {
               if (currentStep === 1 && selectedServiceId) {
                 setCurrentStep(2);
               } else if (currentStep === 2) {
                 setCurrentStep(3);
               } else if (
                 currentStep === 3 &&
-                selectedAddressId &&
+                selectedLocation.city &&
+                !locationError &&
                 selectedDate &&
                 selectedTime
               ) {
-                setCurrentStep(4);
+                // Static worker availability check before Step 4
+                setCheckingWorker(true);
+                setWorkerError('');
+                // Simulate API call delay
+                setTimeout(() => {
+                  // Simple static logic: block booking if time is 17:00 (simulate no worker available)
+                  if (selectedTime === '17:00') {
+                    setWorkerAvailable(false);
+                    setWorkerError(
+                      'No worker available for this slot. Please choose another time.',
+                    );
+                  } else {
+                    setWorkerAvailable(true);
+                    setWorkerError('');
+                    setCurrentStep(4);
+                  }
+                  setCheckingWorker(false);
+                }, 1000);
               } else if (currentStep === 4) {
                 // Handle payment/booking creation
                 alert('Payment integration coming soon!');
@@ -651,8 +903,23 @@ const BookingPage = () => {
             }}
             disabled={
               (currentStep === 1 && !selectedServiceId) ||
+              (currentStep === 2 &&
+                ((category?.name === 'Home Cleaning' && !propertySize) ||
+                  (category?.name === 'Painting' && !wallArea) ||
+                  (category?.name === 'Pool Cleaning' && !poolSize) ||
+                  (category?.name === 'Fumigation (Pest Control)' &&
+                    (!pestType || !propertySize)) ||
+                  (category?.name === 'Rubble Removal' && !loadSize) ||
+                  (category?.name === 'Locksmith' &&
+                    (!locksmithType || !locksmithSubType)) ||
+                  (category?.name === 'Moving / Removals' &&
+                    (!truckSize || !moveDistance)))) ||
               (currentStep === 3 &&
-                (!selectedAddressId || !selectedDate || !selectedTime))
+                (!selectedLocation.city ||
+                  !!locationError ||
+                  !selectedDate ||
+                  !selectedTime)) ||
+              (currentStep === 4 && (!workerAvailable || checkingWorker))
             }
           >
             {currentStep === 4 ? 'Complete Booking' : 'Next'}
