@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { createAdminClient, createClient } from '@/lib/supabase';
+import { createAdminClient } from '@/lib/supabase';
 
 export async function GET(
   request: NextRequest,
@@ -31,6 +31,24 @@ export async function GET(
 
     if (profileError) throw profileError;
 
+    // Get all worker_services for this worker
+    const { data: workerServices } = await supabase
+      .from('worker_services')
+      .select(
+        `service_id, service:services (name, service_categories:category_id (name))`,
+      )
+      .eq('worker_id', workerId);
+
+    const serviceNames = (workerServices || [])
+      .map((ws: any) => ws?.service?.name)
+      .filter(Boolean);
+    const categoryNames = (workerServices || [])
+      .map((ws: any) => ws?.service?.service_categories?.name)
+      .filter(Boolean);
+    const serviceIds = (workerServices || [])
+      .map((ws: any) => ws?.service_id)
+      .filter(Boolean);
+
     const { data: primaryAddress } = await supabase
       .from('user_addresses')
       .select('*')
@@ -43,6 +61,9 @@ export async function GET(
         ...profile,
         ...worker,
         primary_address: primaryAddress || null,
+        service_names: Array.from(new Set(serviceNames)),
+        service_category_names: Array.from(new Set(categoryNames)),
+        service_ids: Array.from(new Set(serviceIds)),
       },
     });
   } catch (error) {
@@ -81,10 +102,12 @@ export async function PUT(
       email,
       avatar_url,
       status,
-      service_id,
       address,
-      ...workerFields
+      service_ids,
+      ...rest
     } = body;
+    // Remove service_ids from workerFields
+    const workerFields = { ...rest };
 
     // Update profile if provided
     if (full_name || email || avatar_url !== undefined) {
@@ -119,24 +142,26 @@ export async function PUT(
 
     if (workerUpdateError) throw workerUpdateError;
 
-    // Update worker service assignment if provided
-    if (service_id) {
+    // Update worker service assignments if provided
+    if (Array.isArray(body.service_ids)) {
+      // Remove all previous assignments
       const { error: deleteWorkerServicesError } = await supabase
         .from('worker_services')
         .delete()
         .eq('worker_id', workerId);
-
       if (deleteWorkerServicesError) throw deleteWorkerServicesError;
 
-      const { error: insertWorkerServiceError } = await supabase
-        .from('worker_services')
-        .insert({
-          worker_id: workerId,
-          service_id,
-          is_active: true,
-        });
-
-      if (insertWorkerServiceError) throw insertWorkerServiceError;
+      // Insert new assignments
+      for (const sid of body.service_ids) {
+        const { error: insertWorkerServiceError } = await supabase
+          .from('worker_services')
+          .insert({
+            worker_id: workerId,
+            service_id: sid,
+            is_active: true,
+          });
+        if (insertWorkerServiceError) throw insertWorkerServiceError;
+      }
     }
 
     // Update worker address
@@ -229,8 +254,22 @@ export async function PUT(
     });
   } catch (error) {
     console.error('Error updating worker:', error);
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : typeof error === 'string'
+          ? error
+          : error &&
+              typeof error === 'object' &&
+              'toString' in error &&
+              typeof error.toString === 'function'
+            ? error.toString()
+            : 'Failed to update worker';
     return NextResponse.json(
-      { error: 'Failed to update worker' },
+      {
+        error: errorMessage,
+        details: error,
+      },
       { status: 500 },
     );
   }

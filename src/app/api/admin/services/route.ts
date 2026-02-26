@@ -11,7 +11,7 @@ export async function GET() {
       .select(
         `
         *,
-        category:service_categories(id, name, slug)
+        category:service_categories(id, name, slug, charge_type)
       `,
       )
       .eq('is_active', true)

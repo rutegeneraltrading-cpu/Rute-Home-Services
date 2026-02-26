@@ -20,11 +20,22 @@ export interface WorkerProfile {
   updated_at?: string;
 }
 
+// Extended type for admin worker table with tooltip details
+export interface WorkerProfileWithDetails extends WorkerProfile {
+  service_category_details?: { name: string; charge_type: string }[];
+  service_details?: {
+    name: string;
+    base_price: number;
+    category_name: string;
+    charge_type: string;
+  }[];
+}
+
 export interface CreateWorkerDTO {
   full_name: string;
   email: string;
   phone?: string;
-  service_id: string;
+  service_ids: string[];
   address: CreateUserAddressDTO;
   profile_status?: 'active' | 'inactive' | 'suspended';
 }
@@ -35,7 +46,7 @@ export interface UpdateWorkerDTO {
   phone?: string;
   avatar_url?: string;
   status?: 'active' | 'inactive' | 'suspended';
-  service_id?: string;
+  service_ids?: string[];
   address?: CreateUserAddressDTO;
 }
 

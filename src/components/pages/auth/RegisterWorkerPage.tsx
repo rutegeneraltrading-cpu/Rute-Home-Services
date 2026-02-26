@@ -16,6 +16,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useCreateWorker, useGetServices } from '@/lib/client/api';
+import { MultiSelect } from '@/components/common/MultiSelect';
+import { Service } from '@/lib/types/admin/services';
 import { workerFormSchema, WorkerFormValues } from '@/lib/validations';
 
 const RegisterWorkerPage = () => {
@@ -23,7 +25,7 @@ const RegisterWorkerPage = () => {
   const { toast } = useToast();
   const createWorkerMutation = useCreateWorker();
   const { data: services, isLoading: servicesLoading } = useGetServices();
-  const [selectedServiceId, setSelectedServiceId] = useState('');
+  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
@@ -39,7 +41,7 @@ const RegisterWorkerPage = () => {
       full_name: '',
       email: '',
       phone: '',
-      service_id: '',
+      service_ids: [],
       address: {
         label: 'home',
         recipient_name: '',
@@ -58,7 +60,8 @@ const RegisterWorkerPage = () => {
   const isBaseComplete =
     Boolean(watch('full_name')) &&
     Boolean(watch('email')) &&
-    Boolean(watch('service_id'));
+    Array.isArray(watch('service_ids')) &&
+    watch('service_ids').length > 0;
 
   const isAddressComplete =
     Boolean(watch('address.line1')) &&
@@ -76,7 +79,7 @@ const RegisterWorkerPage = () => {
         full_name: data.full_name,
         email: data.email,
         phone: data.phone,
-        service_id: data.service_id,
+        service_ids: data.service_ids,
         profile_status: 'inactive',
         address: {
           ...data.address,
@@ -88,7 +91,7 @@ const RegisterWorkerPage = () => {
       });
 
       reset();
-      setSelectedServiceId('');
+      setSelectedServiceIds([]);
       toast({
         title: 'Worker account created',
         description: 'Your worker account has been created successfully.',
@@ -126,9 +129,7 @@ const RegisterWorkerPage = () => {
                   {formErrors.full_name.message}
                 </p>
               )}
-            </div>
 
-            <div>
               <Label htmlFor="email">Email *</Label>
               <Input
                 id="email"
@@ -142,6 +143,30 @@ const RegisterWorkerPage = () => {
                   {formErrors.email.message}
                 </p>
               )}
+
+              <Label className="block text-sm font-medium mb-1">
+                Services *
+              </Label>
+              <MultiSelect
+                options={
+                  (services as Service[] | undefined)?.map((s) => ({
+                    label: `${s.name} (${s.base_price}ZAR/${s.category?.charge_type || ''})`,
+                    value: s.id,
+                  })) || []
+                }
+                value={selectedServiceIds}
+                onChange={(newSelected) => {
+                  setSelectedServiceIds(newSelected);
+                  setValue('service_ids', newSelected, { shouldDirty: true });
+                }}
+                placeholder="Select services"
+                disabled={servicesLoading || isSubmitting}
+              />
+              {formErrors.service_ids && (
+                <div className="text-xs text-red-500 mt-1">
+                  {formErrors.service_ids.message}
+                </div>
+              )}
             </div>
 
             <div>
@@ -152,44 +177,6 @@ const RegisterWorkerPage = () => {
                 className="h-10"
                 {...register('phone')}
               />
-            </div>
-
-            <div>
-              <Label htmlFor="service_id">Service *</Label>
-              <Select
-                value={selectedServiceId}
-                onValueChange={(value) => {
-                  setSelectedServiceId(value);
-                  setValue('service_id', value, { shouldValidate: true });
-                }}
-                disabled={servicesLoading || isSubmitting}
-              >
-                <SelectTrigger id="service_id" className="h-10">
-                  <SelectValue placeholder="Select a service" />
-                </SelectTrigger>
-                <SelectContent>
-                  {servicesLoading ? (
-                    <SelectItem value="loading" disabled>
-                      Loading services...
-                    </SelectItem>
-                  ) : services && services.length > 0 ? (
-                    services.map((service) => (
-                      <SelectItem key={service.id} value={service.id}>
-                        {service.name} (R{service.base_price})
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="none" disabled>
-                      No services available
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-              {formErrors.service_id && (
-                <p className="text-sm text-red-500 mt-1">
-                  {formErrors.service_id.message}
-                </p>
-              )}
             </div>
           </div>
 
@@ -345,7 +332,7 @@ const RegisterWorkerPage = () => {
                 variant="outline"
                 onClick={() => {
                   reset();
-                  setSelectedServiceId('');
+                  setSelectedServiceIds([]);
                 }}
                 disabled={isSubmitting}
               >

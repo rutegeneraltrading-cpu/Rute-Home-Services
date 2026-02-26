@@ -105,6 +105,7 @@ export interface Service {
     id: string;
     name: string;
     slug: string;
+    charge_type: 'hourly' | 'day';
   };
 }
 

@@ -7,14 +7,8 @@ export async function POST(request: NextRequest) {
     const supabaseAdmin = await createAdminClient();
 
     const body = await request.json();
-    const {
-      full_name,
-      email,
-      phone,
-      address,
-      service_id,
-      profile_status,
-    } = body;
+    const { full_name, email, phone, address, service_ids, profile_status } =
+      body;
 
     const statusToSet: 'active' | 'inactive' | 'suspended' =
       profile_status === 'inactive' || profile_status === 'suspended'
@@ -22,9 +16,17 @@ export async function POST(request: NextRequest) {
         : 'active';
 
     // Validate required fields
-    if (!full_name || !email || !service_id) {
+    if (
+      !full_name ||
+      !email ||
+      !Array.isArray(service_ids) ||
+      service_ids.length === 0
+    ) {
       return NextResponse.json(
-        { error: 'Missing required fields: full_name, email, service_id' },
+        {
+          error:
+            'Missing required fields: full_name, email, service_ids (array)',
+        },
         { status: 400 },
       );
     }
@@ -175,28 +177,31 @@ export async function POST(request: NextRequest) {
       console.log('Worker record created:', workerId);
     }
 
-    // Step 4: Create worker_services entry if missing
-    const { data: existingWorkerService, error: existingWorkerServiceError } =
-      await supabaseAdmin
-        .from('worker_services')
-        .select('id')
-        .eq('worker_id', workerId)
-        .eq('service_id', service_id)
-        .maybeSingle();
-
-    if (existingWorkerServiceError) throw existingWorkerServiceError;
-
-    if (!existingWorkerService) {
-      const { error: workerServiceError } = await supabaseAdmin
-        .from('worker_services')
-        .insert({
-          worker_id: workerId,
-          service_id,
-          is_active: true,
-        });
-
-      if (workerServiceError) throw workerServiceError;
-      console.log('Worker service created');
+    // Step 4: Create worker_services entries for each service_id
+    if (Array.isArray(service_ids) && service_ids.length > 0) {
+      for (const sid of service_ids) {
+        // Check if already exists
+        const {
+          data: existingWorkerService,
+          error: existingWorkerServiceError,
+        } = await supabaseAdmin
+          .from('worker_services')
+          .select('id')
+          .eq('worker_id', workerId)
+          .eq('service_id', sid)
+          .maybeSingle();
+        if (existingWorkerServiceError) throw existingWorkerServiceError;
+        if (!existingWorkerService) {
+          const { error: workerServiceError } = await supabaseAdmin
+            .from('worker_services')
+            .insert({
+              worker_id: workerId,
+              service_id: sid,
+              is_active: true,
+            });
+          if (workerServiceError) throw workerServiceError;
+        }
+      }
     }
 
     // Step 5: Save worker address in user_addresses

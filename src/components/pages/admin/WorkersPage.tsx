@@ -7,19 +7,27 @@ import {
   WorkerForm,
   WorkerEditModal,
 } from '@/components/pages/admin/workerform';
-import { useGetWorkers, useDeleteWorker, Worker } from '@/lib/client/api';
+import { useGetWorkers, useDeleteWorker } from '@/lib/client/api';
 import { DataTable, DeleteConfirmationDialog } from '@/components/common';
-import { DataTableConfig, TableColumn, TableAction } from '@/lib/types';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import type { DataTableConfig, TableColumn, TableAction } from '@/lib/types';
+import type { WorkerProfileWithDetails } from '@/lib/client/api/workers/workers.api';
 
 const WorkersPage = () => {
   const { data, isLoading } = useGetWorkers();
-  const workers = data?.workers || [];
+  const workers: WorkerProfileWithDetails[] = data?.workers || [];
   const deleteWorkerMutation = useDeleteWorker();
   const [isWorkerFormOpen, setIsWorkerFormOpen] = useState(false);
-  const [editingWorker, setEditingWorker] = useState<Worker | null>(null);
-  const [deletingWorker, setDeletingWorker] = useState<Worker | null>(null);
+  const [editingWorker, setEditingWorker] =
+    useState<WorkerProfileWithDetails | null>(null);
+  const [deletingWorker, setDeletingWorker] =
+    useState<WorkerProfileWithDetails | null>(null);
 
-  const columns: TableColumn<Worker>[] = [
+  const columns: TableColumn<WorkerProfileWithDetails>[] = [
     {
       id: 'full_name',
       header: 'Name',
@@ -44,16 +52,88 @@ const WorkersPage = () => {
       header: 'Service Category',
       accessorKey: 'service_category_names',
       sortable: false,
-      cell: (value) =>
-        Array.isArray(value) && value.length > 0 ? value.join(', ') : '-',
+      cell: (value, row) => {
+        // Use service_category_details for tooltip
+        const details = (row?.service_category_details || []) as {
+          name: string;
+          charge_type: string;
+        }[];
+        const categories =
+          Array.isArray(value) && value.length > 0 ? value : [];
+        return categories.length > 0 ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="cursor-pointer underline decoration-dotted">
+                {categories.join(', ')}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent
+              className="bg-white border text-black-700"
+              align="start"
+            >
+              <div className="max-w-xs">
+                <div className="font-semibold mb-1">Selected Categories:</div>
+                <ol className="text-xs list-decimal list-inside">
+                  {details.map((cat: { name: string; charge_type: string }) => (
+                    <li key={cat.name}>{`${cat.name} (${cat.charge_type})`}</li>
+                  ))}
+                </ol>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        ) : (
+          '-'
+        );
+      },
     },
     {
       id: 'service_names',
-      header: 'Service',
+      header: 'Services',
       accessorKey: 'service_names',
       sortable: false,
-      cell: (value) =>
-        Array.isArray(value) && value.length > 0 ? value.join(', ') : '-',
+      cell: (value, row) => {
+        // Use service_details for tooltip
+        const details = (row?.service_details || []) as {
+          name: string;
+          base_price: number;
+          category_name: string;
+          charge_type: string;
+        }[];
+        const services = Array.isArray(value) && value.length > 0 ? value : [];
+        return services.length > 0 ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="cursor-pointer underline decoration-dotted">
+                {services.join(', ')}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent
+              className="bg-white border text-black-700"
+              align="start"
+            >
+              <div className="max-w-xs">
+                <div className="font-semibold mb-1">Selected Services:</div>
+                <ol className="text-xs list-decimal list-inside">
+                  {details.map(
+                    (srv: {
+                      name: string;
+                      base_price: number;
+                      category_name: string;
+                      charge_type: string;
+                    }) => (
+                      <li key={srv.name}>
+                        {`${srv.name} - ${srv.base_price}/${srv.charge_type} `}
+                      </li>
+                    ),
+                  )}
+                </ol>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        ) : (
+          '-'
+        );
+      },
     },
     {
       id: 'rating_avg',
@@ -95,8 +175,8 @@ const WorkersPage = () => {
       id: 'edit',
       label: 'Edit',
       icon: Edit2,
-      onClick: (worker: Worker) => {
-        setEditingWorker(worker);
+      onClick: (item) => {
+        setEditingWorker(item as WorkerProfileWithDetails);
       },
     },
     {
@@ -104,13 +184,13 @@ const WorkersPage = () => {
       label: 'Delete',
       icon: Trash2,
       variant: 'destructive',
-      onClick: (worker: Worker) => {
-        setDeletingWorker(worker);
+      onClick: (item) => {
+        setDeletingWorker(item as WorkerProfileWithDetails);
       },
     },
   ];
 
-  const tableConfig: DataTableConfig<Worker> = {
+  const tableConfig: DataTableConfig<WorkerProfileWithDetails> = {
     data: workers,
     columns,
     actions,
@@ -141,7 +221,7 @@ const WorkersPage = () => {
         </Button>
       </div>
 
-      <DataTable<Worker> config={tableConfig} />
+      <DataTable<WorkerProfileWithDetails> config={tableConfig} />
 
       <WorkerForm
         open={isWorkerFormOpen}
