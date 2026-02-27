@@ -25,6 +25,7 @@ const HeroSection = () => {
     name: string;
     image_url?: string | null;
     created_at?: string;
+    charge_type?: string;
   }> = (categoriesData.categories || []).slice().sort((a, b) => {
     if (!a.created_at || !b.created_at) return 0;
     return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
@@ -52,6 +53,14 @@ const HeroSection = () => {
     description?: string;
     category_id: string;
     image_url?: string;
+    base_price?: number;
+  };
+  type Category = {
+    id: string;
+    name: string;
+    image_url?: string | null;
+    created_at?: string;
+    charge_type?: string;
   };
   type Product = { id: string; name: string; description?: string };
   const suggestions = useMemo(() => {
@@ -185,50 +194,62 @@ const HeroSection = () => {
         {/* Categories Row */}
         <div className="w-full overflow-x-auto border-b border-slate-200">
           <div className="flex items-center text-center gap-4 pb-2">
-            {categories.map(
-              (cat: {
-                id: string;
-                name: string;
-                image_url?: string | null;
-              }) => (
-                <div
-                  key={cat.id}
-                  className={`flex flex-col items-center min-w-30 cursor-pointer px-2 py-4 rounded-lg transition-all ${selectedCategory === cat.id ? 'border-b-2 border-l-2 border-green-100 shadow-md' : 'border-transparent'}`}
-                  onClick={() => setSelectedCategory(cat.id)}
-                >
-                  {cat.image_url && typeof cat.image_url === 'string' && (
-                    <Image
-                      src={cat.image_url}
-                      alt={cat.name}
-                      width={60}
-                      height={60}
-                      className="rounded-full mb-2 object-cover"
-                    />
-                  )}
-                  <span className={`text-sm font-medium `}>{cat.name}</span>
-                </div>
-              ),
-            )}
+            {categories.map((cat: Category) => (
+              <div
+                key={cat.id}
+                className={`flex flex-col items-center min-w-30 cursor-pointer px-2 py-4 rounded-lg transition-all ${selectedCategory === cat.id ? 'border-b-2 border-l-2 border-green-100 shadow-md' : 'border-transparent'}`}
+                onClick={() => setSelectedCategory(cat.id)}
+              >
+                {cat.image_url && typeof cat.image_url === 'string' && (
+                  <Image
+                    src={cat.image_url}
+                    alt={cat.name}
+                    width={60}
+                    height={60}
+                    className="rounded-full mb-2 object-cover"
+                  />
+                )}
+                <span className={`text-sm font-medium `}>{cat.name}</span>
+              </div>
+            ))}
           </div>
         </div>
         {/* Services List for Selected Category */}
         <div className="w-full overflow-x-auto">
-          <div className="flex gap-4">
+          <div className="flex gap-4 min-w-max">
             {servicesForCategory.length === 0 && (
               <div className="text-slate-500 text-center w-full">
                 No services found for this category.
               </div>
             )}
-            {servicesForCategory.map((service: Service) => (
-              <div
-                key={service.id}
-                className="border-2 border-slate-600 hover:border-slate-400 rounded-xl px-4 py-2 flex flex-col items-center cursor-pointer hover:bg-slate-50 transition-colors"
-              >
-                <span className="font-semibold text-slate-900 hover:text-slate-600 mb-1">
-                  {service.name}
-                </span>
-              </div>
-            ))}
+            {servicesForCategory.map((service: Service) => {
+              const category = categories.find(
+                (c) => c.id === service.category_id,
+              );
+              const chargeType = category?.charge_type || '';
+              return (
+                <div
+                  key={service.id}
+                  className="border-2 border-slate-500 hover:border-slate-400 rounded-xl px-4 py-2 flex items-center cursor-pointer hover:bg-slate-50 transition-colors"
+                  style={{ minWidth: 'fit-content', width: 'fit-content' }}
+                >
+                  <span
+                    className="text-base font-semibold text-slate-900 whitespace-nowrap"
+                    style={{ width: 'fit-content' }}
+                  >
+                    {service.name} {' | '}
+                    {service.base_price != null
+                      ? `${service.base_price} ZAR`
+                      : 'Price on request'}
+                    {chargeType && (
+                      <span className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full border border-green-200 ml-2">
+                        {`per ${chargeType}`}
+                      </span>
+                    )}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
