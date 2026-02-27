@@ -7,10 +7,11 @@ import { useQuery } from '@tanstack/react-query';
 import { Button, Card, CardDescription, CardHeader, CardTitle } from '../../ui';
 import { usePathname } from 'next/navigation';
 
-const ServicesSection = () => {
+const ServicesPage = () => {
   // Fetch services data
   type Service = {
     id: string;
+    slug: string;
     name: string;
     base_price?: number;
     category_id: string;
@@ -140,7 +141,7 @@ const ServicesSection = () => {
                           {servicesForCategory.map((service) => (
                             <Link
                               key={service.id}
-                              href={`/booking?service=${service.id}`}
+                              href={`/booking?service=${service.slug}`}
                               className="group"
                             >
                               <span
@@ -178,4 +179,4 @@ const ServicesSection = () => {
   );
 };
 
-export default ServicesSection;
+export default ServicesPage;

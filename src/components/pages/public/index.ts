@@ -6,7 +6,7 @@ import BookingPage from './BookingPage';
 import CheckoutPage from './CheckoutPage';
 import ContactUsPage from './ContactUsPage';
 import HowItWorksPage from './HowItWorksPage';
-import ServicesSection from './ServicesSection';
+import ServicesPPage from './ServicesPPage';
 import SingleBlogsPage from './SingleBlogsPage';
 import RefundPolicyPage from './RefundPolicyPage';
 import PrivacyPolicyPage from './PrivacyPolicyPage';
@@ -23,7 +23,7 @@ export {
   ContactUsPage,
   HowItWorksPage,
   SingleBlogsPage,
-  ServicesSection,
+  ServicesPPage,
   RefundPolicyPage,
   PrivacyPolicyPage,
   SingleProductsPage,

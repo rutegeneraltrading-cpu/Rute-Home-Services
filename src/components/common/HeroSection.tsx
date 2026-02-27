@@ -54,6 +54,7 @@ const HeroSection = () => {
 
   type Service = {
     id: string;
+    slug: string;
     name: string;
     description?: string;
     category_id: string;
@@ -235,8 +236,9 @@ const HeroSection = () => {
               );
               const chargeType = category?.charge_type || '';
               return (
-                <div
+                <a
                   key={service.id}
+                  href={`/booking?service=${service.slug}`}
                   className="border-2 border-green-500 rounded-full bg-white hover:bg-green-50 hover:border-green-200 px-4 py-2 flex items-center cursor-pointer transition-colors"
                   style={{ minWidth: 'fit-content', width: 'fit-content' }}
                 >
@@ -254,7 +256,7 @@ const HeroSection = () => {
                       </span>
                     )}
                   </span>
-                </div>
+                </a>
               );
             })}
           </div>

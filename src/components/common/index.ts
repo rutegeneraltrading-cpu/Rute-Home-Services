@@ -14,7 +14,7 @@ export { default as WhyChooseUsSection } from './WhyChooseUsSection';
 export { default as TestimonialsSection } from './TestimonialsSection';
 export { default as FAQSection } from './FAQSection';
 export { default as HeroSection } from './HeroSection';
-export { default as ServicesSection } from '../pages/public/ServicesSection';
+export { default as ServicesSection } from '../pages/public/ServicesPPage';
 export { default as ProductsSection } from './ProductsSection';
 export { ProductCard } from './ProductCard';
 export { default as AuthRequiredModal } from './AuthRequiredModal';
