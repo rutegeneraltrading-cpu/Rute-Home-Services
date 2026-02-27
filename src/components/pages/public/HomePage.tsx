@@ -3,7 +3,7 @@ import {
   HeroSection,
   AboutUsSection,
   ProductsSection,
-  ServicesSection,
+  // ServicesSection,
   TestimonialsSection,
 } from '@/components/common';
 
@@ -11,9 +11,9 @@ const HomePage = () => {
   return (
     <div>
       <HeroSection />
-      <ServicesSection />
-      <ProductsSection />
+      {/* <ServicesSection /> */}
       <AboutUsSection />
+      <ProductsSection />
       {/* <WhyChooseUsSection /> */}
       <TestimonialsSection />
       <FAQSection />

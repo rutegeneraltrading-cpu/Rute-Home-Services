@@ -1,5 +1,4 @@
 import { FC } from 'react';
-import clsx from 'clsx';
 
 import { HeaderProps, IBlogs } from '@/lib/types';
 import SearchBar from './SearchBar';

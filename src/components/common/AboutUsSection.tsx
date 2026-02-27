@@ -12,11 +12,11 @@ import {
 const AboutUsSection = () => {
   return (
     <section className="py-16 relative overflow-hidden">
-      <div className="absolute inset-0 bg-linear-to-br from-green-50 via-emerald-50 to-white" />
-      <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-green-200/40 blur-3xl" />
-      <div className="absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-emerald-200/40 blur-3xl" />
-      <div className="container mx-auto relative">
-        <div className="rounded-3xl border border-green-100/60 bg-white/70 backdrop-blur py-8 px-4 lg:p-12 shadow-lg">
+      <div className="absolute inset-0 " />
+      {/* <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-green-200/40 blur-3xl" />
+      <div className="absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-emerald-200/40 blur-3xl" /> */}
+      <div className="container mx-auto relative lg:px-0 px-4">
+        <div className="rounded-3xl  bg-white/70">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
             <div className="space-y-5">
               <Badge variant="secondary" className="w-fit text-sm">
