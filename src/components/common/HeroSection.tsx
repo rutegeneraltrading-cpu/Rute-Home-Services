@@ -8,6 +8,7 @@ import {
   useGetServices,
   useGetProducts,
 } from '@/lib/client/api';
+import { Loading } from './Loading';
 
 const HeroSection = () => {
   const [filter, setFilter] = useState<'Services' | 'Products'>('Services');
@@ -16,8 +17,12 @@ const HeroSection = () => {
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
   const filterDropdownRef = useRef<HTMLDivElement>(null);
 
-  const { data: categoriesData = { categories: [] } } = useGetCategories();
-  const { data: servicesData = [] } = useGetServices();
+  const {
+    data: categoriesData = { categories: [] },
+    isLoading: categoriesLoading,
+  } = useGetCategories();
+  const { data: servicesData = [], isLoading: servicesLoading } =
+    useGetServices();
   const { data: productsData = [] } = useGetProducts();
 
   const categories: Array<{
@@ -89,6 +94,8 @@ const HeroSection = () => {
     );
   }, [selectedCategory, servicesData]);
 
+  if (categoriesLoading || servicesLoading)
+    return <Loading fullScreen className="bg-white" />;
   return (
     <>
       <section className="bg-linear-to-b from-green-50 to-white py-10">
@@ -197,7 +204,7 @@ const HeroSection = () => {
             {categories.map((cat: Category) => (
               <div
                 key={cat.id}
-                className={`flex flex-col items-center min-w-30 cursor-pointer px-2 py-4 rounded-lg transition-all ${selectedCategory === cat.id ? 'border-b-2 border-l-2 border-green-100 shadow-md' : 'border-transparent'}`}
+                className={`flex flex-col items-center min-w-30 cursor-pointer px-2 py-4 rounded-lg transition-all border-b-2 border-l-2 ${selectedCategory === cat.id ? 'border-green-500 shadow-md' : 'border-transparent hover:border-slate-200'}`}
                 onClick={() => setSelectedCategory(cat.id)}
               >
                 {cat.image_url && typeof cat.image_url === 'string' && (
@@ -230,7 +237,7 @@ const HeroSection = () => {
               return (
                 <div
                   key={service.id}
-                  className="border-2 border-slate-500 hover:border-slate-400 rounded-xl px-4 py-2 flex items-center cursor-pointer hover:bg-slate-50 transition-colors"
+                  className="border-2 border-green-500 rounded-full bg-white hover:bg-green-50 hover:border-green-200 px-4 py-2 flex items-center cursor-pointer transition-colors"
                   style={{ minWidth: 'fit-content', width: 'fit-content' }}
                 >
                   <span
