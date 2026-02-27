@@ -106,6 +106,7 @@ export interface Service {
     name: string;
     slug: string;
     charge_type: 'hourly' | 'day';
+    description?: string;
   };
 }
 

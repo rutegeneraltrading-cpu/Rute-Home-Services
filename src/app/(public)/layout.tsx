@@ -11,7 +11,7 @@ export default function RootLayout({
       <body>
         <CartProvider>
           <PublicNavbar />
-          <div className="min-h-screen">{children}</div>
+          <div style={{ minHeight: 'calc(100vh - 100px)' }}>{children}</div>
           <PublicFooter />
         </CartProvider>
       </body>

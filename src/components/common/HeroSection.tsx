@@ -1,5 +1,6 @@
 'use client';
 import { useState, useMemo, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Search, ChevronDown } from 'lucide-react';
 import { Button, Input } from '../ui';
@@ -69,6 +70,8 @@ const HeroSection = () => {
     charge_type?: string;
   };
   type Product = { id: string; name: string; description?: string };
+  const router = useRouter();
+
   const suggestions = useMemo(() => {
     if (!search) return [];
     if (filter === 'Services') {
@@ -179,7 +182,16 @@ const HeroSection = () => {
                       <li
                         key={item.id || idx}
                         className="px-4 py-3 hover:bg-slate-100 cursor-pointer transition-colors"
-                        onMouseDown={() => setSearch(item.name)}
+                        onMouseDown={() => {
+                          setSearch(item.name);
+                          setShowSuggestions(false);
+                          if (filter === 'Services' && 'slug' in item) {
+                            router.push(`/booking?service=${item.slug}`);
+                          } else if (filter === 'Products' && 'id' in item) {
+                            // Assuming product slug is item.id or add slug property if available
+                            router.push(`/shop/${item.id}`);
+                          }
+                        }}
                       >
                         <span className="font-medium text-slate-700">
                           {item.name}
