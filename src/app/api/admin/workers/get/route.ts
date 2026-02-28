@@ -35,11 +35,15 @@ export async function GET() {
               charge_type
             )
           )
+        ),
+        worker_documents:worker_documents (
+        document_type,
+        file_url,
+        status  
         )
       `,
       )
       .order('created_at', { ascending: false });
-
     if (workersError) throw workersError;
 
     // Flatten the response
@@ -105,6 +109,14 @@ export async function GET() {
         })
         .filter(Boolean);
 
+      // Flatten worker_documents
+      const workerDocuments = (w.worker_documents || []).map((doc: any) => ({
+        id: doc.id,
+        document_type: doc.document_type,
+        file_url: doc.file_url,
+        status: doc.status,
+      }));
+
       return {
         ...w.profiles,
         ...w,
@@ -114,6 +126,7 @@ export async function GET() {
         service_ids: Array.from(new Set(serviceIds)),
         service_category_details,
         service_details: serviceDetails,
+        worker_documents: workerDocuments,
         profiles: undefined,
         worker_services: undefined,
       };

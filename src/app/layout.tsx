@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { QueryProvider } from '@/lib/client/providers';
 import { Toaster } from '@/components/ui';
+import 'react-phone-input-2/lib/style.css';
 import './globals.css';
 
 export const metadata: Metadata = {

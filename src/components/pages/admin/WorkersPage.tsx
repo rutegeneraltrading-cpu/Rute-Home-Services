@@ -162,6 +162,52 @@ const WorkersPage = () => {
       ),
     },
     {
+      id: 'verification',
+      header: 'Verification',
+      accessorKey: 'worker_documents',
+      sortable: false,
+      cell: (value) => {
+        // value is worker_documents array
+        const docs = Array.isArray(value) ? value : [];
+        if (docs.length === 0)
+          return <span className="text-slate-400">No documents</span>;
+        return (
+          <div className="space-y-1">
+            {docs.map((doc, idx) => (
+              <div
+                key={doc.document_type + idx}
+                className="flex items-center gap-2"
+              >
+                <span
+                  className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+                    doc.status === 'verified'
+                      ? 'bg-green-100 text-green-700'
+                      : doc.status === 'pending'
+                        ? 'bg-yellow-100 text-yellow-700'
+                        : doc.status === 'rejected'
+                          ? 'bg-red-100 text-red-700'
+                          : 'bg-gray-100 text-gray-700'
+                  }`}
+                >
+                  {doc.status || 'N/A'}
+                </span>
+                {doc.file_url ? (
+                  <a
+                    href={doc.file_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 underline text-xs"
+                  >
+                    View
+                  </a>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        );
+      },
+    },
+    {
       id: 'created_at',
       header: 'Joined',
       accessorKey: 'created_at',

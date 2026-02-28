@@ -18,6 +18,11 @@ export interface WorkerProfile {
   service_category_names?: string[];
   created_at: string;
   updated_at?: string;
+  worker_documents?: Array<{
+    document_type: string;
+    file_url: string;
+    status: 'pending' | 'approved' | 'rejected';
+  }>;
 }
 
 // Extended type for admin worker table with tooltip details
@@ -38,6 +43,7 @@ export interface CreateWorkerDTO {
   service_ids: string[];
   address: CreateUserAddressDTO;
   profile_status?: 'active' | 'inactive' | 'suspended';
+  documents?: Array<{ type: string; file_url: string }>;
 }
 
 export interface UpdateWorkerDTO {
@@ -48,6 +54,7 @@ export interface UpdateWorkerDTO {
   status?: 'active' | 'inactive' | 'suspended';
   service_ids?: string[];
   address?: CreateUserAddressDTO;
+  worker_documents?: any;
 }
 
 /**

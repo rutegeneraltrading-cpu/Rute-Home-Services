@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -21,6 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { WorkerFormProps } from '@/lib/types';
+import PhoneInput from 'react-phone-input-2';
 import { Service } from '@/lib/types/admin/services';
 import { MultiSelect } from '@/components/common/MultiSelect';
 import { useCreateWorker, useGetServices } from '@/lib/client/api';
@@ -31,7 +33,11 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
   const { data: services, isLoading: servicesLoading } = useGetServices();
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // No tabs needed, show all fields in one form
+  const [step, setStep] = useState(1);
+  const [selectedDocType, setSelectedDocType] = useState<string>('');
+  const [documents, setDocuments] = useState<
+    Array<{ file: File; type: string }>
+  >([]);
 
   const {
     register,
@@ -39,7 +45,9 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
     reset,
     setValue,
     watch,
-    formState: { errors: formErrors, isDirty },
+    trigger,
+    getValues,
+    formState: { errors: formErrors },
   } = useForm<WorkerFormValues>({
     resolver: zodResolver(workerFormSchema),
     defaultValues: {
@@ -62,24 +70,69 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
     },
   });
 
-  const isBaseComplete =
-    Boolean(watch('full_name')) &&
-    Boolean(watch('email')) &&
-    Array.isArray(watch('service_ids')) &&
-    watch('service_ids').length > 0;
+  // Step validation
+  const isDocumentsComplete = documents.length > 0;
 
-  const isAddressComplete =
-    Boolean(watch('address.line1')) &&
-    Boolean(watch('address.city')) &&
-    Boolean(watch('address.state_province')) &&
-    Boolean(watch('address.postal_code')) &&
-    Boolean(watch('address.country'));
+  // Step-wise validation
+  const handleNext = async () => {
+    if (step === 1) {
+      const valid = await trigger(
+        ['full_name', 'email', 'phone', 'service_ids'],
+        { shouldFocus: true },
+      );
+      if (valid) setStep(2);
+    } else if (step === 2) {
+      const valid = await trigger(
+        [
+          'address.label',
+          'address.line1',
+          'address.city',
+          'address.state_province',
+          'address.postal_code',
+          'address.country',
+        ],
+        { shouldFocus: true },
+      );
+      if (valid) setStep(3);
+    }
+  };
+  const handleBack = () => {
+    if (step > 1) setStep(step - 1);
+  };
 
-  const isFormComplete = isBaseComplete && isAddressComplete;
+  // Document upload helper
+  const uploadDocument = async (file: File, type: string) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', type);
+    const res = await fetch('/api/admin/upload-worker-document', {
+      method: 'POST',
+      body: formData,
+    });
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.error || 'Failed to upload document');
+    }
+    const { url } = await res.json();
+    return { type, file_url: url };
+  };
 
   const onSubmit = async (data: WorkerFormValues) => {
     setIsSubmitting(true);
     try {
+      // 1. Upload all documents to backend and get URLs
+      const uploadedDocs: Array<{ type: string; file_url: string }> = [];
+      for (const doc of documents) {
+        try {
+          uploadedDocs.push(await uploadDocument(doc.file, doc.type));
+        } catch {
+          alert('Document Upload Failed: Could not upload document.');
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      // 2. Submit all data to backend
       await createWorkerMutation.mutateAsync({
         full_name: data.full_name,
         email: data.email,
@@ -92,10 +145,12 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
           phone: data.address.phone || data.phone || undefined,
           is_primary: true,
         },
+        documents: uploadedDocs,
       });
 
       reset();
       setSelectedServiceIds([]);
+      setDocuments([]);
       onSuccess?.();
       onOpenChange(false);
     } catch (error) {
@@ -115,224 +170,379 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {/* Base Details */}
-          <div className="space-y-4">
-            <div>
-              <Label className="block text-sm font-medium mb-1">
-                Full Name *
-              </Label>
-              <Input
-                id="full_name"
-                placeholder="John Doe"
-                {...register('full_name')}
-              />
-              {formErrors.full_name && (
-                <p className="text-sm text-red-500 mt-1">
-                  {formErrors.full_name.message}
-                </p>
-              )}
-            </div>
-            <div>
-              <Label className="block text-sm font-medium mb-1">Email *</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="john@example.com"
-                {...register('email')}
-              />
-              {formErrors.email && (
-                <p className="text-sm text-red-500 mt-1">
-                  {formErrors.email.message}
-                </p>
-              )}
-            </div>
-            <div>
-              <Label className="block text-sm font-medium mb-1">Phone</Label>
-              <Input
-                id="phone"
-                placeholder="+27 11 123 4567"
-                {...register('phone')}
-              />
-            </div>
-            <div>
-              <Label className="block text-sm font-medium mb-1">
-                Services *
-              </Label>
-              <MultiSelect
-                options={
-                  (services as Service[] | undefined)?.map((s) => ({
-                    label: `${s.name} (${s.base_price}ZAR/${s.category?.charge_type || ''})`,
-                    value: s.id,
-                  })) || []
-                }
-                value={selectedServiceIds}
-                onChange={(newSelected) => {
-                  setSelectedServiceIds(newSelected);
-                  setValue('service_ids', newSelected, { shouldDirty: true });
-                }}
-                placeholder="Select services"
-                disabled={servicesLoading || isSubmitting}
-              />
-              {formErrors.service_ids && (
-                <div className="text-xs text-red-500 mt-1">
-                  {formErrors.service_ids.message}
-                </div>
-              )}
-            </div>
+        {/* Stepper UI */}
+        <div className="flex items-center justify-between mb-8">
+          <div
+            className={`flex-1 text-center ${step === 1 ? 'font-bold text-primary' : 'text-muted-foreground'}`}
+          >
+            1. Base Info
           </div>
+          <div className="w-8 h-0.5 bg-gray-300 mx-2" />
+          <div
+            className={`flex-1 text-center ${step === 2 ? 'font-bold text-primary' : 'text-muted-foreground'}`}
+          >
+            2. Address
+          </div>
+          <div className="w-8 h-0.5 bg-gray-300 mx-2" />
+          <div
+            className={`flex-1 text-center ${step === 3 ? 'font-bold text-primary' : 'text-muted-foreground'}`}
+          >
+            3. Documents
+          </div>
+        </div>
 
-          {/* Address Details */}
-          <div className="space-y-4 rounded-lg border border-dashed border-gray-200 p-4">
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-semibold">Worker Address</Label>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          {/* Step 1: Base Info */}
+          {step === 1 && (
+            <div className="space-y-4">
+              <div>
+                <Label className="block text-sm font-medium mb-1">
+                  Full Name *
+                </Label>
+                <Input
+                  id="full_name"
+                  placeholder="John Doe"
+                  {...register('full_name')}
+                />
+                {formErrors.full_name && (
+                  <p className="text-sm text-red-500 mt-1">
+                    {formErrors.full_name.message}
+                  </p>
+                )}
+              </div>
+              <div>
+                <Label className="block text-sm font-medium mb-1">
+                  Email *
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="john@example.com"
+                  {...register('email')}
+                />
+                {formErrors.email && (
+                  <p className="text-sm text-red-500 mt-1">
+                    {formErrors.email.message}
+                  </p>
+                )}
+              </div>
+              <div>
+                <Label className="block text-sm font-medium mb-1">Phone</Label>
+                <PhoneInput
+                  country={'za'}
+                  inputProps={{
+                    name: 'phone',
+                    required: true,
+                    className: 'h-10 w-full border rounded px-2 pl-12',
+                  }}
+                  value={getValues('phone')}
+                  onChange={(value) =>
+                    setValue('phone', value, { shouldDirty: true })
+                  }
+                  enableSearch
+                  containerClass="mb-2"
+                />
+                {formErrors.phone && (
+                  <p className="text-sm text-red-500 mt-1">
+                    {formErrors.phone.message}
+                  </p>
+                )}
+              </div>
+              <div>
+                <Label className="block text-sm font-medium mb-1">
+                  Services *
+                </Label>
+                <MultiSelect
+                  options={
+                    (services as Service[] | undefined)?.map((s) => ({
+                      label: `${s.name} (${s.base_price}ZAR/${s.category?.charge_type || ''})`,
+                      value: s.id,
+                    })) || []
+                  }
+                  value={selectedServiceIds}
+                  onChange={(newSelected) => {
+                    setSelectedServiceIds(newSelected);
+                    setValue('service_ids', newSelected, { shouldDirty: true });
+                  }}
+                  placeholder="Select services"
+                  disabled={servicesLoading || isSubmitting}
+                />
+                {formErrors.service_ids && (
+                  <div className="text-xs text-red-500 mt-1">
+                    {formErrors.service_ids.message}
+                  </div>
+                )}
+              </div>
             </div>
-            <div>
-              <Label className="text-sm">Label</Label>
-              <Select
-                value={watch('address.label')}
-                onValueChange={(value) =>
-                  setValue(
-                    'address.label',
-                    value as WorkerFormValues['address']['label'],
-                    {
-                      shouldValidate: true,
-                    },
-                  )
-                }
-              >
-                <SelectTrigger className="mt-2">
-                  <SelectValue placeholder="Select label" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="home">Home</SelectItem>
-                  <SelectItem value="office">Office</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
+          )}
+
+          {/* Step 2: Address Info */}
+          {step === 2 && (
+            <div className="space-y-4 rounded-lg border border-dashed border-gray-200 p-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-semibold">Worker Address</Label>
+              </div>
+              <div>
+                <Label className="text-sm">Label</Label>
+                <Select
+                  value={watch('address.label')}
+                  onValueChange={(value) =>
+                    setValue(
+                      'address.label',
+                      value as WorkerFormValues['address']['label'],
+                      {
+                        shouldValidate: true,
+                      },
+                    )
+                  }
+                >
+                  <SelectTrigger className="mt-2">
+                    <SelectValue placeholder="Select label" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="home">Home</SelectItem>
+                    <SelectItem value="office">Office</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="address.recipient_name">Recipient Name</Label>
+                <Input
+                  id="address.recipient_name"
+                  placeholder="Recipient name"
+                  {...register('address.recipient_name')}
+                />
+              </div>
+              <div>
+                <Label htmlFor="address.phone">Address Phone</Label>
+                <PhoneInput
+                  country={'za'}
+                  inputProps={{
+                    name: 'address.phone',
+                    required: true,
+                    className: 'h-10 w-full border rounded px-2 pl-12',
+                  }}
+                  value={getValues('address.phone')}
+                  onChange={(value) => {
+                    setValue('address.phone', value, { shouldDirty: true });
+                    if (!value) {
+                      setValue('address.phone', value, {
+                        shouldValidate: true,
+                      });
+                    }
+                  }}
+                  enableSearch
+                  containerClass="mb-2"
+                />
+                {formErrors.address?.phone && (
+                  <p className="text-sm text-red-500 mt-1">
+                    {formErrors.address.phone.message}
+                  </p>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="address.line1">Address Line 1 *</Label>
+                <Input
+                  id="address.line1"
+                  placeholder="Street address"
+                  {...register('address.line1')}
+                />
+                {formErrors.address?.line1 && (
+                  <p className="text-sm text-red-500 mt-1">
+                    {formErrors.address.line1.message}
+                  </p>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="address.line2">Address Line 2</Label>
+                <Input
+                  id="address.line2"
+                  placeholder="Apartment, suite, etc."
+                  {...register('address.line2')}
+                />
+              </div>
+              <div>
+                <Label htmlFor="address.country">Country *</Label>
+                <Input
+                  id="address.country"
+                  placeholder="Country"
+                  {...register('address.country')}
+                />
+                {formErrors.address?.country && (
+                  <p className="text-sm text-red-500 mt-1">
+                    {formErrors.address.country.message}
+                  </p>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="address.state_province">Province/State *</Label>
+                <Input
+                  id="address.state_province"
+                  placeholder="Province or state"
+                  {...register('address.state_province')}
+                />
+                {formErrors.address?.state_province && (
+                  <p className="text-sm text-red-500 mt-1">
+                    {formErrors.address.state_province.message}
+                  </p>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="address.city">City *</Label>
+                <Input
+                  id="address.city"
+                  placeholder="City"
+                  {...register('address.city')}
+                />
+                {formErrors.address?.city && (
+                  <p className="text-sm text-red-500 mt-1">
+                    {formErrors.address.city.message}
+                  </p>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="address.postal_code">Postal Code *</Label>
+                <Input
+                  id="address.postal_code"
+                  type="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder="Postal code"
+                  {...register('address.postal_code')}
+                />
+                {formErrors.address?.postal_code && (
+                  <p className="text-sm text-red-500 mt-1">
+                    {formErrors.address.postal_code.message}
+                  </p>
+                )}
+              </div>
             </div>
-            <div>
-              <Label htmlFor="address.recipient_name">Recipient Name</Label>
-              <Input
-                id="address.recipient_name"
-                placeholder="Recipient name"
-                {...register('address.recipient_name')}
-              />
+          )}
+
+          {/* Step 3: Document Upload */}
+          {step === 3 && (
+            <div className="rounded-lg border border-dashed border-gray-200 p-4">
+              <div className="grid grid-cols-1 gap-6 w-full">
+                <div>
+                  <Label>Select Document Type</Label>
+                  <Select
+                    value={selectedDocType}
+                    onValueChange={(value) => setSelectedDocType(value)}
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger className="h-10">
+                      <SelectValue placeholder="Select document type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="identity">Identity</SelectItem>
+                      <SelectItem value="passport">Passport</SelectItem>
+                      <SelectItem value="proof_of_residency">
+                        Proof of Residency
+                      </SelectItem>
+                      <SelectItem value="business_registration">
+                        Business Registration
+                      </SelectItem>
+                      <SelectItem value="bank_confirmation">
+                        Bank Confirmation
+                      </SelectItem>
+                      <SelectItem value="shareholder_id">
+                        Shareholder ID
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  {selectedDocType && (
+                    <div className="flex flex-col gap-2 ">
+                      <Input
+                        type="file"
+                        accept="image/*,application/pdf"
+                        disabled={isSubmitting}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setDocuments((prev) => [
+                              ...prev,
+                              { file, type: selectedDocType },
+                            ]);
+                            setSelectedDocType('');
+                          }
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+              {/* Preview selected files with type label */}
+              <div className="flex flex-wrap gap-4 mt-4">
+                {documents.map((doc, idx) => (
+                  <div
+                    key={idx}
+                    className="flex flex-col items-center border rounded p-2"
+                  >
+                    {doc.file.type.startsWith('image/') ? (
+                      <Image
+                        src={URL.createObjectURL(doc.file)}
+                        alt={doc.file.name}
+                        width={96}
+                        height={96}
+                        className="w-24 h-24 object-cover rounded"
+                      />
+                    ) : (
+                      <span className="text-xs">PDF</span>
+                    )}
+                    <button
+                      type="button"
+                      className="mt-2 text-xs text-red-500 underline"
+                      onClick={() => {
+                        setDocuments((prev) =>
+                          prev.filter((_, i) => i !== idx),
+                        );
+                      }}
+                      disabled={isSubmitting}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div>
-              <Label htmlFor="address.phone">Address Phone</Label>
-              <Input
-                id="address.phone"
-                type="tel"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                placeholder="e.g., 0111234567"
-                {...register('address.phone')}
-              />
-              {formErrors.address?.phone && (
-                <p className="text-sm text-red-500 mt-1">
-                  {formErrors.address.phone.message}
-                </p>
-              )}
-            </div>
-            <div>
-              <Label htmlFor="address.line1">Address Line 1 *</Label>
-              <Input
-                id="address.line1"
-                placeholder="Street address"
-                {...register('address.line1')}
-              />
-              {formErrors.address?.line1 && (
-                <p className="text-sm text-red-500 mt-1">
-                  {formErrors.address.line1.message}
-                </p>
-              )}
-            </div>
-            <div>
-              <Label htmlFor="address.line2">Address Line 2</Label>
-              <Input
-                id="address.line2"
-                placeholder="Apartment, suite, etc."
-                {...register('address.line2')}
-              />
-            </div>
-            <div>
-              <Label htmlFor="address.city">City *</Label>
-              <Input
-                id="address.city"
-                placeholder="City"
-                {...register('address.city')}
-              />
-              {formErrors.address?.city && (
-                <p className="text-sm text-red-500 mt-1">
-                  {formErrors.address.city.message}
-                </p>
-              )}
-            </div>
-            <div>
-              <Label htmlFor="address.state_province">Province/State *</Label>
-              <Input
-                id="address.state_province"
-                placeholder="Province or state"
-                {...register('address.state_province')}
-              />
-              {formErrors.address?.state_province && (
-                <p className="text-sm text-red-500 mt-1">
-                  {formErrors.address.state_province.message}
-                </p>
-              )}
-            </div>
-            <div>
-              <Label htmlFor="address.postal_code">Postal Code *</Label>
-              <Input
-                id="address.postal_code"
-                type="tel"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                placeholder="Postal code"
-                {...register('address.postal_code')}
-              />
-              {formErrors.address?.postal_code && (
-                <p className="text-sm text-red-500 mt-1">
-                  {formErrors.address.postal_code.message}
-                </p>
-              )}
-            </div>
-            <div>
-              <Label htmlFor="address.country">Country *</Label>
-              <Input
-                id="address.country"
-                placeholder="Country"
-                {...register('address.country')}
-              />
-              {formErrors.address?.country && (
-                <p className="text-sm text-red-500 mt-1">
-                  {formErrors.address.country.message}
-                </p>
-              )}
-            </div>
-          </div>
-          <div className="flex justify-end gap-3 pt-4">
-            {isDirty && (
+          )}
+
+          {/* Navigation Buttons */}
+          <div
+            className={`flex justify-between gap-3 pt-4 ${step === 1 ? 'justify-end' : 'justify-between'}`}
+          >
+            {step > 1 && (
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => {
-                  reset();
-                  setSelectedServiceIds([]);
-                }}
+                onClick={handleBack}
                 disabled={isSubmitting}
-                className="cursor-pointer"
+                className="px-6"
               >
-                Cancel
+                Back
               </Button>
             )}
-            <Button
-              type="submit"
-              disabled={isSubmitting || !isDirty || !isFormComplete}
-            >
-              {isSubmitting ? 'Creating...' : 'Create Worker'}
-            </Button>
+            {step < 3 && (
+              <Button
+                type="button"
+                onClick={handleNext}
+                disabled={isSubmitting}
+                className="px-6"
+              >
+                Next
+              </Button>
+            )}
+            {step === 3 && (
+              <Button
+                type="submit"
+                disabled={isSubmitting || !isDocumentsComplete}
+              >
+                {isSubmitting ? 'Creating...' : 'Create Worker'}
+              </Button>
+            )}
           </div>
         </form>
       </DialogContent>

@@ -7,10 +7,11 @@ const workerAddressSchema = userAddressSchema.extend({
 
 export const workerEditSchema = z.object({
   full_name: z.string().min(2, 'Name must be at least 2 characters'),
-  phone: z.string().optional(),
+  phone: z.string().min(1, 'Phone is required'),
   service_ids: z.array(z.string()).min(1, 'Select at least one service'),
   status: z.enum(['active', 'inactive', 'suspended']),
   address: workerAddressSchema,
+  // Add more fields here for future extensibility
 });
 
 export type WorkerEditValues = z.input<typeof workerEditSchema>;
@@ -18,9 +19,18 @@ export type WorkerEditValues = z.input<typeof workerEditSchema>;
 export const workerFormSchema = z.object({
   full_name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
-  phone: z.string().optional(),
+  phone: z.string().min(1, 'Phone is required'),
   service_ids: z.array(z.string()).min(1, 'Select at least one service'),
   address: workerAddressSchema,
+  documents: z
+    .array(
+      z.object({
+        type: z.string(), // Should match DocumentType enum
+        file_url: z.string().url('Invalid document URL'),
+      }),
+    )
+    .optional(), // Only required for registration, not edit
+  // Add more fields here for future extensibility
 });
 
 export type WorkerFormValues = z.input<typeof workerFormSchema>;

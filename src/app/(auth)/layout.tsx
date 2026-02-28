@@ -10,16 +10,14 @@ export default function AuthLayout({
   return (
     <html lang="en">
       <body>
-        <div>
-          <div className="lg:relative flex lg:flex-row flex-col min-h-screen items-center justify-center bg-slate-50 px-4">
-            <Link
-              href="/"
-              className="lg:absolute top-8 left-8 text-2xl font-bold text-center lg:text-left w-full lg:w-auto"
-            >
-              RUTE<span className="text-green-600">.</span>
-            </Link>
-            {children}
-          </div>
+        <div className="flex flex-col gap-8 justify-center p-12">
+          <Link
+            href="/"
+            className="text-2xl font-bold text-center lg:text-left"
+          >
+            RUTE<span className="text-green-600">.</span>
+          </Link>
+          <div className="flex items-center justify-center">{children}</div>
         </div>
       </body>
     </html>

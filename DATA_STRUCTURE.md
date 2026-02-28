@@ -1,5 +1,10 @@
 # 🗄️ Complete Data Structure Design
 
+│ reviewer_id (uuid, nullable, FK → profiles.id) │
+│ notes (text, nullable) │
+└──────────────────────────────────────────────┘
+│ notes (text, nullable) │
+└──────────────────────────────────────────────┘
 **Home Services & E-commerce Platform (South Africa)**  
 **Final Version: February 2026**
 
@@ -33,6 +38,23 @@
 │ address   │   │ address_id  │  │ 1:1
 │ rating    │   │ payment_method
 └───────────┘   └──────────────┘
+
+      │
+      │ 1:N
+      ▼
+   ┌───────────────────────────────┐
+   │ worker_documents              │
+   ├───────────────────────────────┤
+   │ id (PK)                       │
+   │ worker_id (FK)                │
+   │ document_type                 │
+   │ file_url                      │
+   │ status                        │
+   │ uploaded_at                   │
+   │ reviewed_at                   │
+   │ notes                         │
+   └───────────────────────────────┘
+       (Stores all uploaded/verified documents for each worker)
 
 
 ┌──────────────────┐
@@ -321,6 +343,9 @@
 | payments            | orders                  | N:1                        | Payment for order                      |
 | payments            | bookings                | N:1                        | Payment for booking                    |
 
+| **workers** | **worker_documents** | **1:N** | **Worker uploads multiple documents** |
+| **worker_documents**| **workers** | **N:1** | **Document belongs to a worker** |
+
 ---
 
 ## ⚡ Critical Constraints & Validations
@@ -328,6 +353,21 @@
 ### Admin Profile
 
 ```
+
+┌──────────────────────────────────────────────┐
+│ worker_documents                            │
+├──────────────────────────────────────────────┤
+│ id (uuid, PK)                               │
+│ worker_id (uuid, FK → workers.id)           │
+│ document_type (enum)                        │  -- e.g. 'identity', 'passport', 'proof_of_residency', 'business_registration', 'bank_confirmation', 'shareholder_id'
+│ file_url (text)                             │
+│ status (enum: 'pending', 'approved', 'rejected') │
+│ uploaded_at (timestamp)                     │
+│ reviewed_at (timestamp, nullable)           │
+│ reviewer_id (uuid, nullable, FK → profiles.id) │
+│ notes (text, nullable)                      │
+└──────────────────────────────────────────────┘
+
 - admin.profile_id = profiles.auth_id where role='admin'
 - Stores ONLY: auth_id, full_name, email, avatar_url, role, status
 - NO extra fields needed on admin profile
@@ -473,21 +513,22 @@ Available Slots =
 
 ## 🎯 Summary
 
-| Aspect              | Details                                                                        |
-| ------------------- | ------------------------------------------------------------------------------ |
-| **Auth Table**      | `profiles` - single source of identity                                         |
-| **Admin**           | Just a profile with role='admin', no extra fields                              |
-| **User**            | Profile + user_profile (phone, address, payment)                               |
-| **Worker**          | Profile + workers (phone, address, rating) 
-- **No category_id**   |
-| **Services Flow**   | **service_categories → services → service_options (linked together)**          |
-| **Worker-Services** | **⭐ Replaces old design: worker_services links workers to specific services** |
-| **Multi-Category**  | **Worker can provide services from ANY category via worker_services**          |
-| **Bookings**        | booking_items snapshot selected options                                        |
-| **Slots**           | worker_service_capacity + daily calculation per category                       |
-| **Assignments**     | booking_assignments.assigned_by = admin profile_id                             |
-| **Notifications**   | All email/SMS/in-app tracked in notifications table                            |
-| **Payments**        | One table for orders + bookings                                                |
+| Aspect               | Details                                                                        |
+| -------------------- | ------------------------------------------------------------------------------ |
+| **Auth Table**       | `profiles` - single source of identity                                         |
+| **Admin**            | Just a profile with role='admin', no extra fields                              |
+| **User**             | Profile + user_profile (phone, address, payment)                               |
+| **Worker**           | Profile + workers (phone, address, rating)                                     |
+| - **No category_id** |
+| **Services Flow**    | **service_categories → services → service_options (linked together)**          |
+| **Worker-Services**  | **⭐ Replaces old design: worker_services links workers to specific services** |
+| **Multi-Category**   | **Worker can provide services from ANY category via worker_services**          |
+| **Bookings**         | booking_items snapshot selected options                                        |
+| **Slots**            | worker_service_capacity + daily calculation per category                       |
+| **Assignments**      | booking_assignments.assigned_by = admin profile_id                             |
+| **Notifications**    | All email/SMS/in-app tracked in notifications table                            |
+| **Payments**         | One table for orders + bookings                                                |
+| **Worker Documents** | **worker_documents table stores all uploaded/verified documents for workers**  |
 
 ---
 

@@ -241,6 +241,20 @@ export async function POST(request: NextRequest) {
       throw new Error('Worker record not found or created');
     }
 
+    // Step 6: Insert worker_documents if provided
+    const { documents } = body;
+    if (Array.isArray(documents) && documents.length > 0) {
+      for (const doc of documents) {
+        await supabaseAdmin.from('worker_documents').insert({
+          worker_id: workerId,
+          document_type: doc.type,
+          file_url: doc.file_url,
+          status: 'pending',
+          uploaded_at: new Date().toISOString(),
+        });
+      }
+    }
+
     return NextResponse.json(
       {
         worker: {

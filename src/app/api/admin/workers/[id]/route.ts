@@ -103,11 +103,38 @@ export async function PUT(
       avatar_url,
       status,
       address,
-      service_ids,
+      worker_documents,
       ...rest
     } = body;
-    // Remove service_ids from workerFields
+    // Remove service_ids and worker_documents from workerFields
     const workerFields = { ...rest };
+    // Update worker_documents status if provided
+    if (Array.isArray(worker_documents) && worker_documents.length > 0) {
+      for (const doc of worker_documents) {
+        if (!['pending', 'approved', 'rejected'].includes(doc.status)) {
+          console.error('worker_documents update skipped: invalid status', doc);
+          continue;
+        }
+        const { data: updatedDoc, error: docUpdateError } = await supabase
+          .from('worker_documents')
+          .update({ status: doc.status })
+          .eq('worker_id', workerId)
+          .select()
+          .single();
+        if (docUpdateError) {
+          console.error('worker_documents update error:', docUpdateError, doc);
+          throw docUpdateError;
+        }
+        if (!updatedDoc) {
+          console.error(
+            'worker_documents update failed: no document found for id',
+            doc.id,
+          );
+        } else {
+          console.log('worker_documents updated:', updatedDoc);
+        }
+      }
+    }
 
     // Update profile if provided
     if (full_name || email || avatar_url !== undefined) {
