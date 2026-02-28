@@ -66,11 +66,6 @@ const RegisterWorkerPage = () => {
     },
   });
 
-  // Step validation
-  // Only require document upload for step 3
-  const isDocumentsComplete = documents.length > 0;
-
-  // Step-wise validation
   const handleNext = async () => {
     if (step === 1) {
       // Only validate step 1 fields
@@ -214,10 +209,16 @@ const RegisterWorkerPage = () => {
                     placeholder="John Doe"
                     className="h-10"
                     {...register('full_name')}
+                    onChange={(e) => {
+                      setValue('full_name', e.target.value, {
+                        shouldDirty: true,
+                      });
+                      trigger('full_name');
+                    }}
                   />
-                  {formErrors.phone && (
+                  {formErrors.full_name && (
                     <p className="text-sm text-red-500 mt-1">
-                      {formErrors.phone.message}
+                      {formErrors.full_name.message}
                     </p>
                   )}
 
@@ -228,6 +229,10 @@ const RegisterWorkerPage = () => {
                     placeholder="john@example.com"
                     className="h-10"
                     {...register('email')}
+                    onChange={(e) => {
+                      setValue('email', e.target.value, { shouldDirty: true });
+                      trigger('email');
+                    }}
                   />
                   {formErrors.email && (
                     <p className="text-sm text-red-500 mt-1">
@@ -319,6 +324,12 @@ const RegisterWorkerPage = () => {
                     placeholder="Recipient name"
                     className="h-10"
                     {...register('address.recipient_name')}
+                    onChange={(e) => {
+                      setValue('address.recipient_name', e.target.value, {
+                        shouldDirty: true,
+                      });
+                      trigger('address.recipient_name');
+                    }}
                   />
                   {formErrors.address?.recipient_name && (
                     <p className="text-sm text-red-500 mt-1">
@@ -360,6 +371,12 @@ const RegisterWorkerPage = () => {
                     placeholder="Street address"
                     className="h-10"
                     {...register('address.line1')}
+                    onChange={(e) => {
+                      setValue('address.line1', e.target.value, {
+                        shouldDirty: true,
+                      });
+                      trigger('address.line1');
+                    }}
                   />
                   {formErrors.address?.line1 && (
                     <p className="text-sm text-red-500 mt-1">
@@ -374,6 +391,12 @@ const RegisterWorkerPage = () => {
                     placeholder="Apartment, suite, etc."
                     className="h-10"
                     {...register('address.line2')}
+                    onChange={(e) => {
+                      setValue('address.line2', e.target.value, {
+                        shouldDirty: true,
+                      });
+                      trigger('address.line2');
+                    }}
                   />
                 </div>
                 <div>
@@ -383,6 +406,12 @@ const RegisterWorkerPage = () => {
                     placeholder="Country"
                     className="h-10"
                     {...register('address.country')}
+                    onChange={(e) => {
+                      setValue('address.country', e.target.value, {
+                        shouldDirty: true,
+                      });
+                      trigger('address.country');
+                    }}
                   />
                   {formErrors.address?.country && (
                     <p className="text-sm text-red-500 mt-1">
@@ -399,6 +428,12 @@ const RegisterWorkerPage = () => {
                     placeholder="Province or state"
                     className="h-10"
                     {...register('address.state_province')}
+                    onChange={(e) => {
+                      setValue('address.state_province', e.target.value, {
+                        shouldDirty: true,
+                      });
+                      trigger('address.state_province');
+                    }}
                   />
                   {formErrors.address?.state_province && (
                     <p className="text-sm text-red-500 mt-1">
@@ -413,6 +448,12 @@ const RegisterWorkerPage = () => {
                     placeholder="City"
                     className="h-10"
                     {...register('address.city')}
+                    onChange={(e) => {
+                      setValue('address.city', e.target.value, {
+                        shouldDirty: true,
+                      });
+                      trigger('address.city');
+                    }}
                   />
                   {formErrors.address?.city && (
                     <p className="text-sm text-red-500 mt-1">
@@ -430,6 +471,12 @@ const RegisterWorkerPage = () => {
                     placeholder="Postal code"
                     className="h-10"
                     {...register('address.postal_code')}
+                    onChange={(e) => {
+                      setValue('address.postal_code', e.target.value, {
+                        shouldDirty: true,
+                      });
+                      trigger('address.postal_code');
+                    }}
                   />
                   {formErrors.address?.postal_code && (
                     <p className="text-sm text-red-500 mt-1">
@@ -479,37 +526,30 @@ const RegisterWorkerPage = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
-                  {selectedDocType && (
-                    <>
-                      <Label>
-                        Upload{' '}
-                        {selectedDocType
-                          .replace(/_/g, ' ')
-                          .replace(/\b\w/g, (c) => c.toUpperCase())}{' '}
-                        Document
-                      </Label>
-                      <Input
-                        type="file"
-                        accept="image/*,application/pdf"
-                        multiple={false}
-                        onChange={(e) => {
-                          const files = e.target.files;
-                          if (files && files[0]) {
-                            setDocuments((prev) => [
-                              ...prev,
-                              {
-                                file: files[0],
-                                type: selectedDocType as DocumentType,
-                              },
-                            ]);
-                            setSelectedDocType(''); // Reset type after upload
-                          }
-                        }}
-                        className="mb-4"
-                      />
-                    </>
-                  )}
+                <div className={`${documents.length > 0 ? 'hidden' : ''}`}>
+                  <Label>Upload Document</Label>
+                  <Input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    multiple={false}
+                    onChange={(e) => {
+                      const files = e.target.files;
+                      if (files && files[0] && selectedDocType) {
+                        setDocuments((prev) => [
+                          ...prev,
+                          {
+                            file: files[0],
+                            type: selectedDocType as DocumentType,
+                          },
+                        ]);
+                        // Do NOT reset selectedDocType here
+                      }
+                    }}
+                    className="mb-4"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Select document type before uploading.
+                  </p>
                 </div>
               </div>
               {/* Preview selected files with type label */}
@@ -519,25 +559,30 @@ const RegisterWorkerPage = () => {
                     key={idx}
                     className="flex flex-col items-center border rounded p-2"
                   >
-                    <span className="text-xs font-medium mb-1">
-                      {doc.file.name}
-                    </span>
-                    <span className="text-xs text-primary mb-1">
-                      {doc.type
-                        .replace(/_/g, ' ')
-                        .replace(/\b\w/g, (c) => c.toUpperCase())}
-                    </span>
                     {doc.file.type.startsWith('image/') ? (
                       <Image
                         src={URL.createObjectURL(doc.file)}
                         alt={doc.file.name}
                         width={400}
                         height={400}
-                        className="w-24 h-24 object-cover rounded"
+                        className="w-full object-cover rounded"
                       />
                     ) : (
                       <span className="text-xs text-muted-foreground">PDF</span>
                     )}
+                    <button
+                      type="button"
+                      className="mt-2 text-xs text-red-500 underline"
+                      onClick={() => {
+                        setDocuments((prev) =>
+                          prev.filter((_, i) => i !== idx),
+                        );
+                        // Do NOT reset selectedDocType here
+                      }}
+                      disabled={isSubmitting}
+                    >
+                      Remove
+                    </button>
                   </div>
                 ))}
               </div>
@@ -572,7 +617,11 @@ const RegisterWorkerPage = () => {
             {step === 3 && (
               <Button
                 type="submit"
-                disabled={isSubmitting || !isDocumentsComplete}
+                disabled={
+                  isSubmitting ||
+                  documents.length === 0 ||
+                  documents.some((doc) => !doc.type || !doc.file)
+                }
               >
                 {isSubmitting ? 'Creating...' : 'Create Worker'}
               </Button>

@@ -70,10 +70,6 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
     },
   });
 
-  // Step validation
-  const isDocumentsComplete = documents.length > 0;
-
-  // Step-wise validation
   const handleNext = async () => {
     if (step === 1) {
       const valid = await trigger(
@@ -203,6 +199,12 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
                   id="full_name"
                   placeholder="John Doe"
                   {...register('full_name')}
+                  onChange={(e) => {
+                    setValue('full_name', e.target.value, {
+                      shouldDirty: true,
+                    });
+                    trigger('full_name');
+                  }}
                 />
                 {formErrors.full_name && (
                   <p className="text-sm text-red-500 mt-1">
@@ -219,6 +221,10 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
                   type="email"
                   placeholder="john@example.com"
                   {...register('email')}
+                  onChange={(e) => {
+                    setValue('email', e.target.value, { shouldDirty: true });
+                    trigger('email');
+                  }}
                 />
                 {formErrors.email && (
                   <p className="text-sm text-red-500 mt-1">
@@ -312,6 +318,12 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
                   id="address.recipient_name"
                   placeholder="Recipient name"
                   {...register('address.recipient_name')}
+                  onChange={(e) => {
+                    setValue('address.recipient_name', e.target.value, {
+                      shouldDirty: true,
+                    });
+                    trigger('address.recipient_name');
+                  }}
                 />
               </div>
               <div>
@@ -347,6 +359,12 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
                   id="address.line1"
                   placeholder="Street address"
                   {...register('address.line1')}
+                  onChange={(e) => {
+                    setValue('address.line1', e.target.value, {
+                      shouldDirty: true,
+                    });
+                    trigger('address.line1');
+                  }}
                 />
                 {formErrors.address?.line1 && (
                   <p className="text-sm text-red-500 mt-1">
@@ -360,6 +378,12 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
                   id="address.line2"
                   placeholder="Apartment, suite, etc."
                   {...register('address.line2')}
+                  onChange={(e) => {
+                    setValue('address.line2', e.target.value, {
+                      shouldDirty: true,
+                    });
+                    trigger('address.line2');
+                  }}
                 />
               </div>
               <div>
@@ -368,6 +392,12 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
                   id="address.country"
                   placeholder="Country"
                   {...register('address.country')}
+                  onChange={(e) => {
+                    setValue('address.country', e.target.value, {
+                      shouldDirty: true,
+                    });
+                    trigger('address.country');
+                  }}
                 />
                 {formErrors.address?.country && (
                   <p className="text-sm text-red-500 mt-1">
@@ -381,6 +411,12 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
                   id="address.state_province"
                   placeholder="Province or state"
                   {...register('address.state_province')}
+                  onChange={(e) => {
+                    setValue('address.state_province', e.target.value, {
+                      shouldDirty: true,
+                    });
+                    trigger('address.state_province');
+                  }}
                 />
                 {formErrors.address?.state_province && (
                   <p className="text-sm text-red-500 mt-1">
@@ -394,6 +430,12 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
                   id="address.city"
                   placeholder="City"
                   {...register('address.city')}
+                  onChange={(e) => {
+                    setValue('address.city', e.target.value, {
+                      shouldDirty: true,
+                    });
+                    trigger('address.city');
+                  }}
                 />
                 {formErrors.address?.city && (
                   <p className="text-sm text-red-500 mt-1">
@@ -410,6 +452,12 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
                   pattern="[0-9]*"
                   placeholder="Postal code"
                   {...register('address.postal_code')}
+                  onChange={(e) => {
+                    setValue('address.postal_code', e.target.value, {
+                      shouldDirty: true,
+                    });
+                    trigger('address.postal_code');
+                  }}
                 />
                 {formErrors.address?.postal_code && (
                   <p className="text-sm text-red-500 mt-1">
@@ -452,26 +500,26 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
-                  {selectedDocType && (
-                    <div className="flex flex-col gap-2 ">
-                      <Input
-                        type="file"
-                        accept="image/*,application/pdf"
-                        disabled={isSubmitting}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            setDocuments((prev) => [
-                              ...prev,
-                              { file, type: selectedDocType },
-                            ]);
-                            setSelectedDocType('');
-                          }
-                        }}
-                      />
-                    </div>
-                  )}
+                <div className={`${documents.length > 0 ? 'hidden' : ''}`}>
+                  <Label>Upload Document</Label>
+                  <Input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    disabled={isSubmitting}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file && selectedDocType) {
+                        setDocuments((prev) => [
+                          ...prev,
+                          { file, type: selectedDocType },
+                        ]);
+                        // Do NOT reset selectedDocType here
+                      }
+                    }}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Select document type before uploading.
+                  </p>
                 </div>
               </div>
               {/* Preview selected files with type label */}
@@ -487,7 +535,7 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
                         alt={doc.file.name}
                         width={96}
                         height={96}
-                        className="w-24 h-24 object-cover rounded"
+                        className="w-full object-cover rounded"
                       />
                     ) : (
                       <span className="text-xs">PDF</span>
@@ -499,6 +547,7 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
                         setDocuments((prev) =>
                           prev.filter((_, i) => i !== idx),
                         );
+                        // Do NOT reset selectedDocType here
                       }}
                       disabled={isSubmitting}
                     >
@@ -538,7 +587,11 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
             {step === 3 && (
               <Button
                 type="submit"
-                disabled={isSubmitting || !isDocumentsComplete}
+                disabled={
+                  isSubmitting ||
+                  documents.length === 0 ||
+                  documents.some((doc) => !doc.type || !doc.file)
+                }
               >
                 {isSubmitting ? 'Creating...' : 'Create Worker'}
               </Button>

@@ -103,6 +103,7 @@ export async function PUT(
       avatar_url,
       status,
       address,
+      service_ids,
       worker_documents,
       ...rest
     } = body;

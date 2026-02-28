@@ -129,28 +129,22 @@ export function WorkerEditModal({
           status: documentStatuses[doc.id] || doc.status,
         }));
       }
-      updateWorkerMutation.mutate(
-        {
-          full_name: data.full_name,
-          phone: data.phone || undefined,
-          status: data.status,
-          service_ids: data.service_ids,
-          address: {
-            ...data.address,
-            recipient_name:
-              data.address.recipient_name || data.full_name || undefined,
-            phone: data.address.phone || data.phone || undefined,
-            is_primary: true,
-          },
-          worker_documents: workerDocumentsPayload,
+      await updateWorkerMutation.mutateAsync({
+        full_name: data.full_name,
+        phone: data.phone || undefined,
+        status: data.status,
+        service_ids: data.service_ids,
+        address: {
+          ...data.address,
+          recipient_name:
+            data.address.recipient_name || data.full_name || undefined,
+          phone: data.address.phone || data.phone || undefined,
+          is_primary: true,
         },
-        {
-          onSuccess: () => {
-            onSuccess?.();
-            onOpenChange(false);
-          },
-        },
-      );
+        worker_documents: workerDocumentsPayload,
+      });
+      onSuccess?.();
+      onOpenChange(false);
     } catch (error) {
       console.error('Error updating worker:', error);
     } finally {
@@ -161,7 +155,7 @@ export function WorkerEditModal({
   if (!worker) return null;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md w-[95vw] sm:w-full max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Worker</DialogTitle>
           <DialogDescription>
@@ -526,7 +520,33 @@ export function WorkerEditModal({
             )}
             {step === 3 && (
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Updating...' : 'Update Worker'}
+                {isSubmitting ? (
+                  <span className="flex items-center gap-2">
+                    <svg
+                      className="animate-spin h-4 w-4 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8v8z"
+                      ></path>
+                    </svg>
+                    Updating...
+                  </span>
+                ) : (
+                  'Update Worker'
+                )}
               </Button>
             )}
           </div>

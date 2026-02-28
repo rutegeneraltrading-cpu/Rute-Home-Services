@@ -1,5 +1,4 @@
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Button, Input, Label } from '@/components/ui';
 import type { ServiceOptionItem } from '@/lib/types/admin/services';
 
 interface AddOptionsStepProps {
@@ -49,7 +48,10 @@ const AddOptionsStep = ({
               onChange={() => handleOptionChange(option.id)}
               className="accent-black w-5 h-5"
             />
-            <Label htmlFor={`option-${option.id}`} className="flex-1">
+            <Label
+              htmlFor={`option-${option.id}`}
+              className="flex-1 cursor-pointer"
+            >
               <span className="font-semibold">{option.name}</span>
               {option.description && (
                 <span className="ml-2 text-slate-500 text-sm">
@@ -68,23 +70,20 @@ const AddOptionsStep = ({
       </div>
       <div className="flex justify-between mt-8">
         {onBack ? (
-          <button
+          <Button
             type="button"
-            className="px-4 py-2 rounded bg-slate-200 hover:bg-slate-300"
+            variant="outline"
             onClick={onBack}
+            className="px-4"
           >
             Back
-          </button>
+          </Button>
         ) : (
           <span />
         )}
-        <button
-          type="button"
-          className="px-4 py-2 rounded bg-black text-white hover:bg-gray-800"
-          onClick={onNext}
-        >
+        <Button type="button" onClick={onNext} className="px-4">
           Next
-        </button>
+        </Button>
       </div>
     </div>
   );

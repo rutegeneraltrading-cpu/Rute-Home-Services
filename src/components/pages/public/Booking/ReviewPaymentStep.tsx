@@ -1,4 +1,4 @@
-import { Label } from '@/components/ui/label';
+import { Button, Label } from '@/components/ui';
 import type { Service, ServiceOptionItem } from '@/lib/types/admin/services';
 
 interface ReviewPaymentStepProps {
@@ -100,20 +100,21 @@ const ReviewPaymentStep = ({
         </div>
       </div>
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-10">
-        <button
+        <Button
           type="button"
-          className="w-full sm:w-auto px-5 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 font-semibold text-gray-700 transition"
+          variant="outline"
           onClick={onBack}
+          className="w-full sm:w-auto px-5"
         >
           Back
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
-          className="w-full sm:w-auto px-5 py-2 rounded-lg bg-linear-to-r from-black to-gray-800 text-white font-bold shadow hover:from-gray-800 hover:to-black transition"
           disabled
+          className="w-full sm:w-auto px-5 bg-linear-to-r from-black to-gray-800 text-white font-bold shadow hover:from-gray-800 hover:to-black"
         >
           Pay (Coming Soon)
-        </button>
+        </Button>
       </div>
     </div>
   );

@@ -97,6 +97,7 @@ const SingleProductPage = () => {
         <div>{`${product.name} has been added to your cart.`}</div>
       </>,
     );
+    router.push('/cart');
   };
 
   const incrementQuantity = () => {

@@ -1,13 +1,14 @@
 import { useRef, useEffect } from 'react';
 import { useJsApiLoader } from '@react-google-maps/api';
 import { FormItem, FormLabel, FormControl } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectTrigger,
   SelectContent,
   SelectItem,
-} from '@/components/ui/select';
+  Input,
+  Button,
+} from '@/components/ui';
 
 interface AddressDateStepProps {
   addressDateData: { address: string; date: string; time: string };
@@ -78,7 +79,10 @@ const AddressDateStep = ({
 
   // Prevent selecting previous dates
   const today = new Date();
+  const nextDay = new Date(today);
+  nextDay.setDate(today.getDate() + 1);
   const minDate = today.toISOString().split('T')[0];
+  const defaultDate = nextDay.toISOString().split('T')[0];
 
   // Prevent selecting previous time if today is selected
   const isToday = addressDateData.date === minDate;
@@ -105,17 +109,26 @@ const AddressDateStep = ({
   // Set default time slot if not set
   const defaultTimeSlot = '9:00AM to 10:00AM';
   const timeSlots = getFilteredTimeSlots();
-  // If user selects a date and time is empty, set default
+
+  // Set default date and time on mount
   useEffect(() => {
-    if (
-      addressDateData.date &&
-      !addressDateData.time &&
-      timeSlots.includes(defaultTimeSlot)
-    ) {
-      setAddressDateData({ ...addressDateData, time: defaultTimeSlot });
+    if (!addressDateData.date) {
+      setAddressDateData({
+        ...addressDateData,
+        date: defaultDate,
+        time: defaultTimeSlot,
+      });
+    } else {
+      // Always set default time when date changes
+      setAddressDateData({
+        ...addressDateData,
+        time: timeSlots.includes(defaultTimeSlot)
+          ? defaultTimeSlot
+          : timeSlots[0] || '',
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addressDateData.date, timeSlots.length]);
+  }, [addressDateData.date]);
 
   return (
     <div>
@@ -149,7 +162,6 @@ const AddressDateStep = ({
               setAddressDateData({
                 ...addressDateData,
                 date: e.target.value,
-                time: '',
               })
             }
           />
@@ -179,16 +191,16 @@ const AddressDateStep = ({
         </FormControl>
       </FormItem>
       <div className="flex justify-between mt-8">
-        <button
+        <Button
           type="button"
-          className="px-4 py-2 rounded bg-slate-200 hover:bg-slate-300"
+          variant="outline"
           onClick={onBack}
+          className="px-4"
         >
           Back
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
-          className="px-4 py-2 rounded bg-black text-white hover:bg-gray-800"
           onClick={onNext}
           disabled={
             !(
@@ -197,9 +209,10 @@ const AddressDateStep = ({
               addressDateData.time
             )
           }
+          className="px-4"
         >
           Next
-        </button>
+        </Button>
       </div>
     </div>
   );

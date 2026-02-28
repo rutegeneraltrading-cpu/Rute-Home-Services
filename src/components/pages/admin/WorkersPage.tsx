@@ -180,7 +180,7 @@ const WorkersPage = () => {
               >
                 <span
                   className={`text-xs px-2 py-0.5 rounded-full font-bold ${
-                    doc.status === 'verified'
+                    doc.status === 'approved'
                       ? 'bg-green-100 text-green-700'
                       : doc.status === 'pending'
                         ? 'bg-yellow-100 text-yellow-700'
