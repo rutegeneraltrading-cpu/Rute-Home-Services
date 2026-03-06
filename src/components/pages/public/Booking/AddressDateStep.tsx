@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { useJsApiLoader } from '@react-google-maps/api';
 import { FormItem, FormLabel, FormControl } from '@/components/ui/form';
 import {
@@ -28,10 +28,26 @@ const AddressDateStep = ({
   onBack,
 }: AddressDateStepProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
+  const addressDateDataRef = useRef(addressDateData);
+  const isApplyingGoogleSelectionRef = useRef(false);
+  const [isGoogleLocationSelected, setIsGoogleLocationSelected] =
+    useState<boolean>(false);
+  const [locationError, setLocationError] = useState<string>('');
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
     libraries: ['places'],
   });
+
+  useEffect(() => {
+    if (addressDateData.address) {
+      setIsGoogleLocationSelected(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    addressDateDataRef.current = addressDateData;
+  }, [addressDateData]);
 
   useEffect(() => {
     if (!isLoaded || !inputRef.current) return;
@@ -45,18 +61,33 @@ const AddressDateStep = ({
     autocomplete.addListener('place_changed', () => {
       const place = autocomplete.getPlace();
       if (place && place.formatted_address) {
+        isApplyingGoogleSelectionRef.current = true;
         setAddressDateData({
-          ...addressDateData,
+          ...addressDateDataRef.current,
           address: place.formatted_address,
         });
+        setIsGoogleLocationSelected(true);
+        setLocationError('');
+        setTimeout(() => {
+          isApplyingGoogleSelectionRef.current = false;
+        }, 0);
       } else if (place && place.name) {
-        setAddressDateData({ ...addressDateData, address: place.name });
+        isApplyingGoogleSelectionRef.current = true;
+        setAddressDateData({
+          ...addressDateDataRef.current,
+          address: place.name,
+        });
+        setIsGoogleLocationSelected(true);
+        setLocationError('');
+        setTimeout(() => {
+          isApplyingGoogleSelectionRef.current = false;
+        }, 0);
       }
     });
     return () => {
       window.google.maps.event.clearInstanceListeners(autocomplete);
     };
-  }, [isLoaded, addressDateData, setAddressDateData]);
+  }, [isLoaded, setAddressDateData]);
 
   // Generate 1-hour interval time slots for a day
   const getTimeSlots = () => {
@@ -130,6 +161,15 @@ const AddressDateStep = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addressDateData.date]);
 
+  const handleNext = () => {
+    if (!isGoogleLocationSelected) {
+      setLocationError('Please select your address from Google suggestions.');
+      return;
+    }
+
+    onNext();
+  };
+
   return (
     <div>
       <h2 className="text-xl font-bold mb-4">Select Location, Date & Time</h2>
@@ -141,15 +181,22 @@ const AddressDateStep = ({
             type="text"
             placeholder="Type your address and select from suggestions"
             value={addressDateData.address}
-            onChange={(e) =>
+            onChange={(e) => {
               setAddressDateData({
                 ...addressDateData,
                 address: e.target.value,
-              })
-            }
+              });
+              if (!isApplyingGoogleSelectionRef.current) {
+                setIsGoogleLocationSelected(false);
+              }
+              if (locationError) setLocationError('');
+            }}
             disabled={!isLoaded}
           />
         </FormControl>
+        {locationError && (
+          <p className="text-sm text-red-600 mt-2">{locationError}</p>
+        )}
       </FormItem>
       <FormItem className="mb-6">
         <FormLabel>Date</FormLabel>
@@ -201,9 +248,10 @@ const AddressDateStep = ({
         </Button>
         <Button
           type="button"
-          onClick={onNext}
+          onClick={handleNext}
           disabled={
             !(
+              isGoogleLocationSelected &&
               addressDateData.address &&
               addressDateData.date &&
               addressDateData.time

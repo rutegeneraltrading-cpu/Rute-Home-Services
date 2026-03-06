@@ -1,11 +1,14 @@
 import { Button, Label } from '@/components/ui';
 import type { Service, ServiceOptionItem } from '@/lib/types/admin/services';
+import type { ServiceOptionVariant } from '@/lib/types/admin/services/variant';
 
 interface ReviewPaymentStepProps {
   serviceData: Service;
   categoryData: any;
   optionsData: ServiceOptionItem[];
   selectedOptions: Record<string, boolean>;
+  selectedVariants: Record<string, string>;
+  variantsData: ServiceOptionVariant[];
   addressDateData: { address: string; date: string; time: string };
   onBack: () => void;
 }
@@ -15,19 +18,34 @@ const ReviewPaymentStep = ({
   categoryData,
   optionsData,
   selectedOptions,
+  selectedVariants,
+  variantsData,
   addressDateData,
   onBack,
 }: ReviewPaymentStepProps) => {
   const selectedOptionsArray = optionsData.filter(
     (opt) => selectedOptions[opt.id],
   );
+
+  // Get selected variants details
+  const selectedVariantsArray = Object.values(selectedVariants)
+    .map((variantId) => variantsData.find((v) => v.id === variantId))
+    .filter(Boolean) as ServiceOptionVariant[];
+
+  // Calculate totals
   const totalPrice =
     (serviceData?.base_price || 0) +
-    selectedOptionsArray.reduce((sum, opt) => sum + opt.price, 0);
+    selectedOptionsArray.reduce((sum, opt) => sum + opt.price, 0) +
+    selectedVariantsArray.reduce((sum, variant) => sum + variant.price, 0);
+
   const totalDuration =
     (serviceData?.duration_minutes || 0) +
     selectedOptionsArray.reduce(
       (sum, opt) => sum + (opt.duration_minutes || 0),
+      0,
+    ) +
+    selectedVariantsArray.reduce(
+      (sum, variant) => sum + variant.duration_minutes,
       0,
     );
 
@@ -74,6 +92,26 @@ const ReviewPaymentStep = ({
             </ul>
           )}
         </div>
+        {selectedVariantsArray.length > 0 && (
+          <div>
+            <Label className="font-semibold text-gray-700">
+              Selected Variants:
+            </Label>
+            <ul className="ml-4 mt-2 list-disc text-gray-800">
+              {selectedVariantsArray.map((variant) => (
+                <li key={variant.id} className="mb-1">
+                  <span className="font-medium">{variant.name}</span>
+                  <span className="text-xs text-slate-500 ml-1">
+                    ({variant.type})
+                  </span>
+                  <span className="ml-2 text-sm text-gray-600">
+                    (+R{variant.price}, +{variant.duration_minutes} min)
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         <div className="flex justify-between items-center">
           <Label className="font-semibold text-gray-700">Address:</Label>
           <span className="text-gray-900">{addressDateData.address}</span>

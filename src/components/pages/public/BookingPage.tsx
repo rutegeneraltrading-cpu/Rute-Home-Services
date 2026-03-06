@@ -1,30 +1,28 @@
 'use client';
 
-import { useState } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useState, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
 import AddOptionsStep from './Booking/AddOptionsStep';
 import AddressDateStep from './Booking/AddressDateStep';
+import AddVariantsStep from './Booking/AddVariantsStep';
 import ReviewPaymentStep from './Booking/ReviewPaymentStep';
 import { Form } from '@/components/ui/form';
 import { useQuery } from '@tanstack/react-query';
 
 import type { Service, ServiceOptionItem } from '@/lib/types';
+import type { ServiceOptionVariant } from '@/lib/types/admin/services/variant';
 import { Loading } from '@/components/common';
-
-const steps = [
-  { id: 1, name: 'Add Options' },
-  { id: 2, name: 'Address & Date' },
-  { id: 3, name: 'Review & Pay' },
-];
 
 const BookingPage = () => {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const serviceSlug = searchParams.get('service');
 
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedOptions, setSelectedOptions] = useState<
     Record<string, boolean>
+  >({});
+  const [selectedVariants, setSelectedVariants] = useState<
+    Record<string, string>
   >({});
   const [addressDateData, setAddressDateData] = useState<{
     address: string;
@@ -61,10 +59,45 @@ const BookingPage = () => {
     enabled: !!serviceData?.id,
   });
 
-  if (!serviceSlug) {
-    router.push('/services');
-    return null;
-  }
+  // Get selected option IDs
+  const selectedOptionIds = Object.keys(selectedOptions).filter(
+    (key) => selectedOptions[key],
+  );
+
+  // Fetch variants for selected options
+  const { data: variantsData = [] } = useQuery({
+    queryKey: ['service-option-variants', selectedOptionIds.join(',')],
+    queryFn: async (): Promise<ServiceOptionVariant[]> => {
+      if (selectedOptionIds.length === 0) return [];
+      const response = await fetch(
+        `/api/services/options/variants?option_ids=${selectedOptionIds.join(',')}`,
+      );
+      if (!response.ok) return [];
+      const data = await response.json();
+      return data?.variants || [];
+    },
+    enabled: selectedOptionIds.length > 0,
+  });
+
+  // Calculate dynamic steps based on whether variants exist
+  const steps = useMemo(() => {
+    const baseSteps = [{ id: 1, name: 'Add Options' }];
+
+    if (variantsData.length > 0) {
+      baseSteps.push({ id: 2, name: 'Select Variants' });
+      baseSteps.push({ id: 3, name: 'Address & Date' });
+      baseSteps.push({ id: 4, name: 'Review & Pay' });
+    } else {
+      baseSteps.push({ id: 2, name: 'Address & Date' });
+      baseSteps.push({ id: 3, name: 'Review & Pay' });
+    }
+
+    return baseSteps;
+  }, [variantsData.length]);
+
+  // Calculate the final step number
+  const finalStepNumber = steps[steps.length - 1].id;
+
   if (serviceLoading || categoryLoading) return <Loading fullScreen />;
   if (!serviceData || !categoryData) {
     return (
@@ -77,7 +110,7 @@ const BookingPage = () => {
   }
 
   return (
-    <div className="py-16 bg-slate-50 h-screen">
+    <div className="py-16 bg-slate-50 min-h-screen">
       <div className="container mx-auto flex items-center justify-center gap-8">
         {/* Sidebar: Category and Service Details */}
         <div className="max-w-5xl grid grid-cols-12 gap-8">
@@ -163,7 +196,16 @@ const BookingPage = () => {
                   onBack={undefined}
                 />
               )}
-              {currentStep === 2 && (
+              {currentStep === 2 && variantsData.length > 0 && (
+                <AddVariantsStep
+                  variants={variantsData}
+                  selectedVariants={selectedVariants}
+                  setSelectedVariants={setSelectedVariants}
+                  onNext={() => setCurrentStep(3)}
+                  onBack={() => setCurrentStep(1)}
+                />
+              )}
+              {currentStep === 2 && variantsData.length === 0 && (
                 <AddressDateStep
                   addressDateData={addressDateData}
                   setAddressDateData={setAddressDateData}
@@ -171,14 +213,27 @@ const BookingPage = () => {
                   onBack={() => setCurrentStep(1)}
                 />
               )}
-              {currentStep === 3 && (
+              {currentStep === 3 && variantsData.length > 0 && (
+                <AddressDateStep
+                  addressDateData={addressDateData}
+                  setAddressDateData={setAddressDateData}
+                  onNext={() => setCurrentStep(4)}
+                  onBack={() => setCurrentStep(2)}
+                />
+              )}
+              {currentStep === finalStepNumber && (
                 <ReviewPaymentStep
                   serviceData={serviceData}
                   categoryData={categoryData}
                   optionsData={optionsData}
                   selectedOptions={selectedOptions}
+                  selectedVariants={selectedVariants}
+                  variantsData={variantsData}
                   addressDateData={addressDateData}
-                  onBack={() => setCurrentStep(2)}
+                  onBack={() => {
+                    // Go back to address step
+                    setCurrentStep(variantsData.length > 0 ? 3 : 2);
+                  }}
                 />
               )}
             </Form>
