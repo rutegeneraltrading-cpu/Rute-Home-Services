@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
         total_amount,
         status: 'pending',
         shipping_address,
-        payment_method: payment_method || 'ozow',
+        payment_method: payment_method || 'PayFast',
       })
       .select()
       .single();

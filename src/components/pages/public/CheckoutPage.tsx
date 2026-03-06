@@ -143,7 +143,7 @@ const CheckoutPage = () => {
           })),
           total_amount: totalPrice,
           shipping_address: selectedAddress,
-          payment_method: 'ozow',
+          payment_method: 'PayFast',
           additional_notes: additionalNotes,
         }),
       });
@@ -154,8 +154,8 @@ const CheckoutPage = () => {
 
       const { order } = await orderResponse.json();
 
-      // Initialize Ozow payment
-      const ozowResponse = await fetch('/api/ozow/initialize', {
+      // Initialize PayFast payment
+      const PayFastResponse = await fetch('/api/PayFast/initialize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -164,13 +164,13 @@ const CheckoutPage = () => {
         }),
       });
 
-      if (!ozowResponse.ok) {
+      if (!PayFastResponse.ok) {
         throw new Error('Failed to initialize payment');
       }
 
-      const { payment_url } = await ozowResponse.json();
+      const { payment_url } = await PayFastResponse.json();
 
-      // Redirect to Ozow payment page
+      // Redirect to PayFast payment page
       window.location.href = payment_url;
     } catch (error) {
       console.error('Checkout error:', error);
@@ -518,21 +518,21 @@ const CheckoutPage = () => {
                   <div className="flex items-start gap-3 rounded-md border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
                     <Package className="h-4 w-4 text-slate-600" />
                     <div>
-                      You will be redirected to <strong>Ozow</strong> to
-                      complete your payment securely. Ozow supports EFT, credit
+                      You will be redirected to <strong>PayFast</strong> to
+                      complete your payment securely. PayFast supports EFT, credit
                       cards, and instant payment methods.
                     </div>
                   </div>
                   <div className="mt-4 flex items-center justify-center p-4 bg-slate-50 rounded-md">
                     <Image
-                      src="https://ozow.com/images/ozow-logo.svg"
-                      alt="Ozow"
+                      src="https://PayFast.com/images/PayFast-logo.svg"
+                      alt="PayFast"
                       width={120}
                       height={32}
                       className="h-8 w-auto"
                     />
                     <span className="hidden text-lg font-semibold text-slate-700">
-                      Ozow Payment Gateway
+                      PayFast Payment Gateway
                     </span>
                   </div>
                 </CardContent>
@@ -607,7 +607,7 @@ const CheckoutPage = () => {
                   </Button>
 
                   <p className="text-xs text-slate-500 text-center">
-                    🔒 Secure payment powered by Ozow
+                    🔒 Secure payment powered by PayFast
                   </p>
                 </CardContent>
               </Card>

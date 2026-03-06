@@ -246,7 +246,7 @@ const CartPage = () => {
                   {/* Security Notice */}
                   <div className="mt-6 p-4 bg-slate-50 rounded-md">
                     <p className="text-xs text-slate-600 text-center">
-                      🔒 Secure checkout powered by Ozow
+                      🔒 Secure checkout powered by PayFast
                     </p>
                   </div>
                 </CardContent>

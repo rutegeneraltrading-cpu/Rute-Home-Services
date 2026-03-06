@@ -8,7 +8,7 @@
 **Home Services & E-commerce Platform (South Africa)**  
 **Final Version: February 2026**
 
-> **Geographic Scope:** South Africa only (ZAR currency, SA provinces, Ozow payments)
+> **Geographic Scope:** South Africa only (ZAR currency, SA provinces, PayFast payments)
 
 ---
 
@@ -311,7 +311,7 @@
 ├────────────────────────────────┤
 │ id (PK)                        │
 │ order_id or booking_id (FK)    │
-│ provider (ozow, stripe, etc)   │
+│ provider (PayFast, stripe, etc)   │
 │ status (initiated, paid, etc)  │
 │ amount, currency               │
 │ transaction_ref                │
@@ -499,11 +499,11 @@ Available Slots =
    {order_id, product_id: A, qty: 2, unit_price: 50, total_price: 100}
    {order_id, product_id: B, qty: 1, unit_price: 30, total_price: 30}
 
-5. Process payment via Ozow:
+5. Process payment via PayFast:
    INSERT payments:
-   {id, order_id, amount: 193, provider: 'ozow', status: 'initiated'}
+   {id, order_id, amount: 193, provider: 'PayFast', status: 'initiated'}
 
-6. After Ozow callback:
+6. After PayFast callback:
    UPDATE payments {status: 'paid', transaction_ref: '...'}
    UPDATE order {status: 'confirmed', payment_status: 'paid'}
    CREATE notification {template: 'payment_success'}

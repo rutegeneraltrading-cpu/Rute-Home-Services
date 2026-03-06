@@ -231,7 +231,7 @@ Visit: http://localhost:3000
 - [ ] User management
 - [ ] Analytics dashboard
 - [ ] Email notifications (SES)
-- [ ] Payment processing (Ozow)
+- [ ] Payment processing (PayFast)
 
 ## 🔐 Authentication
 
