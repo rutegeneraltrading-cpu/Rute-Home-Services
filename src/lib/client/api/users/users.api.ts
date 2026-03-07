@@ -23,6 +23,7 @@ export interface AdminCreateUserDTO {
   email: string;
   name: string;
   password: string;
+  phone: string;
 }
 
 export interface UpdateUserDTO {
