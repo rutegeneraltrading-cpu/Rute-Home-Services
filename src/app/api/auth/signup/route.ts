@@ -3,12 +3,12 @@ import { createClient, createAdminClient } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password, name } = await request.json();
+    const { email, password, name, phone } = await request.json();
 
     // 1. VALIDATE INPUT
-    if (!email || !password || !name) {
+    if (!email || !password || !name || !phone) {
       return NextResponse.json(
-        { error: 'Email, password, and name are required' },
+        { error: 'Email, password, name, and phone are required' },
         { status: 400 },
       );
     }
@@ -29,6 +29,7 @@ export async function POST(request: NextRequest) {
       options: {
         data: {
           full_name: name,
+          phone: phone,
         },
       },
     });
@@ -48,18 +49,19 @@ export async function POST(request: NextRequest) {
     // Supabase trigger automatically creates profile on auth user creation
     await new Promise((resolve) => setTimeout(resolve, 1500));
 
-    // 4. FETCH AUTO-CREATED PROFILE (using admin client to bypass RLS)
+    // 4. UPDATE PROFILE WITH PHONE AND FETCH (using admin client to bypass RLS)
     const adminClient = await createAdminClient();
     const { data: profile, error: profileError } = await adminClient
       .from('profiles')
-      .select('*')
+      .update({ phone: phone })
       .eq('auth_id', authData.user.id)
+      .select('*')
       .single();
 
     if (profileError) {
-      console.error('Profile fetch error:', profileError);
+      console.error('Profile update error:', profileError);
       return NextResponse.json(
-        { error: 'Profile creation failed. Please try again.' },
+        { error: 'Profile update failed. Please try again.' },
         { status: 400 },
       );
     }
@@ -71,6 +73,7 @@ export async function POST(request: NextRequest) {
           id: profile.auth_id,
           email: profile.email,
           name: profile.full_name,
+          phone: phone,
           role: profile.role,
           avatar_url: profile.avatar_url || null,
           created_at: profile.created_at,

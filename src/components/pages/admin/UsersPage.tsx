@@ -34,6 +34,12 @@ export default function UsersPage() {
       sortable: true,
     },
     {
+      id: 'phone',
+      header: 'Phone',
+      accessorKey: 'phone',
+      sortable: true,
+    },
+    {
       id: 'role',
       header: 'Role',
       accessorKey: 'role',

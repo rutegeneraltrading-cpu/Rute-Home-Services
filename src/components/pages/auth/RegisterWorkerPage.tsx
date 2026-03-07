@@ -247,7 +247,7 @@ const RegisterWorkerPage = () => {
                     inputProps={{
                       name: 'phone',
                       required: true,
-                      className: 'h-10 w-full border rounded px-2 pl-12',
+                      className: 'h-10 w-full border rounded-md shadow-xs px-2 pl-12',
                     }}
                     value={getValues('phone')}
                     onChange={(value) =>

@@ -7,7 +7,7 @@ export async function GET() {
     const { data: profiles, error } = await supabase
       .from('profiles')
       .select(
-        'auth_id, full_name, email, avatar_url, role, status, created_at, updated_at',
+        'auth_id, full_name, email, phone, avatar_url, role, status, created_at, updated_at',
       )
       .eq('role', 'user')
       .order('created_at', { ascending: false });
@@ -37,11 +37,11 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const { email, password, name } = await request.json();
+    const { email, password, name, phone } = await request.json();
 
-    if (!email || !password || !name) {
+    if (!email || !password || !name || !phone) {
       return NextResponse.json(
-        { error: 'Email, password, and name are required' },
+        { error: 'Email, password, name, and phone are required' },
         { status: 400 },
       );
     }
@@ -59,10 +59,12 @@ export async function POST(request: Request) {
       await adminClient.auth.admin.createUser({
         email,
         password,
+        phone,
         email_confirm: true,
         user_metadata: {
           full_name: name,
           display_name: name,
+          phone: phone,
         },
       });
 
@@ -81,43 +83,24 @@ export async function POST(request: Request) {
 
     const { data: profile, error: profileError } = await adminClient
       .from('profiles')
-      .select('*')
-      .eq('auth_id', userId)
-      .single();
-
-    if (profileError || !profile) {
-      const { data: newProfile, error: insertError } = await adminClient
-        .from('profiles')
-        .insert({
+      .upsert(
+        {
           auth_id: userId,
           email,
           full_name: name,
+          phone,
           role: 'user',
           status: 'active',
-        })
-        .select()
-        .single();
-
-      if (insertError) {
-        return NextResponse.json(
-          { error: 'Profile creation failed. Please try again.' },
-          { status: 400 },
-        );
-      }
-
-      return NextResponse.json(
-        {
-          id: newProfile.auth_id,
-          email: newProfile.email,
-          name: newProfile.full_name,
-          full_name: newProfile.full_name,
-          role: newProfile.role,
-          status: newProfile.status,
-          avatar_url: newProfile.avatar_url || null,
-          created_at: newProfile.created_at,
-          updated_at: newProfile.updated_at,
         },
-        { status: 201 },
+        { onConflict: 'auth_id' },
+      )
+      .select('*')
+      .single();
+
+    if (profileError || !profile) {
+      return NextResponse.json(
+        { error: 'Profile creation failed. Please try again.' },
+        { status: 400 },
       );
     }
 
@@ -127,6 +110,7 @@ export async function POST(request: Request) {
         email: profile.email,
         name: profile.full_name,
         full_name: profile.full_name,
+        phone: profile.phone || phone,
         role: profile.role,
         status: profile.status,
         avatar_url: profile.avatar_url || null,

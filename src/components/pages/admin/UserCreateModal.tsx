@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { UserCreateModalProps } from '@/lib/types';
 import { useCreateUser } from '@/lib/client/api/users';
 import { Button, Input, PasswordInput } from '@/components/ui';
+import PhoneInput from 'react-phone-input-2';
 
 export function UserCreateModal({
   open,
@@ -32,6 +33,7 @@ export function UserCreateModal({
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -65,6 +67,7 @@ export function UserCreateModal({
       email,
       password,
       name,
+      phone,
     });
   };
 
@@ -112,7 +115,21 @@ export function UserCreateModal({
               className="mt-2"
             />
           </div>
-
+          <div>
+            <Label htmlFor="phone">Phone</Label>
+            <PhoneInput
+              country={'za'}
+              inputProps={{
+                name: 'phone',
+                required: true,
+                className: 'h-9 w-full border rounded-md shadow-xs px-2 pl-12',
+              }}
+              value={phone}
+              onChange={(value) => setPhone(value)}
+              enableSearch
+              containerClass="mb-2"
+            />
+          </div>
           <div>
             <Label htmlFor="password">Password</Label>
             <PasswordInput

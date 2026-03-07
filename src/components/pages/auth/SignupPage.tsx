@@ -4,7 +4,8 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSignUp } from '@/lib/client/api';
-import { Button, Input, PasswordInput } from '@/components/ui';
+import PhoneInput from 'react-phone-input-2';
+import { Button, Input, Label, PasswordInput } from '@/components/ui';
 
 interface SignupPageProps {
   redirectTo?: string;
@@ -23,6 +24,7 @@ const SignupPage = ({
   const signUpMutation = useSignUp();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -47,6 +49,7 @@ const SignupPage = ({
         email,
         password,
         name,
+        phone,
       });
       await new Promise((resolve) => setTimeout(resolve, 500));
       if (onSuccess) {
@@ -108,7 +111,21 @@ const SignupPage = ({
             disabled={signUpMutation.isPending}
           />
         </div>
-
+        <div>
+          <Label htmlFor="phone">Phone</Label>
+          <PhoneInput
+            country={'za'}
+            inputProps={{
+              name: 'phone',
+              required: true,
+              className: 'h-9 w-full border rounded-md shadow-xs px-2 pl-12',
+            }}
+            value={phone}
+            onChange={(value) => setPhone(value)}
+            enableSearch
+            containerClass="mb-2"
+          />
+        </div>
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">
             Password
