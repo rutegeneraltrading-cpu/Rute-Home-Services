@@ -69,7 +69,7 @@ const AuthRequiredModal = ({
               className="mt-0 shadow-none border-0 p-0"
               hideFooterLinks
               onSuccess={() => {
-                onOpenChange(false);
+                onOpenChange?.(false);
                 router.refresh();
                 onAuthenticated?.();
               }}
@@ -79,7 +79,7 @@ const AuthRequiredModal = ({
               className="mt-0 shadow-none border-0 p-0"
               hideFooterLinks
               onSuccess={() => {
-                onOpenChange(false);
+                onOpenChange?.(false);
                 router.refresh();
                 onAuthenticated?.();
               }}
