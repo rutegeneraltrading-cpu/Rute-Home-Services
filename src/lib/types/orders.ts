@@ -45,6 +45,46 @@ export interface Order {
   created_at: string;
   updated_at: string;
   order_items?: OrderItem[];
+  profile?: {
+    id: string;
+    full_name: string | null;
+    email: string | null;
+    phone: string | null;
+  };
+  address?: {
+    id: string;
+    recipient_name?: string | null;
+    phone?: string | null;
+    line1: string;
+    line2?: string | null;
+    city: string;
+    state_province: string;
+    postal_code: string;
+    country: string;
+  };
+}
+
+export interface OrderDetailedItem extends OrderItemInput {
+  line_total: number;
+  product?: {
+    id: string;
+    name: string;
+    sku?: string | null;
+    brand?: string | null;
+    price: number;
+    sale_price?: number | null;
+    stock?: number;
+    images?: Array<{
+      id: string;
+      url: string;
+      is_primary?: boolean | null;
+      sort_order?: number | null;
+    }>;
+  } | null;
+}
+
+export interface OrderDetails extends Order {
+  detailed_items: OrderDetailedItem[];
 }
 
 export interface CreateOrderDTO {
@@ -66,4 +106,9 @@ export interface OrderPaymentData {
   email: string;
   phone?: string;
   total: number;
+}
+
+export interface UpdateOrderDTO {
+  status?: OrderStatus;
+  payment_status?: OrderPaymentStatus;
 }

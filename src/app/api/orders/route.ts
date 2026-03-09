@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase';
 
 interface OrderItemPayload {
   product_id: string;
@@ -223,13 +224,21 @@ export async function GET() {
       );
     }
 
-    let query = supabase.from('orders').select('*');
+    let query = supabase.from('orders').select(`
+      *,
+      profiles!user_id(
+        id,
+        full_name,
+        email,
+        phone
+      )
+    `);
 
     if (profile.role !== 'admin') {
       query = query.eq('user_id', profile.id);
     }
 
-    const { data: orders, error } = await query.order('created_at', {
+    const { data: ordersData, error } = await query.order('created_at', {
       ascending: false,
     });
 
@@ -240,6 +249,50 @@ export async function GET() {
         { status: 500 },
       );
     }
+
+    // Fetch addresses for all orders with address_id
+    const addressIds = Array.from(
+      new Set(
+        (ordersData || [])
+          .map((o: { address_id?: string }) => o?.address_id)
+          .filter(Boolean),
+      ),
+    ) as string[];
+
+    let addressMap = new Map<string, unknown>();
+
+    if (addressIds.length > 0) {
+      const adminSupabase = await createAdminClient();
+      const { data: addresses, error: addressError } = await adminSupabase
+        .from('user_addresses')
+        .select('id, line1, line2, city, state_province, postal_code, country')
+        .in('id', addressIds);
+
+      if (addressError) {
+        console.error('Addresses fetch error:', addressError);
+      }
+
+      if (addresses) {
+        addressMap = new Map(
+          addresses.map((addr: { id: string }) => [addr.id, addr]),
+        );
+      }
+    }
+
+    // Transform the response to match frontend expectations
+    const orders = (ordersData || []).map((order) => ({
+      ...order,
+      profile: order.profiles || null,
+      address: order.address_id
+        ? addressMap.get(order.address_id) || null
+        : null,
+    }));
+
+    // Remove the raw relations from each order
+    orders.forEach((order) => {
+      delete order.profiles;
+      delete order.user_addresses;
+    });
 
     return NextResponse.json({ orders });
   } catch (error) {
