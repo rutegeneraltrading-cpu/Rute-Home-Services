@@ -28,6 +28,7 @@ export async function signInUser(
   return {
     id: userData.auth_id,
     email: userData.email,
+    phone: userData.phone,
     name: userData.full_name,
     avatar_url: userData.avatar_url,
     role: userData.role,
@@ -86,6 +87,7 @@ export async function signUpUser(
     return {
       id: newProfile.auth_id,
       email: newProfile.email,
+      phone: newProfile.phone,
       name: newProfile.full_name,
       avatar_url: newProfile.avatar_url,
       role: newProfile.role,
@@ -96,6 +98,7 @@ export async function signUpUser(
   return {
     id: userData.auth_id,
     email: userData.email,
+    phone: userData.phone,
     name: userData.full_name,
     avatar_url: userData.avatar_url,
     role: userData.role,
@@ -132,6 +135,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     id: userData.auth_id,
     email: userData.email,
     name: userData.full_name,
+    phone: userData.phone,
     avatar_url: userData.avatar_url,
     role: userData.role,
     created_at: userData.created_at,

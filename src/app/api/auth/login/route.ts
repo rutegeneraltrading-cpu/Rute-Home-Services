@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
         id: userData.auth_id,
         email: userData.email,
         name: userData.full_name,
+        phone: userData.phone,
         role: userData.role,
         avatar_url: userData.avatar_url,
         created_at: userData.created_at,

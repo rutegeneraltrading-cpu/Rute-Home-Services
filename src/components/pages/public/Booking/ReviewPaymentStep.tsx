@@ -1,10 +1,23 @@
+'use client';
+
+import { useState } from 'react';
 import { Button, Label } from '@/components/ui';
 import type { Service, ServiceOptionItem } from '@/lib/types/admin/services';
 import type { ServiceOptionVariant } from '@/lib/types/admin/services/variant';
+import { useCreateBooking } from '@/lib/client/api/bookings/bookings.mutation';
+import { usePayFastPayment } from '@/lib/client/api/bookings/payments.mutation';
+import { useGetMe } from '@/lib/client/api';
+import { AuthRequiredModal, Loading } from '@/components/common';
+import type { CreateBookingDTO } from '@/lib/types/bookings';
 
 interface ReviewPaymentStepProps {
   serviceData: Service;
-  categoryData: any;
+  categoryData: {
+    id: string;
+    name: string;
+    slug?: string;
+    description?: string;
+  };
   optionsData: ServiceOptionItem[];
   selectedOptions: Record<string, boolean>;
   selectedVariants: Record<string, string>;
@@ -23,6 +36,19 @@ const ReviewPaymentStep = ({
   addressDateData,
   onBack,
 }: ReviewPaymentStepProps) => {
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isLoginModalDismissed, setIsLoginModalDismissed] = useState(false);
+
+  const {
+    data: user,
+    isLoading: userLoading,
+    refetch: refetchUser,
+  } = useGetMe();
+  const createBookingMutation = useCreateBooking();
+  const payFastPaymentMutation = usePayFastPayment();
+
+  const shouldOpenLoginModal = !userLoading && !user && !isLoginModalDismissed;
+
   const selectedOptionsArray = optionsData.filter(
     (opt) => selectedOptions[opt.id],
   );
@@ -49,6 +75,58 @@ const ReviewPaymentStep = ({
       0,
     );
 
+  const handlePayment = async () => {
+    // Check if user is authenticated
+    if (!user) {
+      setIsLoginModalDismissed(false);
+      return;
+    }
+
+    setIsProcessing(true);
+
+    try {
+      // Split user's full name into first and last name
+      const nameParts = user.name?.split(' ') || ['', ''];
+      const firstName = nameParts[0] || 'User';
+      const lastName = nameParts.slice(1).join(' ') || 'Customer';
+
+      // Step 1: Create booking
+      const bookingData: CreateBookingDTO = {
+        user_id: user.id,
+        service_id: serviceData.id,
+        address: addressDateData.address,
+        booking_date: addressDateData.date,
+        booking_time: addressDateData.time,
+        total_price: totalPrice,
+        total_duration: totalDuration,
+        selected_options: Object.keys(selectedOptions).filter(
+          (key) => selectedOptions[key],
+        ),
+        selected_variants: Object.values(selectedVariants),
+      };
+
+      const booking = await createBookingMutation.mutateAsync(bookingData);
+
+      // Step 2: Get PayFast payment URL
+      const paymentData = {
+        booking_id: booking.id,
+        user_id: booking.user_id,
+        first_name: firstName,
+        last_name: lastName,
+        email: user.email || '',
+        phone: user.phone || undefined,
+        total_price: booking.total_price,
+        service_name: serviceData.name,
+        service_description: serviceData.description || '',
+      };
+
+      payFastPaymentMutation.mutate(paymentData);
+    } catch (error) {
+      setIsProcessing(false);
+      console.error('Error during payment:', error);
+    }
+  };
+  if (isProcessing) return <Loading fullScreen />;
   return (
     <div className="max-w-150">
       <h2 className="text-2xl font-extrabold mb-6 text-center text-gray-900">
@@ -137,23 +215,51 @@ const ReviewPaymentStep = ({
           </div>
         </div>
       </div>
+      {!user && !userLoading && (
+        <div className="mt-8 p-6 bg-yellow-50 rounded-lg border border-yellow-200">
+          <p className="text-sm text-yellow-800">
+            Please log in to continue with payment.
+          </p>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-10">
         <Button
           type="button"
           variant="outline"
           onClick={onBack}
           className="w-full sm:w-auto px-5"
+          disabled={isProcessing}
         >
           Back
         </Button>
         <Button
           type="button"
-          disabled
+          onClick={handlePayment}
+          disabled={isProcessing || !user || userLoading}
           className="w-full sm:w-auto px-5 bg-linear-to-r from-black to-gray-800 text-white font-bold shadow hover:from-gray-800 hover:to-black"
         >
-          Pay (Coming Soon)
+          {isProcessing
+            ? 'Processing...'
+            : !user
+              ? 'Login to Pay'
+              : `Pay R${totalPrice.toFixed(2)}`}
         </Button>
       </div>
+
+      <AuthRequiredModal
+        open={shouldOpenLoginModal}
+        isAuthenticated={!!user}
+        onOpenChange={(open) => {
+          if (!open) setIsLoginModalDismissed(true);
+        }}
+        onAuthenticated={() => {
+          refetchUser();
+          setIsLoginModalDismissed(true);
+        }}
+        title="Login Required"
+        description="You need to be logged in to complete the booking and payment."
+      />
     </div>
   );
 };

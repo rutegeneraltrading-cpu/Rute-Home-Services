@@ -15,6 +15,7 @@ export interface AuthUser {
   id: string;
   email: string;
   name: string | null;
+  phone: string | null;
   role: 'admin' | 'user' | 'worker';
   avatar_url: string | null;
   created_at: string;

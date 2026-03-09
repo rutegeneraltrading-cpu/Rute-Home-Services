@@ -255,12 +255,18 @@
 │ bookings                             │
 ├──────────────────────────────────────┤
 │ id (PK)                              │
-│ user_id (FK → profiles.auth_id)      │
-│ service_id (FK)                      │
-│ address_id (FK)                      │
-│ scheduled_date, start_time, end_time │
-│ total_price, total_duration          │
-│ status                               │
+│ user_id (profile id fk)              │
+│ service_id                           |
+| selected_options []                  │
+| selected_variants []                 |
+│ address,                             │
+│ booking_date,                        |
+| booking_time,                        │
+│ total_price,                         |
+| total_duration                       │
+│ status                               |
+| payment_status                       |
+| payment_id                           │
 │ notes                                │
 │ created_at                           │
 └──────────────────────────────────────┘
