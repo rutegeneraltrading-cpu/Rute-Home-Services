@@ -70,17 +70,23 @@
                          │
          ┌───────────────┘
          │
-┌────────────────────────────────────┐
-│ orders                             │
-├────────────────────────────────────┤
-│ id (PK)                            │
-│ user_id (FK → profiles.auth_id)    │
-│ address_id (FK)                    │
-│ status                             │
-│ subtotal, tax, shipping, total     │
-│ payment_status                     │
-│ created_at                         │
-└────────────────────────────────────┘
+┌──────────────────────────────────────┐
+│ orders                               │
+├──────────────────────────────────────┤
+│ id (PK)                              │
+│ user_id (FK → profiles.auth_id)      |
+| items [{product_id, quantity, price}]│
+│ address_id (FK)                      │
+│ status                               │
+│ subtotal                             |
+| tax                                  |
+| shipping                             |
+| total                                │
+│ payment_status                       |
+| payfast_transaction_id               |
+| notes                                │
+│ created_at                           │
+└──────────────────────────────────────┘
          │
          │ 1:N
          │

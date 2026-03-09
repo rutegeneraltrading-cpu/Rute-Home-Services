@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     const text = await request.text();
     const webhookData = Object.fromEntries(new URLSearchParams(text));
 
-    const bookingId = webhookData.m_payment_id || webhookData.custom_str1;
+    const referenceId = webhookData.m_payment_id || webhookData.custom_str1;
 
     // Validate webhook signature
     const payfast = getPayFastService();
@@ -24,9 +24,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
     }
 
-    if (!bookingId) {
+    if (!referenceId) {
       return NextResponse.json(
-        { error: 'Booking ID not found in webhook' },
+        { error: 'Reference ID not found in webhook' },
         { status: 400 },
       );
     }
@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
     const transactionId = webhookData.pf_payment_id;
 
     let bookingStatus = 'pending';
+    let orderStatus = 'pending';
     let dbPaymentStatus = 'failed';
 
     // Determine status based on PayFast payment_status
@@ -45,6 +46,7 @@ export async function POST(request: NextRequest) {
       // Payment successful
       dbPaymentStatus = 'paid';
       bookingStatus = 'confirmed';
+      orderStatus = 'confirmed';
     } else if (paymentStatus === 'PENDING') {
       // Payment pending (process ongoing)
       dbPaymentStatus = 'pending';
@@ -52,6 +54,7 @@ export async function POST(request: NextRequest) {
       // Payment cancelled or failed
       dbPaymentStatus = 'failed';
       bookingStatus = 'cancelled';
+      orderStatus = 'cancelled';
     }
 
     // Update booking with payment information
@@ -63,7 +66,7 @@ export async function POST(request: NextRequest) {
         payfast_transaction_id: transactionId,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', bookingId)
+      .eq('id', referenceId)
       .select('id, status, payment_status, payfast_transaction_id')
       .maybeSingle();
 
@@ -75,16 +78,42 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!updatedBooking) {
-      console.error('Booking not found during update:', bookingId);
+    if (updatedBooking) {
       return NextResponse.json(
-        { error: 'Booking not found for update' },
+        { success: true, message: 'Booking webhook processed' },
+        { status: 200 },
+      );
+    }
+
+    const { data: updatedOrder, error: orderUpdateError } = await supabase
+      .from('orders')
+      .update({
+        payment_status: dbPaymentStatus,
+        status: orderStatus,
+        payfast_transaction_id: transactionId,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', referenceId)
+      .select('id, status, payment_status, payfast_transaction_id')
+      .maybeSingle();
+
+    if (orderUpdateError) {
+      console.error('Error updating order:', orderUpdateError);
+      return NextResponse.json(
+        { error: 'Failed to update order' },
+        { status: 500 },
+      );
+    }
+
+    if (!updatedOrder) {
+      return NextResponse.json(
+        { error: 'No booking/order found for provided reference id' },
         { status: 404 },
       );
     }
 
     return NextResponse.json(
-      { success: true, message: 'Webhook processed' },
+      { success: true, message: 'Order webhook processed' },
       { status: 200 },
     );
   } catch (error) {

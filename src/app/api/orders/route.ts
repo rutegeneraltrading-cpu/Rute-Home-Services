@@ -1,6 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
+interface OrderItemPayload {
+  product_id: string;
+  quantity: number;
+  price: number;
+}
+
+interface NewAddressPayload {
+  label?: 'home' | 'office' | 'other';
+  recipient_name?: string | null;
+  phone?: string | null;
+  line1: string;
+  line2?: string | null;
+  city: string;
+  state_province: string;
+  postal_code: string;
+  country: string;
+  is_primary?: boolean;
+}
+
+interface CreateOrderPayload {
+  items: OrderItemPayload[];
+  address_id?: string;
+  new_address?: NewAddressPayload;
+  subtotal: number;
+  tax: number;
+  shipping: number;
+  total: number;
+  notes?: string;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
@@ -14,33 +44,137 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { items, total_amount, shipping_address, payment_method } = body;
+    const body: CreateOrderPayload = await request.json();
+    const {
+      items,
+      address_id,
+      new_address,
+      subtotal,
+      tax,
+      shipping,
+      total,
+      notes,
+    } = body;
+
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('auth_id', user.id)
+      .single();
+
+    if (profileError || !profile) {
+      return NextResponse.json(
+        { error: 'User profile not found' },
+        { status: 404 },
+      );
+    }
 
     // Validate required fields
-    if (!items || items.length === 0) {
+    if (!Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
         { error: 'Order items are required' },
         { status: 400 },
       );
     }
 
-    if (!total_amount || !shipping_address) {
+    if (
+      !Number.isFinite(subtotal) ||
+      !Number.isFinite(tax) ||
+      !Number.isFinite(shipping) ||
+      !Number.isFinite(total)
+    ) {
       return NextResponse.json(
-        { error: 'Total amount and shipping address are required' },
+        { error: 'Invalid amount values' },
         { status: 400 },
       );
+    }
+
+    if (!address_id && !new_address) {
+      return NextResponse.json(
+        { error: 'Address is required' },
+        { status: 400 },
+      );
+    }
+
+    let resolvedAddressId = address_id;
+
+    if (resolvedAddressId) {
+      const { data: existingAddress, error: addressError } = await supabase
+        .from('user_addresses')
+        .select('id')
+        .eq('id', resolvedAddressId)
+        .eq('profile_id', profile.id)
+        .maybeSingle();
+
+      if (addressError || !existingAddress) {
+        return NextResponse.json(
+          { error: 'Selected address is invalid' },
+          { status: 400 },
+        );
+      }
+    }
+
+    if (!resolvedAddressId && new_address) {
+      if (
+        !new_address.line1 ||
+        !new_address.city ||
+        !new_address.state_province ||
+        !new_address.postal_code ||
+        !new_address.country
+      ) {
+        return NextResponse.json(
+          { error: 'Missing required address fields' },
+          { status: 400 },
+        );
+      }
+
+      const { data: createdAddress, error: createAddressError } = await supabase
+        .from('user_addresses')
+        .insert({
+          profile_id: profile.id,
+          label: new_address.label || 'other',
+          recipient_name: new_address.recipient_name || null,
+          phone: new_address.phone || null,
+          line1: new_address.line1,
+          line2: new_address.line2 || null,
+          city: new_address.city,
+          state_province: new_address.state_province,
+          postal_code: new_address.postal_code,
+          country: new_address.country,
+          is_primary: !!new_address.is_primary,
+        })
+        .select('id')
+        .single();
+
+      if (createAddressError || !createdAddress) {
+        console.error('Address creation error:', createAddressError);
+        return NextResponse.json(
+          { error: 'Failed to save address' },
+          { status: 500 },
+        );
+      }
+
+      resolvedAddressId = createdAddress.id;
     }
 
     // Create order
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert({
-        user_id: user.id,
-        total_amount,
+        user_id: profile.id,
+        items: items.map((item) => ({
+          product_id: item.product_id,
+          quantity: item.quantity,
+          price: item.price,
+        })),
+        address_id: resolvedAddressId,
         status: 'pending',
-        shipping_address,
-        payment_method: payment_method || 'PayFast',
+        subtotal,
+        tax,
+        shipping,
+        total,
+        payment_status: 'pending',
+        notes: notes || null,
       })
       .select()
       .single();
@@ -49,30 +183,6 @@ export async function POST(request: NextRequest) {
       console.error('Order creation error:', orderError);
       return NextResponse.json(
         { error: 'Failed to create order' },
-        { status: 500 },
-      );
-    }
-
-    // Create order items
-    const orderItems = items.map(
-      (item: { product_id: string; quantity: number; price: number }) => ({
-        order_id: order.id,
-        product_id: item.product_id,
-        quantity: item.quantity,
-        price: item.price,
-      }),
-    );
-
-    const { error: itemsError } = await supabase
-      .from('order_items')
-      .insert(orderItems);
-
-    if (itemsError) {
-      console.error('Order items creation error:', itemsError);
-      // Rollback order
-      await supabase.from('orders').delete().eq('id', order.id);
-      return NextResponse.json(
-        { error: 'Failed to create order items' },
         { status: 500 },
       );
     }
@@ -100,16 +210,28 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: orders, error } = await supabase
-      .from('orders')
-      .select(
-        `
-        *,
-        order_items(*)
-      `,
-      )
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, role')
+      .eq('auth_id', user.id)
+      .single();
+
+    if (profileError || !profile) {
+      return NextResponse.json(
+        { error: 'User profile not found' },
+        { status: 404 },
+      );
+    }
+
+    let query = supabase.from('orders').select('*');
+
+    if (profile.role !== 'admin') {
+      query = query.eq('user_id', profile.id);
+    }
+
+    const { data: orders, error } = await query.order('created_at', {
+      ascending: false,
+    });
 
     if (error) {
       console.error('Supabase error:', error);

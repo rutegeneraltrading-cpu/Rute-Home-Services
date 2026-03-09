@@ -32,10 +32,12 @@ export interface CreateBookingDTO {
 
 export interface BookingPaymentData {
   booking_id: string;
+  user_id: string;
   first_name: string;
   last_name: string;
   email: string;
   phone?: string;
   total_price: number;
+  service_name: string;
   service_description: string;
 }

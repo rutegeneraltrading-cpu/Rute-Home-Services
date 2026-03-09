@@ -15,7 +15,7 @@ import {
 interface AuthRequiredModalProps {
   open: boolean;
   isAuthenticated: boolean;
-  onOpenChange: (open: boolean) => void;
+  onOpenChange?: (open: boolean) => void;
   onAuthenticated?: () => void;
   title?: string;
   description?: string;
@@ -36,7 +36,7 @@ const AuthRequiredModal = ({
     if (!isAuthenticated && !nextOpen) {
       return;
     }
-    onOpenChange(nextOpen);
+    onOpenChange?.(nextOpen);
   };
 
   return (

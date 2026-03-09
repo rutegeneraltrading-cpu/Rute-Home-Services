@@ -29,6 +29,12 @@ interface PayFastPaymentData {
   custom_str1?: string;
 }
 
+interface PayFastCallbackUrls {
+  returnUrl?: string;
+  cancelUrl?: string;
+  notifyUrl?: string;
+}
+
 export class PayFastService {
   private config: PayFastConfig;
   private payweb_url = 'https://www.payfast.co.za/eng/process';
@@ -210,6 +216,34 @@ export class PayFastService {
   }
 
   /**
+   * PayFast expects SA mobile format (e.g. 0821234567).
+   * If invalid, omit cell_number because it is optional.
+   */
+  private normalizeCellNumber(phone?: string): string | undefined {
+    if (!phone) return undefined;
+
+    const digits = phone.replace(/\D/g, '');
+    if (!digits) return undefined;
+
+    // 0821234567
+    if (/^0\d{9}$/.test(digits)) {
+      return digits;
+    }
+
+    // +27821234567 or 27821234567 -> 0821234567
+    if (/^27\d{9}$/.test(digits)) {
+      return `0${digits.slice(2)}`;
+    }
+
+    // 0027821234567 -> 0821234567
+    if (/^0027\d{9}$/.test(digits)) {
+      return `0${digits.slice(4)}`;
+    }
+
+    return undefined;
+  }
+
+  /**
    * Build payment data object
    */
   buildPaymentData(
@@ -220,17 +254,20 @@ export class PayFastService {
     customerEmail: string,
     customerPhone: string | undefined,
     serviceDescription: string,
+    callbackUrls?: PayFastCallbackUrls,
   ): PayFastPaymentData {
+    const normalizedCellNumber = this.normalizeCellNumber(customerPhone);
+
     return {
       merchant_id: this.config.merchantId,
       merchant_key: this.config.merchantKey,
-      return_url: this.config.returnUrl,
-      cancel_url: this.config.cancelUrl,
-      notify_url: this.config.notifyUrl,
+      return_url: callbackUrls?.returnUrl || this.config.returnUrl,
+      cancel_url: callbackUrls?.cancelUrl || this.config.cancelUrl,
+      notify_url: callbackUrls?.notifyUrl || this.config.notifyUrl,
       name_first: customerName,
       name_last: customerLastName,
       email_address: customerEmail,
-      cell_number: customerPhone,
+      cell_number: normalizedCellNumber,
       item_name: 'Service Booking',
       item_description: serviceDescription,
       amount: this.formatAmount(amount),

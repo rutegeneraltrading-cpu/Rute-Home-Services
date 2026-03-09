@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
     try {
       // Initialize PayFast service
       const payfast = getPayFastService();
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL;
 
       // Build payment data
       const paymentData = payfast.buildPaymentData(
@@ -49,6 +50,10 @@ export async function POST(request: NextRequest) {
         email,
         phone,
         `${service_name}${service_description ? ` - ${service_description}` : 'Home Service'}`,
+        {
+          returnUrl: `${appUrl}/success?booking=${booking_id}`,
+          cancelUrl: `${appUrl}/cancelled?booking=${booking_id}`,
+        },
       );
 
       // Generate payment URL

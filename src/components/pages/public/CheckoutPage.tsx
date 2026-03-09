@@ -1,17 +1,13 @@
 'use client';
 
 import { useState, useEffect, type ChangeEvent } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import Image from 'next/image';
-import {
-  ArrowLeft,
-  CreditCard,
-  MapPin,
-  Package,
-  CheckCircle,
-  XCircle,
-} from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ArrowLeft, MapPin } from 'lucide-react';
 import { useGetMe, useGetUserAddresses } from '@/lib/client/api';
+import {
+  useCreateOrder,
+  useOrderPayFastPayment,
+} from '@/lib/client/api/orders/orders.mutation';
 import { useCart } from '@/lib/contexts';
 import {
   Button,
@@ -23,6 +19,7 @@ import {
   Label,
 } from '@/components/ui';
 import { Loading, AuthRequiredModal } from '@/components/common';
+import type { CreateOrderDTO } from '@/lib/types/orders';
 
 interface ShippingAddress {
   recipient_name?: string | null;
@@ -37,16 +34,14 @@ interface ShippingAddress {
 
 const CheckoutPage = () => {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { data: user, isLoading: userLoading } = useGetMe();
   const { data: addressesData = { addresses: [] }, refetch: refetchAddresses } =
     useGetUserAddresses();
-  const { items, totalPrice, clearCart } = useCart();
+  const { items, totalPrice } = useCart();
+  const createOrderMutation = useCreateOrder();
+  const orderPayFastPaymentMutation = useOrderPayFastPayment();
 
   const [isProcessing, setIsProcessing] = useState(false);
-  const [showLoginModal, setShowLoginModal] = useState(false);
-  const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
-  const [orderId, setOrderId] = useState<string | null>(null);
 
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(
     null,
@@ -64,35 +59,15 @@ const CheckoutPage = () => {
 
   const [additionalNotes, setAdditionalNotes] = useState('');
 
-  // Check payment status from URL params
-  useEffect(() => {
-    const status = searchParams?.get('status');
-    const order = searchParams?.get('order');
-
-    if (status === 'success' && order) {
-      setPaymentStatus('success');
-      setOrderId(order);
-      clearCart();
-    } else if (status === 'cancelled') {
-      setPaymentStatus('cancelled');
-    } else if (status === 'error') {
-      setPaymentStatus('error');
-    }
-  }, [searchParams, clearCart]);
-
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!userLoading && !user) {
-      setShowLoginModal(true);
-    }
-  }, [user, userLoading]);
+  // Derive showLoginModal from user state
+  const showLoginModal = !userLoading && !user;
 
   // Redirect to cart if cart is empty
   useEffect(() => {
-    if (!paymentStatus && items.length === 0) {
+    if (items.length === 0) {
       router.push('/cart');
     }
-  }, [items, router, paymentStatus]);
+  }, [items.length, router]);
 
   const addresses = addressesData.addresses || [];
   const primaryAddressId = addresses.find((addr) => addr.is_primary)?.id;
@@ -126,52 +101,55 @@ const CheckoutPage = () => {
     setIsProcessing(true);
 
     try {
-      const selectedAddress =
-        effectiveAddressId === 'other'
-          ? newAddress
-          : addresses.find((addr) => addr.id === effectiveAddressId);
+      const subtotal = totalPrice;
+      const tax = 0;
+      const shipping = 0;
+      const total = subtotal + tax + shipping;
 
-      // Create order
-      const orderResponse = await fetch('/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          items: items.map((item) => ({
-            product_id: item.id,
-            quantity: item.quantity,
-            price: item.sale_price || item.price,
-          })),
-          total_amount: totalPrice,
-          shipping_address: selectedAddress,
-          payment_method: 'PayFast',
-          additional_notes: additionalNotes,
-        }),
-      });
+      const createOrderPayload: CreateOrderDTO = {
+        items: items.map((item) => ({
+          product_id: item.id,
+          quantity: item.quantity,
+          price: item.sale_price || item.price,
+        })),
+        subtotal,
+        tax,
+        shipping,
+        total,
+        notes: additionalNotes || undefined,
+      };
 
-      if (!orderResponse.ok) {
-        throw new Error('Failed to create order');
+      if (effectiveAddressId === 'other') {
+        createOrderPayload.new_address = {
+          label: 'other',
+          recipient_name: newAddress.recipient_name || null,
+          phone: newAddress.phone || null,
+          line1: newAddress.line1,
+          line2: newAddress.line2 || null,
+          city: newAddress.city,
+          state_province: newAddress.state_province,
+          postal_code: newAddress.postal_code,
+          country: newAddress.country,
+        };
+      } else {
+        createOrderPayload.address_id = effectiveAddressId;
       }
 
-      const { order } = await orderResponse.json();
+      const order = await createOrderMutation.mutateAsync(createOrderPayload);
 
-      // Initialize PayFast payment
-      const PayFastResponse = await fetch('/api/PayFast/initialize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          order_id: order.id,
-          amount: totalPrice,
-        }),
+      const nameParts = user?.name?.split(' ') || ['', ''];
+      const firstName = nameParts[0] || 'Customer';
+      const lastName = nameParts.slice(1).join(' ') || 'User';
+
+      await orderPayFastPaymentMutation.mutateAsync({
+        order_id: order.id,
+        user_id: order.user_id,
+        first_name: firstName,
+        last_name: lastName,
+        email: user?.email || '',
+        phone: user?.phone || undefined,
+        total: order.total,
       });
-
-      if (!PayFastResponse.ok) {
-        throw new Error('Failed to initialize payment');
-      }
-
-      const { payment_url } = await PayFastResponse.json();
-
-      // Redirect to PayFast payment page
-      window.location.href = payment_url;
     } catch (error) {
       console.error('Checkout error:', error);
       alert('Failed to process checkout. Please try again.');
@@ -179,87 +157,12 @@ const CheckoutPage = () => {
     }
   };
 
-  // Payment Success Screen
-  if (paymentStatus === 'success') {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="max-w-md mx-auto">
-          <CardContent className="pt-6 text-center">
-            <div className="mb-6">
-              <CheckCircle className="h-20 w-20 text-green-500 mx-auto" />
-            </div>
-            <h2 className="text-2xl font-bold text-slate-900 mb-3">
-              Payment Successful!
-            </h2>
-            <p className="text-slate-600 mb-6">
-              Your order #{orderId?.substring(0, 8)} has been confirmed. We will
-              send you an email with order details shortly.
-            </p>
-            <div className="space-y-3">
-              <Button
-                onClick={() => router.push('/user/orders')}
-                className="w-full bg-green-600 hover:bg-green-700"
-              >
-                View My Orders
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => router.push('/shop')}
-                className="w-full"
-              >
-                Continue Shopping
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Payment Cancelled/Error Screen
-  if (paymentStatus === 'cancelled' || paymentStatus === 'error') {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="max-w-md mx-auto">
-          <CardContent className="pt-6 text-center">
-            <div className="mb-6">
-              <XCircle className="h-20 w-20 text-red-500 mx-auto" />
-            </div>
-            <h2 className="text-2xl font-bold text-slate-900 mb-3">
-              {paymentStatus === 'cancelled'
-                ? 'Payment Cancelled'
-                : 'Payment Failed'}
-            </h2>
-            <p className="text-slate-600 mb-6">
-              {paymentStatus === 'cancelled'
-                ? 'Your payment was cancelled. You can try again or continue shopping.'
-                : 'There was an error processing your payment. Please try again.'}
-            </p>
-            <div className="space-y-3">
-              <Button
-                onClick={() => {
-                  setPaymentStatus(null);
-                  router.push('/checkout');
-                }}
-                className="w-full bg-green-600 hover:bg-green-700"
-              >
-                Try Again
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => router.push('/cart')}
-                className="w-full"
-              >
-                Back to Cart
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (userLoading) return <Loading fullScreen />;
+  if (
+    isProcessing ||
+    createOrderMutation.isPending ||
+    orderPayFastPaymentMutation.isPending
+  )
+    return <Loading fullScreen />;
 
   return (
     <>
@@ -505,38 +408,6 @@ const CheckoutPage = () => {
                   </div>
                 </CardContent>
               </Card>
-
-              {/* Payment Method */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <CreditCard className="h-5 w-5 text-green-600" />
-                    Payment Method
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-start gap-3 rounded-md border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-                    <Package className="h-4 w-4 text-slate-600" />
-                    <div>
-                      You will be redirected to <strong>PayFast</strong> to
-                      complete your payment securely. PayFast supports EFT, credit
-                      cards, and instant payment methods.
-                    </div>
-                  </div>
-                  <div className="mt-4 flex items-center justify-center p-4 bg-slate-50 rounded-md">
-                    <Image
-                      src="https://PayFast.com/images/PayFast-logo.svg"
-                      alt="PayFast"
-                      width={120}
-                      height={32}
-                      className="h-8 w-auto"
-                    />
-                    <span className="hidden text-lg font-semibold text-slate-700">
-                      PayFast Payment Gateway
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
             </div>
 
             {/* Order Summary */}
@@ -593,10 +464,16 @@ const CheckoutPage = () => {
 
                   <Button
                     onClick={handleSubmitOrder}
-                    disabled={isProcessing}
+                    disabled={
+                      isProcessing ||
+                      createOrderMutation.isPending ||
+                      orderPayFastPaymentMutation.isPending
+                    }
                     className="w-full h-12 text-lg bg-green-600 hover:bg-green-700"
                   >
-                    {isProcessing ? (
+                    {isProcessing ||
+                    createOrderMutation.isPending ||
+                    orderPayFastPaymentMutation.isPending ? (
                       <>
                         <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
                         Processing...
@@ -619,7 +496,6 @@ const CheckoutPage = () => {
       <AuthRequiredModal
         open={showLoginModal}
         isAuthenticated={!!user}
-        onOpenChange={setShowLoginModal}
         onAuthenticated={() => {
           refetchAddresses();
         }}
