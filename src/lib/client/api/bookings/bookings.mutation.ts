@@ -5,7 +5,7 @@ import {
   cancelBookingApi,
   updateBookingApi,
 } from './bookings.api';
-import type { CreateBookingDTO } from '@/lib/types/bookings';
+import type { CreateBookingDTO, UpdateBookingDTO } from '@/lib/types/bookings';
 import { bookingKeys } from './bookings.query';
 
 // ============================================
@@ -39,8 +39,7 @@ export const useUpdateBooking = (bookingId: string) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: Partial<CreateBookingDTO>) =>
-      updateBookingApi(bookingId, data),
+    mutationFn: (data: UpdateBookingDTO) => updateBookingApi(bookingId, data),
     onSuccess: (data) => {
       queryClient.invalidateQueries({
         queryKey: bookingKeys.detail(bookingId),

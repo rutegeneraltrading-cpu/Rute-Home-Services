@@ -2,106 +2,88 @@
 
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Eye, Trash2 } from 'lucide-react';
+import { Edit2, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TableColumn, TableAction } from '@/lib/types/table';
 import { DataTable, CustomCalendar } from '@/components/common';
+import { useGetBookings } from '@/lib/client/api/bookings/bookings.query';
+import type { Booking } from '@/lib/types/bookings';
+import { Loading } from '@/components/common';
+import { BookingEditModal } from './BookingEditModal';
 
-type BookingStatus = 'scheduled' | 'confirmed' | 'completed' | 'cancelled';
+type AdminBookingStatus =
+  | 'pending'
+  | 'confirmed'
+  | 'assigned'
+  | 'in_progress'
+  | 'completed'
+  | 'cancelled';
 
-interface Booking {
-  id: string;
-  booking_number: string;
-  customer_name: string;
-  customer_email: string;
-  service_name: string;
-  worker_name: string;
-  total_price: number;
-  status: BookingStatus;
-  start_time: string;
-  end_time: string;
-  created_at: string;
-}
+type AssignmentStatus =
+  | 'pending'
+  | 'accepted'
+  | 'declined'
+  | 'completed'
+  | 'cancelled';
 
-const mockBookings: Booking[] = [
-  {
-    id: '1',
-    booking_number: 'BK-2026-001',
-    customer_name: 'Ahmed Khan',
-    customer_email: 'ahmed@example.com',
-    service_name: 'Deep Cleaning',
-    worker_name: 'Ayesha Noor',
-    total_price: 850,
-    status: 'confirmed',
-    start_time: '2026-02-03T09:00:00Z',
-    end_time: '2026-02-03T11:00:00Z',
-    created_at: '2026-02-02T16:20:00Z',
-  },
-  {
-    id: '2',
-    booking_number: 'BK-2026-002',
-    customer_name: 'Fatima Ali',
-    customer_email: 'fatima@example.com',
-    service_name: 'AC Repair',
-    worker_name: 'Usman Tariq',
-    total_price: 1200,
-    status: 'scheduled',
-    start_time: '2026-02-03T12:30:00Z',
-    end_time: '2026-02-03T14:00:00Z',
-    created_at: '2026-02-03T08:40:00Z',
-  },
-  {
-    id: '3',
-    booking_number: 'BK-2026-003',
-    customer_name: 'Hassan Ibrahim',
-    customer_email: 'hassan@example.com',
-    service_name: 'Plumbing Fix',
-    worker_name: 'Sana Mirza',
-    total_price: 600,
-    status: 'completed',
-    start_time: '2026-02-02T10:00:00Z',
-    end_time: '2026-02-02T11:30:00Z',
-    created_at: '2026-02-01T15:10:00Z',
-  },
-  {
-    id: '4',
-    booking_number: 'BK-2026-004',
-    customer_name: 'Zainab Muhammad',
-    customer_email: 'zainab@example.com',
-    service_name: 'Painter Visit',
-    worker_name: 'Bilal Ahmed',
-    total_price: 1450,
-    status: 'cancelled',
-    start_time: '2026-02-02T15:00:00Z',
-    end_time: '2026-02-02T17:00:00Z',
-    created_at: '2026-02-01T09:30:00Z',
-  },
-  {
-    id: '5',
-    booking_number: 'BK-2026-005',
-    customer_name: 'Omar Abdullah',
-    customer_email: 'omar@example.com',
-    service_name: 'Appliance Maintenance',
-    worker_name: 'Hina Yusuf',
-    total_price: 980,
-    status: 'confirmed',
-    start_time: '2026-02-04T08:30:00Z',
-    end_time: '2026-02-04T10:00:00Z',
-    created_at: '2026-02-03T14:05:00Z',
-  },
-];
+const parseTimeLabelToMinutes = (value: string): number | null => {
+  const match = value.trim().match(/^(\d{1,2}):(\d{2})(AM|PM)$/i);
+  if (!match) return null;
+
+  const rawHour = Number(match[1]);
+  const minute = Number(match[2]);
+  const meridiem = match[3].toUpperCase();
+
+  if (rawHour < 1 || rawHour > 12 || minute < 0 || minute > 59) return null;
+
+  let hour24 = rawHour % 12;
+  if (meridiem === 'PM') hour24 += 12;
+
+  return hour24 * 60 + minute;
+};
+
+const toDateRange = (booking: Booking) => {
+  const [startLabel, endLabel] = String(booking.booking_time || '').split(
+    ' to ',
+  );
+  const startMinutes = startLabel ? parseTimeLabelToMinutes(startLabel) : null;
+  const endMinutes = endLabel ? parseTimeLabelToMinutes(endLabel) : null;
+
+  const start = new Date(`${booking.booking_date}T00:00:00`);
+  if (startMinutes === null) {
+    return {
+      start,
+      end: new Date(start.getTime() + booking.total_duration * 60 * 1000),
+    };
+  }
+
+  start.setMinutes(startMinutes);
+
+  const computedEndMinutes =
+    endMinutes !== null
+      ? endMinutes
+      : startMinutes + Number(booking.total_duration || 0);
+  const end = new Date(`${booking.booking_date}T00:00:00`);
+  end.setMinutes(computedEndMinutes);
+
+  return { start, end };
+};
 
 const BookingsPage = () => {
   const [activeTab, setActiveTab] = useState<'calendar' | 'list'>('calendar');
-  const [bookings, setBookings] = useState<Booking[]>(mockBookings);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
+  const { data: bookings = [], isLoading } = useGetBookings();
 
-  const getStatusColor = (status: BookingStatus) => {
+  const getStatusColor = (status: AdminBookingStatus) => {
     switch (status) {
-      case 'scheduled':
+      case 'pending':
         return 'bg-yellow-100 text-yellow-700';
       case 'confirmed':
         return 'bg-blue-100 text-blue-700';
+      case 'assigned':
+        return 'bg-green-100 text-indigo-700';
+      case 'in_progress':
+        return 'bg-purple-100 text-purple-700';
       case 'completed':
         return 'bg-green-100 text-green-700';
       case 'cancelled':
@@ -111,26 +93,55 @@ const BookingsPage = () => {
     }
   };
 
+  const getAssignmentStatusColor = (status: AssignmentStatus) => {
+    switch (status) {
+      case 'pending':
+        return 'bg-amber-100 text-amber-700';
+      case 'accepted':
+        return 'bg-blue-100 text-blue-700';
+      case 'declined':
+        return 'bg-red-100 text-red-700';
+      case 'completed':
+        return 'bg-green-100 text-green-700';
+      case 'cancelled':
+        return 'bg-gray-100 text-gray-700';
+      default:
+        return 'bg-gray-100 text-gray-700';
+    }
+  };
+
   const calendarEvents = useMemo(
     () =>
       bookings.map((booking) => ({
         id: booking.id,
-        title: `${booking.service_name} • ${booking.customer_name}`,
-        start: new Date(booking.start_time),
-        end: new Date(booking.end_time),
+        title: `${booking.service_name || 'Service'} • ${booking.customer_name || 'Customer'}`,
+        start: toDateRange(booking).start,
+        end: toDateRange(booking).end,
         status: booking.status,
+        workerName: booking.assigned_worker_name,
+        workerEmail: booking.assigned_worker_email,
+        assignmentStatus: booking.assignment_status,
+        onEdit: (eventId: string) => {
+          const booking = bookings.find((b) => b.id === eventId);
+          if (booking) setEditingBooking(booking);
+        },
+        onView: (eventId: string) => {
+          toast.info(`Booking ID: ${eventId.slice(0, 8)}`);
+        },
       })),
     [bookings],
   );
 
   const columns: TableColumn<Booking>[] = [
     {
-      id: 'booking_number',
-      header: 'Booking #',
-      accessorKey: 'booking_number',
+      id: 'payfast_transaction_id',
+      header: 'PayFast T ID',
+      accessorKey: 'payfast_transaction_id',
       sortable: true,
       cell: (value) => (
-        <span className="font-semibold text-gray-900">{value}</span>
+        <span className="font-semibold text-gray-900 font-mono text-xs">
+          {String(value).slice(0, 8)}
+        </span>
       ),
     },
     {
@@ -140,8 +151,12 @@ const BookingsPage = () => {
       sortable: true,
       cell: (value, row) => (
         <div>
-          <div className="font-medium text-gray-900">{value}</div>
-          <div className="text-sm text-gray-500">{row.customer_email}</div>
+          <div className="font-medium text-gray-900">
+            {String(value || '-')}
+          </div>
+          <div className="text-sm text-gray-500">
+            {String(row.customer_email || '-')}
+          </div>
         </div>
       ),
     },
@@ -152,10 +167,42 @@ const BookingsPage = () => {
       sortable: true,
       cell: (value, row) => (
         <div>
-          <div className="text-gray-900">{value}</div>
-          <div className="text-sm text-gray-500">{row.worker_name}</div>
+          <div className="text-gray-900">{String(value || '-')}</div>
+          <div className="text-sm text-gray-500">
+            {String(row.service_category || '-')}
+          </div>
         </div>
       ),
+    },
+    {
+      id: 'assigned_worker_name',
+      header: 'Assigned Worker',
+      accessorKey: 'assigned_worker_name',
+      sortable: true,
+      cell: (value, row) => (
+        <div>
+          <div className="text-gray-900">{String(value || '-')}</div>
+          <div className="text-sm text-gray-500">
+            {String(row.assigned_worker_email || '-')}
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: 'assignment_status',
+      header: 'Assign Status',
+      accessorKey: 'assignment_status',
+      sortable: true,
+      cell: (value) => {
+        if (!value) return <span className="text-gray-400">-</span>;
+        return (
+          <span
+            className={`${getAssignmentStatusColor(value as AssignmentStatus)} px-2 py-1 rounded-full text-xs font-semibold capitalize`}
+          >
+            {String(value)}
+          </span>
+        );
+      },
     },
     {
       id: 'total_price',
@@ -164,9 +211,45 @@ const BookingsPage = () => {
       sortable: true,
       cell: (value) => (
         <span className="font-semibold text-gray-900">
-          R{parseFloat(value).toFixed(2)}
+          R{parseFloat(String(value || 0)).toFixed(2)}
         </span>
       ),
+    },
+    {
+      id: 'booking_schedule',
+      header: 'Schedule',
+      accessorKey: 'booking_date',
+      sortable: false,
+      cell: (_value, row) => {
+        return (
+          <div>
+            <div className="text-gray-900">{row.booking_date}</div>
+            <div className="text-sm text-gray-500">{row.booking_time}</div>
+          </div>
+        );
+      },
+    },
+    {
+      id: 'payment_status',
+      header: 'Payment',
+      accessorKey: 'payment_status',
+      sortable: true,
+      cell: (value) => {
+        const colors = {
+          pending: 'bg-yellow-100 text-yellow-700',
+          paid: 'bg-green-100 text-green-700',
+          failed: 'bg-red-100 text-red-700',
+          refunded: 'bg-gray-100 text-gray-700',
+          cancelled: 'bg-red-100 text-red-700',
+        };
+        return (
+          <span
+            className={`${colors[value as keyof typeof colors] || 'bg-gray-100 text-gray-700'} px-2 py-1 rounded-full text-xs font-semibold capitalize`}
+          >
+            {String(value)}
+          </span>
+        );
+      },
     },
     {
       id: 'status',
@@ -175,58 +258,36 @@ const BookingsPage = () => {
       sortable: true,
       cell: (value) => (
         <span
-          className={`${getStatusColor(value)} px-3 py-1 rounded-full text-xs font-semibold capitalize`}
+          className={`${getStatusColor(value as AdminBookingStatus)} px-3 py-1 rounded-full text-xs font-semibold capitalize`}
         >
-          {value}
+          {String(value)}
         </span>
       ),
-    },
-    {
-      id: 'start_time',
-      header: 'Schedule',
-      accessorKey: 'start_time',
-      sortable: true,
-      cell: (value, row) => {
-        const start = new Date(value);
-        const end = new Date(row.end_time);
-        return (
-          <div>
-            <div className="text-gray-900">{start.toLocaleDateString()}</div>
-            <div className="text-sm text-gray-500">
-              {start.toLocaleTimeString()} - {end.toLocaleTimeString()}
-            </div>
-          </div>
-        );
-      },
     },
   ];
 
   const actions: TableAction[] = [
     {
+      id: 'edit',
+      label: 'Update Booking',
+      icon: Edit2,
+      onClick: (row) => {
+        setEditingBooking(row as Booking);
+      },
+    },
+    {
       id: 'view',
       label: 'View Details',
       icon: Eye,
       onClick: (row) => {
-        toast.info(`Viewing booking: ${row.booking_number}`);
+        toast.info(`Booking ID: ${String(row.id).slice(0, 8)}`);
       },
-    },
-    {
-      id: 'delete',
-      label: 'Delete',
-      icon: Trash2,
-      onClick: (row) => {
-        if (confirm(`Delete booking "${row.booking_number}"?`)) {
-          setDeletingId(row.id);
-          setTimeout(() => {
-            setBookings((prev) => prev.filter((b) => b.id !== row.id));
-            setDeletingId(null);
-            toast.success('Booking deleted successfully');
-          }, 500);
-        }
-      },
-      variant: 'destructive',
     },
   ];
+
+  if (isLoading) {
+    return <Loading fullScreen />;
+  }
 
   return (
     <div className="space-y-6 py-10">
@@ -266,13 +327,24 @@ const BookingsPage = () => {
             data: bookings,
             columns,
             actions,
-            isLoading: deletingId !== null,
+            isLoading: false,
             pageSize: 10,
-            defaultSortBy: 'start_time',
+            defaultSortBy: 'created_at',
             defaultSortOrder: 'desc',
           }}
         />
       )}
+
+      <BookingEditModal
+        open={!!editingBooking}
+        booking={editingBooking}
+        onOpenChange={(open) => {
+          if (!open) setEditingBooking(null);
+        }}
+        onSuccess={() => {
+          setEditingBooking(null);
+        }}
+      />
     </div>
   );
 };

@@ -3,6 +3,8 @@ import type {
   CreateBookingDTO,
   Booking,
   BookingPaymentData,
+  UpdateBookingDTO,
+  AvailableWorker,
 } from '@/lib/types/bookings';
 
 // ============================================
@@ -44,13 +46,23 @@ export const createBookingApi = async (
  */
 export const updateBookingApi = async (
   bookingId: string,
-  data: Partial<CreateBookingDTO>,
+  data: UpdateBookingDTO,
 ): Promise<Booking> => {
-  const { booking } = await httpClient.put<{ booking: Booking }>(
+  const { booking } = await httpClient.patch<{ booking: Booking }>(
     `/api/bookings/${bookingId}`,
     data,
   );
   return booking;
+};
+
+export const getAvailableWorkersForBookingApi = async (
+  bookingId: string,
+): Promise<{
+  workers: AvailableWorker[];
+  assigned_worker_id: string | null;
+  assignment_status: string | null;
+}> => {
+  return httpClient.get(`/api/bookings/${bookingId}/available-workers`);
 };
 
 /**

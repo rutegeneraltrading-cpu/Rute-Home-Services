@@ -11,4 +11,9 @@ export interface CalendarEvent {
   start: Date;
   end: Date;
   status?: CalendarStatus;
+  onEdit?: (eventId: string) => void;
+  onView?: (eventId: string) => void;
+  workerName?: string;
+  workerEmail?: string;
+  assignmentStatus?: CalendarStatus;
 }
