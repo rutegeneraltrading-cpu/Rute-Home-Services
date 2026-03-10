@@ -1,5 +1,6 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useMemo } from 'react';
 import { useJsApiLoader } from '@react-google-maps/api';
+import { useQuery } from '@tanstack/react-query';
 import { FormItem, FormLabel, FormControl } from '@/components/ui/form';
 import {
   Select,
@@ -11,6 +12,8 @@ import {
 } from '@/components/ui';
 
 interface AddressDateStepProps {
+  serviceId: string;
+  totalDurationMinutes: number;
   addressDateData: { address: string; date: string; time: string };
   setAddressDateData: (data: {
     address: string;
@@ -22,6 +25,8 @@ interface AddressDateStepProps {
 }
 
 const AddressDateStep = ({
+  serviceId,
+  totalDurationMinutes,
   addressDateData,
   setAddressDateData,
   onNext,
@@ -33,12 +38,26 @@ const AddressDateStep = ({
   const [isGoogleLocationSelected, setIsGoogleLocationSelected] =
     useState<boolean>(false);
   const [locationError, setLocationError] = useState<string>('');
+  const [availabilityError, setAvailabilityError] = useState<string>('');
+  const [hasSetDefaultTime, setHasSetDefaultTime] = useState<boolean>(false);
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
     libraries: ['places'],
   });
 
+  // Set tomorrow's date as default on mount
   useEffect(() => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowDate = tomorrow.toISOString().split('T')[0];
+
+    if (!addressDateData.date) {
+      setAddressDateData({
+        ...addressDateData,
+        date: tomorrowDate,
+      });
+    }
+
     if (addressDateData.address) {
       setIsGoogleLocationSelected(true);
     }
@@ -89,82 +108,88 @@ const AddressDateStep = ({
     };
   }, [isLoaded, setAddressDateData]);
 
-  // Generate 1-hour interval time slots for a day
-  const getTimeSlots = () => {
-    const slots: string[] = [];
-    let start = new Date();
-    start.setHours(0, 0, 0, 0);
-    for (let i = 0; i < 24; i++) {
-      const end = new Date(start.getTime() + 60 * 60000);
-      const format = (d: Date) => {
-        const h = d.getHours() % 12 || 12;
-        const m = d.getMinutes().toString().padStart(2, '0');
-        const ampm = d.getHours() < 12 ? 'AM' : 'PM';
-        return `${h}:${m}${ampm}`;
-      };
-      slots.push(`${format(start)} to ${format(end)}`);
-      start = end;
-    }
-    return slots;
-  };
-
   // Prevent selecting previous dates
   const today = new Date();
-  const nextDay = new Date(today);
-  nextDay.setDate(today.getDate() + 1);
   const minDate = today.toISOString().split('T')[0];
-  const defaultDate = nextDay.toISOString().split('T')[0];
 
-  // Prevent selecting previous time if today is selected
-  const isToday = addressDateData.date === minDate;
-  const now = new Date();
-  const getFilteredTimeSlots = () => {
-    const slots = getTimeSlots();
-    if (!isToday) return slots;
-    // Only show slots that end after now
-    return slots.filter((slot) => {
-      const [, end] = slot.split(' to ');
-      const [eh, emamp] = end.split(':');
-      const em = emamp.slice(0, 2);
-      const ampm = emamp.slice(2);
-      let hour = parseInt(eh, 10);
-      if (ampm === 'PM' && hour !== 12) hour += 12;
-      if (ampm === 'AM' && hour === 12) hour = 0;
-      const minute = parseInt(em, 10);
-      const slotEnd = new Date();
-      slotEnd.setHours(hour, minute, 0, 0);
-      return slotEnd > now;
-    });
-  };
+  const {
+    data: availabilityData,
+    isLoading: isSlotsLoading,
+    isError: isSlotsError,
+  } = useQuery({
+    queryKey: [
+      'workers-availability-slots',
+      serviceId,
+      addressDateData.date,
+      totalDurationMinutes,
+    ],
+    queryFn: async (): Promise<{
+      available_slots: string[];
+      message?: string;
+    }> => {
+      const params = new URLSearchParams({
+        service_id: serviceId,
+        date: addressDateData.date,
+        duration_minutes: String(totalDurationMinutes),
+      });
 
-  // Set default time slot if not set
-  const defaultTimeSlot = '9:00AM to 10:00AM';
-  const timeSlots = getFilteredTimeSlots();
+      const response = await fetch(
+        `/api/workers/availability?${params.toString()}`,
+      );
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData?.error || 'Failed to fetch available slots');
+      }
 
-  // Set default date and time on mount
+      return response.json();
+    },
+    enabled:
+      Boolean(serviceId) &&
+      Boolean(addressDateData.date) &&
+      totalDurationMinutes > 0,
+    staleTime: 30 * 1000,
+  });
+
+  const timeSlots = availabilityData?.available_slots || [];
+
+  // Auto-select 9:00AM slot if available (only once)
   useEffect(() => {
-    if (!addressDateData.date) {
-      setAddressDateData({
-        ...addressDateData,
-        date: defaultDate,
-        time: defaultTimeSlot,
-      });
-    } else {
-      // Always set default time when date changes
-      setAddressDateData({
-        ...addressDateData,
-        time: timeSlots.includes(defaultTimeSlot)
-          ? defaultTimeSlot
-          : timeSlots[0] || '',
-      });
+    if (!hasSetDefaultTime && timeSlots.length > 0 && !addressDateData.time) {
+      const nineAmSlot = timeSlots.find((slot) => slot.startsWith('9:00AM'));
+      if (nineAmSlot) {
+        setAddressDateData({
+          ...addressDateData,
+          time: nineAmSlot,
+        });
+        setHasSetDefaultTime(true);
+      }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addressDateData.date]);
+  }, [timeSlots, hasSetDefaultTime, addressDateData, setAddressDateData]);
+
+  const selectedTime = useMemo(() => {
+    return timeSlots.includes(addressDateData.time) ? addressDateData.time : '';
+  }, [addressDateData.time, timeSlots]);
 
   const handleNext = () => {
     if (!isGoogleLocationSelected) {
       setLocationError('Please select your address from Google suggestions.');
       return;
+    }
+
+    if (!addressDateData.date) {
+      setAvailabilityError('Please select a date first.');
+      return;
+    }
+
+    if (!selectedTime) {
+      setAvailabilityError(
+        'No worker available for selected slot. Please choose another date/time.',
+      );
+      return;
+    }
+
+    if (availabilityError) {
+      setAvailabilityError('');
     }
 
     onNext();
@@ -205,27 +230,41 @@ const AddressDateStep = ({
             type="date"
             min={minDate}
             value={addressDateData.date}
-            onChange={(e) =>
+            onChange={(e) => {
               setAddressDateData({
                 ...addressDateData,
                 date: e.target.value,
-              })
-            }
+                time: '',
+              });
+              setHasSetDefaultTime(false); // Reset so 9:00AM can be auto-selected again
+              if (availabilityError) setAvailabilityError('');
+            }}
           />
         </FormControl>
       </FormItem>
       <FormItem className="mb-6">
-        <FormLabel>Time</FormLabel>
+        <FormLabel>
+          Time ({totalDurationMinutes} min)
+          {isSlotsLoading ? ' - checking availability...' : ''}
+        </FormLabel>
         <FormControl>
           <Select
-            value={addressDateData.time}
-            onValueChange={(val) =>
-              setAddressDateData({ ...addressDateData, time: val })
+            value={selectedTime}
+            onValueChange={(val) => {
+              setAddressDateData({ ...addressDateData, time: val });
+              if (availabilityError) setAvailabilityError('');
+            }}
+            disabled={
+              !addressDateData.date || isSlotsLoading || timeSlots.length === 0
             }
-            disabled={!addressDateData.date}
           >
             <SelectTrigger className="w-full">
-              {addressDateData.time || 'Select a time slot'}
+              {selectedTime ||
+                (isSlotsLoading
+                  ? 'Checking available slots...'
+                  : timeSlots.length === 0
+                    ? 'No slots available'
+                    : 'Select a time slot')}
             </SelectTrigger>
             <SelectContent>
               {timeSlots.map((slot) => (
@@ -236,6 +275,22 @@ const AddressDateStep = ({
             </SelectContent>
           </Select>
         </FormControl>
+        {isSlotsError && (
+          <p className="text-sm text-red-600 mt-2">
+            Unable to load worker availability. Please try again.
+          </p>
+        )}
+        {!isSlotsLoading &&
+          addressDateData.date &&
+          timeSlots.length === 0 &&
+          !isSlotsError && (
+            <p className="text-sm text-amber-600 mt-2">
+              Worker is not available on this date. Please change date.
+            </p>
+          )}
+        {availabilityError && (
+          <p className="text-sm text-red-600 mt-2">{availabilityError}</p>
+        )}
       </FormItem>
       <div className="flex justify-between mt-8">
         <Button
@@ -254,7 +309,7 @@ const AddressDateStep = ({
               isGoogleLocationSelected &&
               addressDateData.address &&
               addressDateData.date &&
-              addressDateData.time
+              selectedTime
             )
           }
           className="px-4"

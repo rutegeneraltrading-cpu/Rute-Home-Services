@@ -277,20 +277,17 @@
 │ created_at                           │
 └──────────────────────────────────────┘
          │
-         ├─────────────────┐
-         │                 │
-    1:N  │                 │ 1:N
-         │                 │
-┌────────────────────┐  ┌─────────────────────────┐
-│ booking_items      │  │ booking_assignments     │
-├────────────────────┤  ├─────────────────────────┤
-│ id (PK)            │  │ id (PK)                 │
-│ booking_id (FK)    │  │ booking_id (FK)         │
-│ service_option_id  │  │ worker_id (FK)          │
-│ option_name        │  │ assigned_by (FK)        │◄── admin_profile_id
-│ price (snapshot)   │  │ status                  │
-│ quantity           │  │ assigned_at             │
-└────────────────────┘  └─────────────────────────┘
+booking_assignments:
+id,
+booking_id (fk),
+worker_id(fk),
+status,
+assigned_at,
+accepted_at,
+declined_at,
+completed_at,
+cancelled_at,
+
 
 
 ┌────────────────────────────────┐

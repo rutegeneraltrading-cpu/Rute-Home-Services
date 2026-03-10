@@ -79,6 +79,27 @@ const BookingPage = () => {
     enabled: selectedOptionIds.length > 0,
   });
 
+  const selectedOptionsArray = optionsData.filter(
+    (opt) => selectedOptions[opt.id],
+  );
+
+  const selectedVariantsArray = Object.values(selectedVariants)
+    .map((variantId) =>
+      variantsData.find((variant) => variant.id === variantId),
+    )
+    .filter(Boolean) as ServiceOptionVariant[];
+
+  const totalDurationMinutes =
+    (serviceData?.duration_minutes || 0) +
+    selectedOptionsArray.reduce(
+      (sum, option) => sum + (option.duration_minutes || 0),
+      0,
+    ) +
+    selectedVariantsArray.reduce(
+      (sum, variant) => sum + (variant.duration_minutes || 0),
+      0,
+    );
+
   // Calculate dynamic steps based on whether variants exist
   const steps = useMemo(() => {
     const baseSteps = [{ id: 1, name: 'Add Options' }];
@@ -207,6 +228,8 @@ const BookingPage = () => {
               )}
               {currentStep === 2 && variantsData.length === 0 && (
                 <AddressDateStep
+                  serviceId={serviceData.id}
+                  totalDurationMinutes={totalDurationMinutes}
                   addressDateData={addressDateData}
                   setAddressDateData={setAddressDateData}
                   onNext={() => setCurrentStep(3)}
@@ -215,6 +238,8 @@ const BookingPage = () => {
               )}
               {currentStep === 3 && variantsData.length > 0 && (
                 <AddressDateStep
+                  serviceId={serviceData.id}
+                  totalDurationMinutes={totalDurationMinutes}
                   addressDateData={addressDateData}
                   setAddressDateData={setAddressDateData}
                   onNext={() => setCurrentStep(4)}
