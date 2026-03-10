@@ -6,7 +6,6 @@ import {
   CalendarCheck,
   ShoppingCart,
   CreditCard,
-  Bell,
   UserRound,
   CircleQuestionMark,
 } from 'lucide-react';
@@ -52,12 +51,6 @@ const UserSidebar = () => {
       url: '/user/payment-history',
       icon: <CreditCard className="size-4" />,
       isActive: pathname.startsWith('/user/payment-history'),
-    },
-    {
-      title: 'Notifications',
-      url: '/user/notifications',
-      icon: <Bell className="size-4" />,
-      isActive: pathname.startsWith('/user/notifications'),
     },
     {
       title: 'Profile',

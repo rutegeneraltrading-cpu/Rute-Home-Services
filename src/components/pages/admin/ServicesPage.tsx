@@ -173,13 +173,10 @@ export default function ServicesPage() {
       sortable: true,
     },
     {
-      id: 'booking',
-      header: 'Booking',
-      accessorKey: 'booking',
-      sortable: false,
-      cell: (value) => (
-        <span className="text-xs text-slate-700">{value || '0'}</span>
-      ),
+      id: 'is_active',
+      header: 'Status',
+      accessorKey: 'is_active',
+      sortable: true,
     },
   ];
   const categoryActions: TableAction[] = [

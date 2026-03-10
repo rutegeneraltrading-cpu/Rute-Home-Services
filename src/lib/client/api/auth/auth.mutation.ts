@@ -80,8 +80,7 @@ export function useSignIn(options?: AuthMutationOptions) {
       toast({
         variant: 'destructive',
         title: 'Login Failed',
-        description:
-          error?.message?.data?.message || 'Invalid email or password.',
+        description: error?.data?.error || 'Invalid email or password.',
       });
 
       options?.onError?.(error);

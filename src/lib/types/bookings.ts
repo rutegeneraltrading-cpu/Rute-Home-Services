@@ -20,17 +20,64 @@ export type BookingAssignmentStatus =
   | 'completed'
   | 'cancelled';
 
+export interface BookingSelectionDetail {
+  id: string;
+  name: string;
+}
+
+export interface BookingServiceCategoryDetail {
+  id: string;
+  name: string;
+  slug?: string | null;
+  charge_type?: string | null;
+  is_active?: boolean | null;
+}
+
+export interface BookingServiceDetail {
+  id: string;
+  name: string;
+  slug?: string | null;
+  description?: string | null;
+  base_price?: number | null;
+  duration_minutes?: number | null;
+  is_active?: boolean | null;
+  category?: BookingServiceCategoryDetail | null;
+}
+
+export interface BookingOptionDetail extends BookingSelectionDetail {
+  service_id?: string;
+  description?: string | null;
+  type?: string | null;
+  price?: number | null;
+  duration_minutes?: number | null;
+  is_required?: boolean | null;
+  display_order?: number | null;
+  is_active?: boolean | null;
+}
+
+export interface BookingVariantDetail extends BookingSelectionDetail {
+  service_option_id?: string;
+  service_option_name?: string | null;
+  type?: string | null;
+  price?: number | null;
+  duration_minutes?: number | null;
+  display_order?: number | null;
+  is_active?: boolean | null;
+}
+
 export interface Booking {
   id: string;
   user_id: string;
   service_id: string;
   customer_name?: string;
   customer_email?: string;
+  customer_phone?: string;
   service_name?: string;
   service_category?: string;
   assigned_worker_id?: string;
   assigned_worker_name?: string;
   assigned_worker_email?: string;
+  assigned_worker_phone?: string;
   assignment_status?: BookingAssignmentStatus;
   address: string;
   booking_date: string;
@@ -42,6 +89,9 @@ export interface Booking {
   payfast_transaction_id?: string;
   selected_options: string[]; // option IDs
   selected_variants: string[]; // variant IDs
+  service_details?: BookingServiceDetail;
+  selected_option_details?: BookingOptionDetail[];
+  selected_variant_details?: BookingVariantDetail[];
   notes?: string;
   created_at: string;
   updated_at: string;

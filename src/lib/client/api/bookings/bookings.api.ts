@@ -25,7 +25,15 @@ export const getBookingsApi = async (): Promise<Booking[]> => {
  * Get single booking by ID
  */
 export const getBookingApi = async (bookingId: string): Promise<Booking> => {
-  return httpClient.get(`/api/bookings/${bookingId}`);
+  const response = await httpClient.get<{ booking: Booking } | Booking>(
+    `/api/bookings/${bookingId}`,
+  );
+
+  if ('booking' in response) {
+    return response.booking;
+  }
+
+  return response;
 };
 
 /**

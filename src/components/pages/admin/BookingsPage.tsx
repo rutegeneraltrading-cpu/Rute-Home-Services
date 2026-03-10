@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 import { Edit2, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TableColumn, TableAction } from '@/lib/types/table';
@@ -70,6 +70,7 @@ const toDateRange = (booking: Booking) => {
 };
 
 const BookingsPage = () => {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'calendar' | 'list'>('calendar');
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
   const { data: bookings = [], isLoading } = useGetBookings();
@@ -126,10 +127,10 @@ const BookingsPage = () => {
           if (booking) setEditingBooking(booking);
         },
         onView: (eventId: string) => {
-          toast.info(`Booking ID: ${eventId.slice(0, 8)}`);
+          router.push(`/admin/bookings/${eventId}`);
         },
       })),
-    [bookings],
+    [bookings, router],
   );
 
   const columns: TableColumn<Booking>[] = [
@@ -280,7 +281,7 @@ const BookingsPage = () => {
       label: 'View Details',
       icon: Eye,
       onClick: (row) => {
-        toast.info(`Booking ID: ${String(row.id).slice(0, 8)}`);
+        router.push(`/admin/bookings/${String(row.id)}`);
       },
     },
   ];

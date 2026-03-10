@@ -303,19 +303,6 @@ cancelled_at,
 
 
 ┌────────────────────────────────┐
-│ notifications                  │
-├────────────────────────────────┤
-│ id (PK)                        │
-│ user_id or worker_id (FK)      │
-│ type (email, sms, in_app)      │
-│ template (booking_confirmation)│
-│ subject, body, metadata        │
-│ status (pending, sent, failed) │
-│ sent_at, created_at            │
-└────────────────────────────────┘
-
-
-┌────────────────────────────────┐
 │ payments                       │
 ├────────────────────────────────┤
 │ id (PK)                        │
@@ -535,7 +522,6 @@ Available Slots =
 | **Bookings**         | booking_items snapshot selected options                                        |
 | **Slots**            | worker_service_capacity + daily calculation per category                       |
 | **Assignments**      | booking_assignments.assigned_by = admin profile_id                             |
-| **Notifications**    | All email/SMS/in-app tracked in notifications table                            |
 | **Payments**         | One table for orders + bookings                                                |
 | **Worker Documents** | **worker_documents table stores all uploaded/verified documents for workers**  |
 
@@ -548,7 +534,6 @@ Available Slots =
 - ✅ Auditable (tracks who assigned what)
 - ✅ Snapshot-safe (prices locked at booking time)
 - ✅ Slot-managed (capacity-aware scheduling)
-- ✅ Communication-tracked (all notifications logged)
 - ✅ **Multi-Category-Ready (workers can provide services from different categories)**
 - ✅ **Future-Proof (workers can self-manage via worker_services)**
 

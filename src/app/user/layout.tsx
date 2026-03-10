@@ -22,7 +22,6 @@ export default function UserLayout({
       { path: '/user/bookings', title: 'Bookings' },
       { path: '/user/orders', title: 'Orders' },
       { path: '/user/payment-history', title: 'Payment History' },
-      { path: '/user/notifications', title: 'Notifications' },
       { path: '/user/profile', title: 'Profile' },
     ];
 

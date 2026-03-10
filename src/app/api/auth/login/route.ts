@@ -45,6 +45,22 @@ export async function POST(request: NextRequest) {
         { status: 401 },
       );
     }
+    if (userData.status === 'suspended') {
+      // Sign out the user
+      await supabase.auth.signOut();
+      return NextResponse.json(
+        { error: 'Your account has been suspended. Please contact support.' },
+        { status: 401 },
+      );
+    }
+    if (userData.status === 'inactive') {
+      // Sign out the user
+      await supabase.auth.signOut();
+      return NextResponse.json(
+        { error: 'Your account is inactive. Please contact support.' },
+        { status: 401 },
+      );
+    }
 
     return NextResponse.json({
       user: {
