@@ -11,6 +11,40 @@ function isAuthAlertEnabled() {
   return value === 'true' || value === '1' || value === 'yes';
 }
 
+function formatIpForEmail(ip: string) {
+  if (!ip || ip === '::1' || ip === '127.0.0.1') return 'Localhost';
+  if (ip.startsWith('::ffff:')) return ip.replace('::ffff:', '');
+  return ip;
+}
+
+function getDeviceLabel(userAgent: string) {
+  const ua = userAgent.toLowerCase();
+
+  const os = ua.includes('mac os')
+    ? 'macOS'
+    : ua.includes('windows')
+      ? 'Windows'
+      : ua.includes('android')
+        ? 'Android'
+        : ua.includes('iphone') || ua.includes('ipad')
+          ? 'iOS'
+          : ua.includes('linux')
+            ? 'Linux'
+            : 'Unknown OS';
+
+  const browser = ua.includes('edg/')
+    ? 'Edge'
+    : ua.includes('chrome/')
+      ? 'Chrome'
+      : ua.includes('safari/') && !ua.includes('chrome/')
+        ? 'Safari'
+        : ua.includes('firefox/')
+          ? 'Firefox'
+          : 'Unknown Browser';
+
+  return `${browser} on ${os}`;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json();
@@ -87,7 +121,9 @@ export async function POST(request: NextRequest) {
 
     const userAgent = request.headers.get('user-agent') || 'Unknown device';
     const forwardedFor = request.headers.get('x-forwarded-for') || '';
-    const ipAddress = forwardedFor.split(',')[0]?.trim() || 'Unknown IP';
+    const rawIp = forwardedFor.split(',')[0]?.trim() || 'Unknown IP';
+    const ipAddress = formatIpForEmail(rawIp);
+    const deviceLabel = getDeviceLabel(userAgent);
     const currentFingerprint = createHash('sha256')
       .update(`${userAgent}|${ipAddress}`)
       .digest('hex');
@@ -110,7 +146,7 @@ export async function POST(request: NextRequest) {
               dateStyle: 'medium',
               timeStyle: 'short',
             }),
-            device: userAgent,
+            device: deviceLabel,
             ipAddress,
             resetPasswordUrl: `${process.env.NEXT_PUBLIC_APP_URL}/forgot-password`,
           }),
