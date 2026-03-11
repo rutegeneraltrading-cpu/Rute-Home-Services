@@ -7,7 +7,7 @@ export async function GET() {
 
     const { data: categories, error } = await supabase
       .from('service_categories')
-      .select('id, name, slug, description, image_url, bookings, charge_type, created_at')
+      .select('id, name, slug, description, image_url, charge_type, created_at')
       .eq('is_active', true);
 
     if (error) throw error;

@@ -76,7 +76,6 @@ export interface ServiceCategory {
   description?: string | null;
   image_url?: string | null;
   is_active: boolean;
-  bookings: number;
   charge_type: 'hourly' | 'day';
   created_at: string;
 }
@@ -85,7 +84,6 @@ export interface CreateServiceCategoryDTO {
   name: string;
   description?: string;
   image_url?: string;
-  bookings?: number;
   charge_type: 'hourly' | 'day';
   is_active?: boolean;
 }

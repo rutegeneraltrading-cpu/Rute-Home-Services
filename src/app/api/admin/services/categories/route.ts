@@ -44,7 +44,6 @@ export async function POST(request: NextRequest) {
         description: body.description || null,
         image_url: body.image_url || null,
         is_active: body.is_active !== false,
-        bookings: body.bookings ?? 0,
         charge_type: body.charge_type ?? 'hourly',
       })
       .select()

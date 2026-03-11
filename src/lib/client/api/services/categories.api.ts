@@ -5,7 +5,6 @@ export interface UpdateServiceCategoryDTO {
   name?: string;
   description?: string;
   image_url?: string;
-  bookings?: number;
   charge_type?: 'hourly' | 'day';
 }
 
