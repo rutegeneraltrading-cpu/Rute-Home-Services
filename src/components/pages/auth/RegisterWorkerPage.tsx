@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import PhoneInput from 'react-phone-input-2';
+import { Camera } from 'lucide-react';
 import { Button, Input, Label } from '@/components/ui';
 import { useToast } from '@/components/ui/use-toast';
 import {
@@ -19,6 +20,7 @@ import { Service, DocumentType } from '@/lib/types';
 import { MultiSelect } from '@/components/common/MultiSelect';
 import { useCreateWorker, useGetServices } from '@/lib/client/api';
 import { WorkerFormValues, workerFormSchema } from '@/lib/validations';
+import { uploadWorkerAvatarImage } from '@/lib/client/utils/uploadImage';
 
 const RegisterWorkerPage = () => {
   const router = useRouter();
@@ -32,6 +34,12 @@ const RegisterWorkerPage = () => {
   const [documents, setDocuments] = useState<
     Array<{ file: File; type: DocumentType }>
   >([]);
+  const [profileImage, setProfileImage] = useState<File | null>(null);
+  const [profileImagePreview, setProfileImagePreview] = useState<string | null>(
+    null,
+  );
+  const [profileImageError, setProfileImageError] = useState(false);
+  const profileImageRef = useRef<HTMLInputElement>(null);
 
   // Use imported workerFormSchema for validation
 
@@ -68,6 +76,10 @@ const RegisterWorkerPage = () => {
 
   const handleNext = async () => {
     if (step === 1) {
+      if (!profileImage) {
+        setProfileImageError(true);
+        return;
+      }
       // Only validate step 1 fields
       const valid = await trigger(
         ['full_name', 'email', 'phone', 'service_ids'],
@@ -118,6 +130,22 @@ const RegisterWorkerPage = () => {
   const onSubmit = async (data: WorkerFormValues) => {
     setIsSubmitting(true);
     try {
+      // 0. Upload profile image if provided
+      let avatarUrl: string | undefined;
+      if (profileImage) {
+        try {
+          avatarUrl = await uploadWorkerAvatarImage(profileImage);
+        } catch {
+          toast({
+            title: 'Image Upload Failed',
+            description: 'Could not upload profile image.',
+            variant: 'destructive',
+          });
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
       // 1. Upload all documents to backend and get URLs
       const uploadedDocs: Array<{ type: string; file_url: string }> = [];
       for (const doc of documents) {
@@ -141,6 +169,7 @@ const RegisterWorkerPage = () => {
         phone: data.phone,
         service_ids: data.service_ids,
         profile_status: 'inactive',
+        avatar_url: avatarUrl,
         address: {
           ...data.address,
           recipient_name:
@@ -153,6 +182,8 @@ const RegisterWorkerPage = () => {
       reset();
       setSelectedServiceIds([]);
       setDocuments([]);
+      setProfileImage(null);
+      setProfileImagePreview(null);
       router.push('/');
     } catch (error) {
       console.error('Error creating worker:', error);
@@ -201,6 +232,82 @@ const RegisterWorkerPage = () => {
           {/* Step 1: Base Info */}
           {step === 1 && (
             <div className="rounded-lg border border-dashed border-gray-200 p-4">
+              {/* Profile Image Upload */}
+              <div className="flex flex-col items-center gap-2 mb-5">
+                <div
+                  className="relative w-24 h-24 rounded-full overflow-hidden bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors"
+                  onClick={() => profileImageRef.current?.click()}
+                >
+                  {profileImagePreview ? (
+                    <Image
+                      src={profileImagePreview}
+                      alt="Profile preview"
+                      fill
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center gap-1 text-gray-400">
+                      <Camera className="w-6 h-6" />
+                      <span className="text-xs">Add Photo</span>
+                    </div>
+                  )}
+                </div>
+                <input
+                  ref={profileImageRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    if (!file.type.startsWith('image/')) {
+                      toast({
+                        variant: 'destructive',
+                        title: 'Invalid File',
+                        description: 'Please select an image file.',
+                      });
+                      return;
+                    }
+                    if (file.size > 5 * 1024 * 1024) {
+                      toast({
+                        variant: 'destructive',
+                        title: 'File Too Large',
+                        description: 'Image must be less than 5MB.',
+                      });
+                      return;
+                    }
+                    setProfileImage(file);
+                    setProfileImageError(false);
+                    const reader = new FileReader();
+                    reader.onload = (ev) =>
+                      setProfileImagePreview(ev.target?.result as string);
+                    reader.readAsDataURL(file);
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">Profile Photo *</p>
+                {profileImageError && (
+                  <p className="text-xs text-red-500">
+                    Please upload a profile photo.
+                  </p>
+                )}
+                <p className="text-xs text-amber-600 text-center">
+                  ⚠️ Your photo is very important. <br /> Kindly use a real,
+                  clear face photo.
+                </p>
+                {profileImagePreview && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProfileImage(null);
+                      setProfileImagePreview(null);
+                    }}
+                    className="text-xs text-red-500 underline"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <div>
                   <Label htmlFor="full_name">Full Name *</Label>
@@ -247,7 +354,8 @@ const RegisterWorkerPage = () => {
                     inputProps={{
                       name: 'phone',
                       required: true,
-                      className: 'h-10 w-full border rounded-md shadow-xs px-2 pl-12',
+                      className:
+                        'h-10 w-full border rounded-md shadow-xs px-2 pl-12',
                     }}
                     value={getValues('phone')}
                     onChange={(value) =>

@@ -7,8 +7,15 @@ export async function POST(request: NextRequest) {
     const supabaseAdmin = await createAdminClient();
 
     const body = await request.json();
-    const { full_name, email, phone, address, service_ids, profile_status } =
-      body;
+    const {
+      full_name,
+      email,
+      phone,
+      address,
+      service_ids,
+      profile_status,
+      avatar_url,
+    } = body;
 
     const statusToSet: 'active' | 'inactive' | 'suspended' =
       profile_status === 'inactive' || profile_status === 'suspended'
@@ -132,6 +139,7 @@ export async function POST(request: NextRequest) {
           email: normalizedEmail,
           role: 'worker',
           status: statusToSet,
+          ...(avatar_url ? { avatar_url } : {}),
         },
         { onConflict: 'auth_id' },
       )

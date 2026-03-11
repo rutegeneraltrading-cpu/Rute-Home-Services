@@ -122,6 +122,36 @@ export async function uploadProductImage(file: File): Promise<string> {
   return data.url;
 }
 
+/**
+ * Upload a worker profile avatar (uses admin-client endpoint — no session required).
+ * Safe to call before the worker account is created.
+ */
+export async function uploadWorkerAvatarImage(file: File): Promise<string> {
+  if (!file.type.startsWith('image/')) {
+    throw new Error('File must be an image');
+  }
+
+  if (file.size > MAX_FILE_SIZE) {
+    throw new Error('File size must be less than 5MB');
+  }
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch('/api/admin/upload-worker-avatar', {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Upload failed');
+  }
+
+  const data = await response.json();
+  return data.url;
+}
+
 export async function deleteProductImage(imageUrl: string): Promise<void> {
   try {
     const response = await fetch(

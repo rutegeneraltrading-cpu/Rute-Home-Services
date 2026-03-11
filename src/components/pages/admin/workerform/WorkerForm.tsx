@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import Image from 'next/image';
+import { Camera } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -27,6 +28,7 @@ import { Service } from '@/lib/types/admin/services';
 import { MultiSelect } from '@/components/common/MultiSelect';
 import { useCreateWorker, useGetServices } from '@/lib/client/api';
 import { workerFormSchema, WorkerFormValues } from '@/lib/validations';
+import { uploadWorkerAvatarImage } from '@/lib/client/utils/uploadImage';
 
 export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
   const createWorkerMutation = useCreateWorker();
@@ -38,6 +40,12 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
   const [documents, setDocuments] = useState<
     Array<{ file: File; type: string }>
   >([]);
+  const [profileImage, setProfileImage] = useState<File | null>(null);
+  const [profileImagePreview, setProfileImagePreview] = useState<string | null>(
+    null,
+  );
+  const [profileImageError, setProfileImageError] = useState(false);
+  const profileImageRef = useRef<HTMLInputElement>(null);
 
   const {
     register,
@@ -72,6 +80,10 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
 
   const handleNext = async () => {
     if (step === 1) {
+      if (!profileImage) {
+        setProfileImageError(true);
+        return;
+      }
       const valid = await trigger(
         ['full_name', 'email', 'phone', 'service_ids'],
         { shouldFocus: true },
@@ -116,6 +128,18 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
   const onSubmit = async (data: WorkerFormValues) => {
     setIsSubmitting(true);
     try {
+      // 0. Upload profile image if provided
+      let avatarUrl: string | undefined;
+      if (profileImage) {
+        try {
+          avatarUrl = await uploadWorkerAvatarImage(profileImage);
+        } catch {
+          alert('Image Upload Failed: Could not upload profile image.');
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
       // 1. Upload all documents to backend and get URLs
       const uploadedDocs: Array<{ type: string; file_url: string }> = [];
       for (const doc of documents) {
@@ -134,6 +158,7 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
         email: data.email,
         phone: data.phone,
         service_ids: data.service_ids,
+        avatar_url: avatarUrl,
         address: {
           ...data.address,
           recipient_name:
@@ -147,6 +172,8 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
       reset();
       setSelectedServiceIds([]);
       setDocuments([]);
+      setProfileImage(null);
+      setProfileImagePreview(null);
       onSuccess?.();
       onOpenChange(false);
     } catch (error) {
@@ -191,6 +218,67 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
           {/* Step 1: Base Info */}
           {step === 1 && (
             <div className="space-y-4">
+              {/* Profile Image Upload */}
+              <div className="flex flex-col items-center gap-2 pb-2">
+                <div
+                  className="relative w-20 h-20 rounded-full overflow-hidden bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors"
+                  onClick={() => profileImageRef.current?.click()}
+                >
+                  {profileImagePreview ? (
+                    <Image
+                      src={profileImagePreview}
+                      alt="Profile preview"
+                      fill
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center gap-1 text-gray-400">
+                      <Camera className="w-5 h-5" />
+                      <span className="text-xs">Add Photo</span>
+                    </div>
+                  )}
+                </div>
+                <input
+                  ref={profileImageRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    if (!file.type.startsWith('image/')) return;
+                    if (file.size > 5 * 1024 * 1024) return;
+                    setProfileImage(file);
+                    setProfileImageError(false);
+                    const reader = new FileReader();
+                    reader.onload = (ev) =>
+                      setProfileImagePreview(ev.target?.result as string);
+                    reader.readAsDataURL(file);
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">Profile Photo *</p>
+                {profileImageError && (
+                  <p className="text-xs text-red-500">
+                    Please upload a profile photo.
+                  </p>
+                )}
+                <p className="text-xs text-amber-600 text-center">
+                  ⚠️ Your photo is very important. <br /> Kindly use a real,
+                  clear face photo.
+                </p>
+                {profileImagePreview && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProfileImage(null);
+                      setProfileImagePreview(null);
+                    }}
+                    className="text-xs text-red-500 underline"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
               <div>
                 <Label className="block text-sm font-medium mb-1">
                   Full Name *
@@ -239,7 +327,8 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
                   inputProps={{
                     name: 'phone',
                     required: true,
-                    className: 'h-9 w-full border rounded-md shadow-xs px-2 pl-12',
+                    className:
+                      'h-9 w-full border rounded-md shadow-xs px-2 pl-12',
                   }}
                   value={getValues('phone')}
                   onChange={(value) =>
@@ -333,7 +422,8 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
                   inputProps={{
                     name: 'address.phone',
                     required: true,
-                   className: 'h-9 w-full border rounded-md shadow-xs px-2 pl-12',
+                    className:
+                      'h-9 w-full border rounded-md shadow-xs px-2 pl-12',
                   }}
                   value={getValues('address.phone')}
                   onChange={(value) => {

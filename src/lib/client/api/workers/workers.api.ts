@@ -40,6 +40,7 @@ export interface CreateWorkerDTO {
   full_name: string;
   email: string;
   phone?: string;
+  avatar_url?: string;
   service_ids: string[];
   address: CreateUserAddressDTO;
   profile_status?: 'active' | 'inactive' | 'suspended';
