@@ -11,6 +11,27 @@ import {
   Button,
 } from '@/components/ui';
 
+const ALLOWED_SERVICE_CITIES = [
+  'johannesburg',
+  'pretoria',
+  'city of tshwane metropolitan municipality',
+  'tshwane',
+];
+
+const isSupportedServiceArea = (place: google.maps.places.PlaceResult) => {
+  const components = (place.address_components || []).map((component) =>
+    component.long_name.toLowerCase(),
+  );
+
+  const formattedAddress = (place.formatted_address || '').toLowerCase();
+
+  return ALLOWED_SERVICE_CITIES.some(
+    (city) =>
+      components.some((value) => value.includes(city)) ||
+      formattedAddress.includes(city),
+  );
+};
+
 interface AddressDateStepProps {
   serviceId: string;
   totalDurationMinutes: number;
@@ -38,6 +59,7 @@ const AddressDateStep = ({
   const [isGoogleLocationSelected, setIsGoogleLocationSelected] =
     useState<boolean>(false);
   const [locationError, setLocationError] = useState<string>('');
+  const [serviceAreaError, setServiceAreaError] = useState<string>('');
   const [availabilityError, setAvailabilityError] = useState<string>('');
   const [hasSetDefaultTime, setHasSetDefaultTime] = useState<boolean>(false);
   const { isLoaded } = useJsApiLoader({
@@ -79,25 +101,23 @@ const AddressDateStep = ({
     );
     autocomplete.addListener('place_changed', () => {
       const place = autocomplete.getPlace();
-      if (place && place.formatted_address) {
+      if (place && (place.formatted_address || place.name)) {
+        const selectedAddress = place.formatted_address || place.name || '';
+        const isAllowedArea = isSupportedServiceArea(place);
+
         isApplyingGoogleSelectionRef.current = true;
         setAddressDateData({
           ...addressDateDataRef.current,
-          address: place.formatted_address,
+          address: selectedAddress,
         });
-        setIsGoogleLocationSelected(true);
+        setIsGoogleLocationSelected(isAllowedArea);
         setLocationError('');
-        setTimeout(() => {
-          isApplyingGoogleSelectionRef.current = false;
-        }, 0);
-      } else if (place && place.name) {
-        isApplyingGoogleSelectionRef.current = true;
-        setAddressDateData({
-          ...addressDateDataRef.current,
-          address: place.name,
-        });
-        setIsGoogleLocationSelected(true);
-        setLocationError('');
+        setServiceAreaError(
+          isAllowedArea
+            ? ''
+            : 'We currently provide services only in Johannesburg and Pretoria (South Africa).',
+        );
+
         setTimeout(() => {
           isApplyingGoogleSelectionRef.current = false;
         }, 0);
@@ -172,7 +192,13 @@ const AddressDateStep = ({
 
   const handleNext = () => {
     if (!isGoogleLocationSelected) {
-      setLocationError('Please select your address from Google suggestions.');
+      if (!serviceAreaError) {
+        setLocationError('Please select your address from Google suggestions.');
+      }
+      return;
+    }
+
+    if (serviceAreaError) {
       return;
     }
 
@@ -215,12 +241,16 @@ const AddressDateStep = ({
                 setIsGoogleLocationSelected(false);
               }
               if (locationError) setLocationError('');
+              if (serviceAreaError) setServiceAreaError('');
             }}
             disabled={!isLoaded}
           />
         </FormControl>
         {locationError && (
           <p className="text-sm text-red-600 mt-2">{locationError}</p>
+        )}
+        {serviceAreaError && (
+          <p className="text-sm text-amber-600 mt-2">{serviceAreaError}</p>
         )}
       </FormItem>
       <FormItem className="mb-6">
@@ -307,6 +337,7 @@ const AddressDateStep = ({
           disabled={
             !(
               isGoogleLocationSelected &&
+              !serviceAreaError &&
               addressDateData.address &&
               addressDateData.date &&
               selectedTime
