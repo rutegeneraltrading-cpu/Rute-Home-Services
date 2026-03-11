@@ -49,7 +49,9 @@ export async function POST(request: NextRequest) {
         last_name,
         email,
         phone,
-        `${service_name}${service_description ? ` - ${service_description}` : 'Home Service'}`,
+        service_description
+          ? `${service_name} - ${service_description}`
+          : `${service_name} - Home Service`,
         {
           returnUrl: `${appUrl}/success?booking=${booking_id}`,
           cancelUrl: `${appUrl}/cancelled?booking=${booking_id}`,

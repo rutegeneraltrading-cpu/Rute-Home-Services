@@ -281,19 +281,32 @@ export class PayFastService {
  * Get PayFast service instance
  */
 export function getPayFastService(): PayFastService {
-  const signatureMode =
-    process.env.PAYFAST_SIGNATURE_MODE === 'without-passphrase'
+  const rawPassphrase =
+    process.env.PAYFAST_PASSPHRASE || process.env.PAYFAST_PASSPHARSE || '';
+  const passphrase = rawPassphrase.trim();
+
+  const explicitSignatureMode = process.env.PAYFAST_SIGNATURE_MODE;
+  const signatureMode: 'with-passphrase' | 'without-passphrase' =
+    explicitSignatureMode === 'without-passphrase'
       ? 'without-passphrase'
-      : 'with-passphrase';
+      : explicitSignatureMode === 'with-passphrase'
+        ? 'with-passphrase'
+        : passphrase
+          ? 'with-passphrase'
+          : 'without-passphrase';
   const signatureOrder =
     process.env.PAYFAST_SIGNATURE_ORDER === 'alphabetical'
       ? 'alphabetical'
       : 'insertion';
 
   const config: PayFastConfig = {
-    merchantId: process.env.PAYFAST_MARCHANT_ID || '',
-    merchantKey: process.env.PAYFAST_MARCHANT_KEY || '',
-    passphrase: process.env.PAYFAST_PASSPHRASE || '',
+    merchantId:
+      process.env.PAYFAST_MARCHANT_ID || process.env.PAYFAST_MERCHANT_ID || '',
+    merchantKey:
+      process.env.PAYFAST_MARCHANT_KEY ||
+      process.env.PAYFAST_MERCHANT_KEY ||
+      '',
+    passphrase,
     returnUrl: `${process.env.NEXT_PUBLIC_APP_URL}/booking/payment-success`,
     cancelUrl: `${process.env.NEXT_PUBLIC_APP_URL}/booking/payment-cancelled`,
     notifyUrl:
