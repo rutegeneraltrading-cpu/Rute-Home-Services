@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { sendEmail } from '@/lib/server/email/ses-mailer';
+import {
+  bookingAssignedToWorkerTemplate,
+  bookingAssignmentAcceptedTemplate,
+  bookingAssignmentCancelledTemplate,
+  bookingStatusUpdateTemplate,
+} from '@/lib/server/email';
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -415,13 +422,34 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
     const { data: booking, error: bookingError } = await supabaseAdmin
       .from('bookings')
-      .select('id, service_id, booking_date, booking_time, total_duration')
+      .select(
+        'id, user_id, service_id, booking_date, booking_time, total_duration, status',
+      )
       .eq('id', id)
       .single();
 
     if (bookingError || !booking) {
       return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
     }
+
+    const { data: customerProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('id, full_name, email')
+      .eq('id', booking.user_id)
+      .maybeSingle();
+
+    const { data: serviceData } = await supabaseAdmin
+      .from('services')
+      .select('name')
+      .eq('id', booking.service_id)
+      .maybeSingle();
+
+    const bookingDate = String(booking.booking_date || 'N/A');
+    const bookingTime = String(booking.booking_time || 'N/A');
+    const serviceName = serviceData?.name || 'Service';
+    const customerName = customerProfile?.full_name || 'Customer';
+    const previousBookingStatus = String(booking.status || 'pending');
+    const cancelledWorkerIds = new Set<string>();
 
     const { data: latestAssignmentRows } = await supabaseAdmin
       .from('booking_assignments')
@@ -438,6 +466,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     let assignedWorkerId: string | null | undefined = hasWorkerField
       ? body.worker_id || null
       : undefined;
+    let assignmentStatusWorkerId: string | null = null;
     const isWorkerReassignment =
       hasWorkerField && assignedWorkerId !== currentAssignedWorkerId;
     let didAssignWorker = false;
@@ -453,6 +482,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
           .eq('booking_id', id)
           .eq('worker_id', currentAssignedWorkerId)
           .in('status', ['pending', 'accepted']);
+
+        if (currentAssignedWorkerId) {
+          cancelledWorkerIds.add(currentAssignedWorkerId);
+        }
       } else {
         const { data: workers, error: workersError } = await supabaseAdmin.rpc(
           'get_available_workers_for_booking',
@@ -512,6 +545,13 @@ export async function PATCH(request: NextRequest, { params }: Params) {
             .neq('worker_id', assignedWorkerId)
             .in('status', ['pending', 'accepted']);
 
+          if (
+            currentAssignedWorkerId &&
+            currentAssignedWorkerId !== assignedWorkerId
+          ) {
+            cancelledWorkerIds.add(currentAssignedWorkerId);
+          }
+
           const { error: upsertAssignmentError } = await supabaseAdmin
             .from('booking_assignments')
             .upsert(
@@ -548,6 +588,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     if (typeof body.assignment_status !== 'undefined') {
       const targetWorkerId =
         assignedWorkerId || latestAssignment?.worker_id || null;
+      assignmentStatusWorkerId = targetWorkerId;
       if (!targetWorkerId) {
         return NextResponse.json(
           { error: 'No worker assignment found to update assignment status' },
@@ -599,6 +640,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         assignmentUpdate.declined_at = null;
         assignmentUpdate.completed_at = null;
         assignmentUpdate.cancelled_at = nowIso;
+        cancelledWorkerIds.add(targetWorkerId);
       }
 
       const { error: assignmentUpdateError } = await supabaseAdmin
@@ -665,6 +707,121 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         { error: 'Failed to fetch updated booking' },
         { status: 500 },
       );
+    }
+
+    const getWorkerProfile = async (workerId: string) => {
+      const { data: workerRow } = await supabaseAdmin
+        .from('workers')
+        .select('profile_id')
+        .eq('id', workerId)
+        .maybeSingle();
+
+      if (!workerRow?.profile_id) return null;
+
+      const { data: workerProfile } = await supabaseAdmin
+        .from('profiles')
+        .select('full_name, email')
+        .eq('id', workerRow.profile_id)
+        .maybeSingle();
+
+      return workerProfile || null;
+    };
+
+    if (didAssignWorker && assignedWorkerId) {
+      const assignedWorkerProfile = await getWorkerProfile(assignedWorkerId);
+
+      if (assignedWorkerProfile?.email) {
+        try {
+          await sendEmail({
+            to: assignedWorkerProfile.email,
+            subject: `New Booking Assigned - ${id}`,
+            html: bookingAssignedToWorkerTemplate({
+              workerName: assignedWorkerProfile.full_name || 'Worker',
+              bookingId: id,
+              serviceName,
+              bookingDate,
+              bookingTime,
+              customerName,
+            }),
+          });
+        } catch (emailError) {
+          console.error('Booking assigned worker email failed:', emailError);
+        }
+      }
+    }
+
+    if (body.assignment_status === 'accepted' && assignmentStatusWorkerId) {
+      const acceptedWorkerProfile = await getWorkerProfile(
+        assignmentStatusWorkerId,
+      );
+
+      if (customerProfile?.email) {
+        try {
+          await sendEmail({
+            to: customerProfile.email,
+            subject: `Worker Accepted Booking - ${id}`,
+            html: bookingAssignmentAcceptedTemplate({
+              customerName,
+              bookingId: id,
+              workerName: acceptedWorkerProfile?.full_name || 'Assigned Worker',
+              serviceName,
+              bookingDate,
+              bookingTime,
+            }),
+          });
+        } catch (emailError) {
+          console.error('Booking accepted user email failed:', emailError);
+        }
+      }
+    }
+
+    for (const cancelledWorkerId of cancelledWorkerIds) {
+      const cancelledWorkerProfile = await getWorkerProfile(cancelledWorkerId);
+
+      if (cancelledWorkerProfile?.email) {
+        try {
+          await sendEmail({
+            to: cancelledWorkerProfile.email,
+            subject: `Booking Assignment Cancelled - ${id}`,
+            html: bookingAssignmentCancelledTemplate({
+              workerName: cancelledWorkerProfile.full_name || 'Worker',
+              bookingId: id,
+              serviceName,
+              bookingDate,
+              bookingTime,
+            }),
+          });
+        } catch (emailError) {
+          console.error(
+            'Booking assignment cancelled email failed:',
+            emailError,
+          );
+        }
+      }
+    }
+
+    const updatedStatus = String(updatedBooking.status || 'pending');
+    if (customerProfile?.email && previousBookingStatus !== updatedStatus) {
+      try {
+        await sendEmail({
+          to: customerProfile.email,
+          subject: `Booking Status Updated - ${id}`,
+          html: bookingStatusUpdateTemplate({
+            customerName,
+            bookingId: id,
+            serviceName,
+            previousStatus: previousBookingStatus,
+            newStatus: updatedStatus,
+            updatedAt: new Date().toLocaleString('en-ZA', {
+              dateStyle: 'medium',
+              timeStyle: 'short',
+            }),
+            detailsUrl: `${process.env.NEXT_PUBLIC_APP_URL}/user/bookings/${id}`,
+          }),
+        });
+      } catch (emailError) {
+        console.error('Booking status update email failed:', emailError);
+      }
     }
 
     return NextResponse.json({ booking: updatedBooking });

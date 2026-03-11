@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase';
+import { sendEmail } from '@/lib/server/email/ses-mailer';
+import { userStatusChangeTemplate } from '@/lib/server/email';
 
 /**
  * GET /api/admin/users/[id]
@@ -55,6 +57,12 @@ export async function PUT(
 
     const supabase = await createAdminClient();
 
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('email, full_name, status')
+      .eq('auth_id', id)
+      .maybeSingle();
+
     // Update profile - full_name, role, and status
     const { data: profile, error } = await supabase
       .from('profiles')
@@ -69,6 +77,26 @@ export async function PUT(
       .single();
 
     if (error) throw error;
+
+    if (existingProfile?.email && status && existingProfile.status !== status) {
+      try {
+        await sendEmail({
+          to: existingProfile.email,
+          subject: 'Your account status has been updated',
+          html: userStatusChangeTemplate({
+            fullName: existingProfile.full_name || full_name || 'User',
+            email: existingProfile.email,
+            status,
+            changedAt: new Date().toLocaleString('en-ZA', {
+              dateStyle: 'medium',
+              timeStyle: 'short',
+            }),
+          }),
+        });
+      } catch (emailError) {
+        console.error('User status change email send failed:', emailError);
+      }
+    }
 
     return NextResponse.json(profile);
   } catch (error) {

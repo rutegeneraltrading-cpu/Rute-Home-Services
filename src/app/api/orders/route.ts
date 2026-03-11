@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase';
+import { sendEmail } from '@/lib/server/email/ses-mailer';
+import { orderCreatedTemplate } from '@/lib/server/email';
 
 interface OrderItemPayload {
   product_id: string;
@@ -59,7 +61,7 @@ export async function POST(request: NextRequest) {
 
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('id')
+      .select('id, full_name, email')
       .eq('auth_id', user.id)
       .single();
 
@@ -186,6 +188,25 @@ export async function POST(request: NextRequest) {
         { error: 'Failed to create order' },
         { status: 500 },
       );
+    }
+
+    if (profile.email) {
+      try {
+        await sendEmail({
+          to: profile.email,
+          subject: `Order Created - ${order.id}`,
+          html: orderCreatedTemplate({
+            customerName: profile.full_name || 'Customer',
+            orderId: order.id,
+            itemsCount: items.length,
+            total,
+            paymentStatus: 'Pending',
+            dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL}/user/orders`,
+          }),
+        });
+      } catch (emailError) {
+        console.error('Order created email send failed:', emailError);
+      }
     }
 
     return NextResponse.json({ order });

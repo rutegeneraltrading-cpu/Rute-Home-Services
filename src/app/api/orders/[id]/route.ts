@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { sendEmail } from '@/lib/server/email/ses-mailer';
+import { orderStatusUpdateTemplate } from '@/lib/server/email';
 import { createAdminClient } from '@/lib/supabase';
 
 export async function GET(
@@ -200,6 +202,12 @@ export async function PATCH(
     if (status) updateData.status = status;
     if (payment_status) updateData.payment_status = payment_status;
 
+    const { data: existingOrder } = await supabase
+      .from('orders')
+      .select('id, user_id, status')
+      .eq('id', orderId)
+      .maybeSingle();
+
     const { data: order, error: updateError } = await supabase
       .from('orders')
       .update(updateData)
@@ -213,6 +221,39 @@ export async function PATCH(
         { error: 'Failed to update order' },
         { status: 500 },
       );
+    }
+
+    const previousStatus = String(existingOrder?.status || 'pending');
+    const updatedStatus = String(order.status || 'pending');
+
+    if (status && previousStatus !== updatedStatus) {
+      const { data: customerProfile } = await supabase
+        .from('profiles')
+        .select('full_name, email')
+        .eq('id', order.user_id)
+        .maybeSingle();
+
+      if (customerProfile?.email) {
+        try {
+          await sendEmail({
+            to: customerProfile.email,
+            subject: `Order Status Updated - ${orderId}`,
+            html: orderStatusUpdateTemplate({
+              customerName: customerProfile.full_name || 'Customer',
+              orderId,
+              previousStatus,
+              newStatus: updatedStatus,
+              updatedAt: new Date().toLocaleString('en-ZA', {
+                dateStyle: 'medium',
+                timeStyle: 'short',
+              }),
+              detailsUrl: `${process.env.NEXT_PUBLIC_APP_URL}/user/orders/${orderId}`,
+            }),
+          });
+        } catch (emailError) {
+          console.error('Order status update email failed:', emailError);
+        }
+      }
     }
 
     return NextResponse.json({ order });

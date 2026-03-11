@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { getPayFastService } from '@/lib/server/payfast/payfast.service';
+import { sendEmail } from '@/lib/server/email/ses-mailer';
+import { orderPaymentSuccessTemplate } from '@/lib/server/email';
+import { bookingPaymentSuccessTemplate } from '@/lib/server/email';
 
 export async function POST(request: NextRequest) {
   try {
@@ -57,6 +60,21 @@ export async function POST(request: NextRequest) {
       orderStatus = 'cancelled';
     }
 
+    const { data: existingBooking, error: existingBookingError } =
+      await supabase
+        .from('bookings')
+        .select(
+          'id, total_price, payment_status, profiles!user_id(full_name, email)',
+        )
+        .eq('id', referenceId)
+        .maybeSingle();
+
+    if (existingBookingError) {
+      console.error('Error fetching existing booking:', existingBookingError);
+    }
+
+    const bookingWasPaidBefore = existingBooking?.payment_status === 'paid';
+
     // Update booking with payment information
     const { data: updatedBooking, error: updateError } = await supabase
       .from('bookings')
@@ -79,11 +97,88 @@ export async function POST(request: NextRequest) {
     }
 
     if (updatedBooking) {
+      const bookingIsPaidNow = dbPaymentStatus === 'paid';
+
+      if (bookingIsPaidNow && !bookingWasPaidBefore && existingBooking) {
+        const profile = Array.isArray(existingBooking.profiles)
+          ? existingBooking.profiles[0]
+          : existingBooking.profiles;
+
+        const customerName = profile?.full_name || 'Customer';
+        const customerEmail = profile?.email || null;
+        const adminEmail =
+          process.env.ADMIN_BOOKING_EMAIL ||
+          process.env.AWS_SES_FROM_EMAIL ||
+          '';
+        const paidAt = new Date().toLocaleString('en-ZA', {
+          dateStyle: 'medium',
+          timeStyle: 'short',
+        });
+
+        if (customerEmail) {
+          try {
+            await sendEmail({
+              to: customerEmail,
+              subject: `Payment Successful - Booking ${referenceId}`,
+              html: bookingPaymentSuccessTemplate({
+                audience: 'user',
+                customerName,
+                bookingId: referenceId,
+                total: Number(existingBooking.total_price || 0),
+                transactionId,
+                paidAt,
+                detailsUrl: `${process.env.NEXT_PUBLIC_APP_URL}/user/bookings/${referenceId}`,
+              }),
+            });
+          } catch (emailError) {
+            console.error(
+              'Booking payment success user email failed:',
+              emailError,
+            );
+          }
+        }
+
+        if (adminEmail) {
+          try {
+            await sendEmail({
+              to: adminEmail,
+              subject: `Booking Payment Received - ${referenceId}`,
+              html: bookingPaymentSuccessTemplate({
+                audience: 'admin',
+                customerName,
+                bookingId: referenceId,
+                total: Number(existingBooking.total_price || 0),
+                transactionId,
+                paidAt,
+                detailsUrl: `${process.env.NEXT_PUBLIC_APP_URL}/admin/bookings`,
+              }),
+            });
+          } catch (emailError) {
+            console.error(
+              'Booking payment success admin email failed:',
+              emailError,
+            );
+          }
+        }
+      }
+
       return NextResponse.json(
         { success: true, message: 'Booking webhook processed' },
         { status: 200 },
       );
     }
+
+    const { data: existingOrder, error: existingOrderError } = await supabase
+      .from('orders')
+      .select('id, total, payment_status, profiles!user_id(full_name, email)')
+      .eq('id', referenceId)
+      .maybeSingle();
+
+    if (existingOrderError) {
+      console.error('Error fetching existing order:', existingOrderError);
+    }
+
+    const wasPaidBefore = existingOrder?.payment_status === 'paid';
 
     const { data: updatedOrder, error: orderUpdateError } = await supabase
       .from('orders')
@@ -110,6 +205,66 @@ export async function POST(request: NextRequest) {
         { error: 'No booking/order found for provided reference id' },
         { status: 404 },
       );
+    }
+
+    const isPaidNow = dbPaymentStatus === 'paid';
+
+    if (isPaidNow && !wasPaidBefore && existingOrder) {
+      const profile = Array.isArray(existingOrder.profiles)
+        ? existingOrder.profiles[0]
+        : existingOrder.profiles;
+
+      const customerName = profile?.full_name || 'Customer';
+      const customerEmail = profile?.email || null;
+      const adminEmail =
+        process.env.ADMIN_ORDER_EMAIL || process.env.AWS_SES_FROM_EMAIL || '';
+      const paidAt = new Date().toLocaleString('en-ZA', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      });
+
+      if (customerEmail) {
+        try {
+          await sendEmail({
+            to: customerEmail,
+            subject: `Payment Successful - Order ${referenceId}`,
+            html: orderPaymentSuccessTemplate({
+              audience: 'user',
+              customerName,
+              orderId: referenceId,
+              total: Number(existingOrder.total || 0),
+              transactionId,
+              paidAt,
+              detailsUrl: `${process.env.NEXT_PUBLIC_APP_URL}/user/orders/${referenceId}`,
+            }),
+          });
+        } catch (emailError) {
+          console.error('Order payment success user email failed:', emailError);
+        }
+      }
+
+      if (adminEmail) {
+        try {
+          await sendEmail({
+            to: adminEmail,
+            subject: `Order Payment Received - ${referenceId}`,
+            html: orderPaymentSuccessTemplate({
+              audience: 'admin',
+              customerName,
+              orderId: referenceId,
+              total: Number(existingOrder.total || 0),
+              transactionId,
+              paidAt,
+              detailsUrl: `${process.env.NEXT_PUBLIC_APP_URL}/admin/orders/${referenceId}`,
+            }),
+          });
+        } catch (emailError) {
+          console.error(
+            'Order payment success admin email failed:',
+            emailError,
+          );
+        }
+      }
     }
 
     return NextResponse.json(

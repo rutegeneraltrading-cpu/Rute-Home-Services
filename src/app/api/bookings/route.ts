@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { CreateBookingDTO } from '@/lib/types/bookings';
+import { sendEmail } from '@/lib/server/email/ses-mailer';
+import { bookingCreatedTemplate } from '@/lib/server/email';
 
 // GET all bookings (user sees own, admin sees all)
 export async function GET() {
@@ -266,7 +268,7 @@ export async function POST(request: NextRequest) {
 
     const { data: user, error: userError } = await supabase
       .from('profiles')
-      .select('id')
+      .select('id, full_name, email')
       .eq('auth_id', user_id)
       .single();
 
@@ -302,6 +304,33 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) throw error;
+
+    const { data: serviceData } = await supabase
+      .from('services')
+      .select('name')
+      .eq('id', service_id)
+      .maybeSingle();
+
+    if (user.email) {
+      try {
+        await sendEmail({
+          to: user.email,
+          subject: `Booking Created - ${data.id}`,
+          html: bookingCreatedTemplate({
+            customerName: user.full_name || 'Customer',
+            bookingId: data.id,
+            serviceName: serviceData?.name || 'Service',
+            bookingDate: String(booking_date),
+            bookingTime: String(booking_time),
+            total: Number(total_price),
+            paymentStatus: 'Pending',
+            detailsUrl: `${process.env.NEXT_PUBLIC_APP_URL}/user/bookings/${data.id}`,
+          }),
+        });
+      } catch (emailError) {
+        console.error('Booking created email send failed:', emailError);
+      }
+    }
 
     return NextResponse.json({ booking: data }, { status: 201 });
   } catch (error) {

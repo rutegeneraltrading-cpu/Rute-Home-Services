@@ -1,5 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase';
+import { sendEmail } from '@/lib/server/email/ses-mailer';
+import { workerVerificationTemplate } from '@/lib/server/email';
 
 export async function GET(
   request: NextRequest,
@@ -96,6 +98,12 @@ export async function PUT(
       return NextResponse.json({ error: 'Worker not found' }, { status: 404 });
     }
 
+    const { data: workerProfile } = await supabase
+      .from('profiles')
+      .select('full_name, email')
+      .eq('id', worker.profile_id)
+      .maybeSingle();
+
     // Extract profile fields and status
     const {
       full_name,
@@ -109,6 +117,23 @@ export async function PUT(
     } = body;
     // Remove service_ids and worker_documents from workerFields
     const workerFields = { ...rest };
+    let verificationOutcome: 'approved' | 'rejected' | null = null;
+
+    if (Array.isArray(worker_documents) && worker_documents.length > 0) {
+      const statuses = worker_documents
+        .map((doc) => doc?.status)
+        .filter((status): status is string => typeof status === 'string');
+
+      if (statuses.includes('rejected')) {
+        verificationOutcome = 'rejected';
+      } else if (
+        statuses.length > 0 &&
+        statuses.every((s) => s === 'approved')
+      ) {
+        verificationOutcome = 'approved';
+      }
+    }
+
     // Update worker_documents status if provided
     if (Array.isArray(worker_documents) && worker_documents.length > 0) {
       for (const doc of worker_documents) {
@@ -158,6 +183,29 @@ export async function PUT(
         .eq('id', worker.profile_id);
 
       if (profileError) throw profileError;
+    }
+
+    if (verificationOutcome && workerProfile?.email) {
+      try {
+        await sendEmail({
+          to: workerProfile.email,
+          subject:
+            verificationOutcome === 'approved'
+              ? 'Worker verification approved'
+              : 'Worker verification update',
+          html: workerVerificationTemplate({
+            fullName: workerProfile.full_name || full_name || 'Worker',
+            email: workerProfile.email,
+            verificationStatus: verificationOutcome,
+            changedAt: new Date().toLocaleString('en-ZA', {
+              dateStyle: 'medium',
+              timeStyle: 'short',
+            }),
+          }),
+        });
+      } catch (emailError) {
+        console.error('Worker verification email send failed:', emailError);
+      }
     }
 
     // Update worker fields
