@@ -1,16 +1,27 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Eye } from 'lucide-react';
+import { CreditCard, Eye } from 'lucide-react';
 import { DataTable } from '@/components/common';
 import { TableColumn, TableAction } from '@/lib/types/table';
 import { useGetOrders } from '@/lib/client/api/orders/orders.query';
 import type { Order } from '@/lib/types/orders';
 import { Loading } from '@/components/common';
+import { useOrderPayFastPayment } from '@/lib/client/api/orders/orders.mutation';
+import { useGetProfile } from '@/lib/client/api/profile/profile.query';
+
+const PayNowActionIcon = ({ className }: { className?: string }) => (
+  <span className="inline-flex items-center gap-1 text-xs font-medium whitespace-nowrap bg-black rounded-full text-white px-2 py-1 hover:bg-black/80">
+    Pay Now
+    <CreditCard className={className} />
+  </span>
+);
 
 const UserOrdersPage = () => {
   const router = useRouter();
   const { data: orders = [], isLoading } = useGetOrders();
+  const { data: profile } = useGetProfile();
+  const orderPayFastPaymentMutation = useOrderPayFastPayment();
 
   const getStatusColor = (status: Order['status']) => {
     switch (status) {
@@ -125,6 +136,29 @@ const UserOrdersPage = () => {
 
   const actions: TableAction[] = [
     {
+      id: 'pay-now',
+      label: 'Pay Now',
+      icon: PayNowActionIcon,
+      variant: 'outline',
+      showWhen: (row) => row.payment_status === 'pending',
+      onClick: async (row) => {
+        const order = row as Order;
+        const fullName = profile?.full_name || 'Customer User';
+        const [firstName, ...lastNameParts] = fullName.split(' ');
+        const lastName = lastNameParts.join(' ') || 'User';
+
+        await orderPayFastPaymentMutation.mutateAsync({
+          order_id: order.id,
+          user_id: order.user_id,
+          first_name: firstName || 'Customer',
+          last_name: lastName,
+          email: profile?.email || '',
+          phone: profile?.phone || undefined,
+          total: Number(order.total || 0),
+        });
+      },
+    },
+    {
       id: 'view',
       label: 'View Details',
       icon: Eye,
@@ -149,7 +183,9 @@ const UserOrdersPage = () => {
 
       {orders.length === 0 ? (
         <div className="bg-gray-50 rounded-lg border border-gray-200 p-8 text-center">
-          <p className="text-gray-600">You haven't placed any orders yet.</p>
+          <p className="text-gray-600">
+            You haven&apos;t placed any orders yet.
+          </p>
         </div>
       ) : (
         <DataTable<Order>
@@ -157,7 +193,7 @@ const UserOrdersPage = () => {
             data: orders,
             columns,
             actions,
-            isLoading: false,
+            isLoading: orderPayFastPaymentMutation.isPending,
             pageSize: 10,
             defaultSortBy: 'created_at',
             defaultSortOrder: 'desc',

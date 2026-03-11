@@ -1,15 +1,26 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Eye } from 'lucide-react';
+import { CreditCard, Eye } from 'lucide-react';
 import { DataTable, Loading } from '@/components/common';
 import { TableAction, TableColumn } from '@/lib/types/table';
 import type { Booking } from '@/lib/types/bookings';
 import { useGetBookings } from '@/lib/client/api/bookings/bookings.query';
+import { usePayFastPayment } from '@/lib/client/api/bookings/payments.mutation';
+import { useGetProfile } from '@/lib/client/api/profile/profile.query';
+
+const PayNowActionIcon = ({ className }: { className?: string }) => (
+  <span className="inline-flex items-center gap-1 text-xs font-medium whitespace-nowrap bg-black rounded-full text-white px-2 py-1 hover:bg-black/80">
+    Pay Now
+    <CreditCard className={className} />
+  </span>
+);
 
 const BookingsPage = () => {
   const router = useRouter();
   const { data: bookings = [], isLoading } = useGetBookings();
+  const { data: profile } = useGetProfile();
+  const payFastPaymentMutation = usePayFastPayment();
 
   const getStatusColor = (status: Booking['status']) => {
     switch (status) {
@@ -154,6 +165,31 @@ const BookingsPage = () => {
 
   const actions: TableAction[] = [
     {
+      id: 'pay-now',
+      label: 'Pay Now',
+      icon: PayNowActionIcon,
+      variant: 'outline',
+      showWhen: (row) => row.payment_status === 'pending',
+      onClick: async (row) => {
+        const booking = row as Booking;
+        const fullName = profile?.full_name || 'Customer User';
+        const [firstName, ...lastNameParts] = fullName.split(' ');
+        const lastName = lastNameParts.join(' ') || 'User';
+
+        await payFastPaymentMutation.mutateAsync({
+          booking_id: booking.id,
+          user_id: booking.user_id,
+          first_name: firstName || 'Customer',
+          last_name: lastName,
+          email: booking.customer_email || profile?.email || '',
+          phone: booking.customer_phone || profile?.phone || undefined,
+          total_price: Number(booking.total_price || 0),
+          service_name: booking.service_name || 'Service Booking',
+          service_description: booking.service_details?.description || '',
+        });
+      },
+    },
+    {
       id: 'view',
       label: 'View Details',
       icon: Eye,
@@ -190,7 +226,7 @@ const BookingsPage = () => {
             data: bookings,
             columns,
             actions,
-            isLoading: false,
+            isLoading: payFastPaymentMutation.isPending,
             pageSize: 10,
             defaultSortBy: 'created_at',
             defaultSortOrder: 'desc',
