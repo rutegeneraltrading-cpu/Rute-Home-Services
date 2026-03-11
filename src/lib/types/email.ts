@@ -20,3 +20,26 @@ export interface ResetPasswordChangedEmailData {
   changedAt: string;
   resetPasswordUrl: string;
 }
+
+export interface WorkerWelcomeEmailData {
+  fullName: string;
+  email: string;
+  servicesCount: number;
+  loginUrl: string;
+}
+
+export interface AdminCreatedUserEmailData {
+  fullName: string;
+  email: string;
+  loginUrl: string;
+  resetPasswordUrl: string;
+}
+
+export interface ContactFormAdminEmailData {
+  name: string;
+  email: string;
+  phone?: string;
+  subject: string;
+  message: string;
+  createdAt: string;
+}

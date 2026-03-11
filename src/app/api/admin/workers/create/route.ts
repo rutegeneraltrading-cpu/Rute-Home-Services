@@ -1,6 +1,8 @@
 import { NextResponse, NextRequest } from 'next/server';
 import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/server';
+import { sendEmail } from '@/lib/server/email/ses-mailer';
+import { workerWelcomeTemplate } from '@/lib/server/email';
 
 export async function POST(request: NextRequest) {
   try {
@@ -261,6 +263,21 @@ export async function POST(request: NextRequest) {
           uploaded_at: new Date().toISOString(),
         });
       }
+    }
+
+    try {
+      await sendEmail({
+        to: normalizedEmail,
+        subject: 'Welcome to RUTE Worker Portal',
+        html: workerWelcomeTemplate({
+          fullName: full_name,
+          email: normalizedEmail,
+          servicesCount: Array.isArray(service_ids) ? service_ids.length : 0,
+          loginUrl: `${process.env.NEXT_PUBLIC_APP_URL}/login`,
+        }),
+      });
+    } catch (emailError) {
+      console.error('Worker welcome email send failed:', emailError);
     }
 
     return NextResponse.json(

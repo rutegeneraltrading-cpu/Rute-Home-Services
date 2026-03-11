@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase';
+import { sendEmail } from '@/lib/server/email/ses-mailer';
+import { adminCreatedUserTemplate } from '@/lib/server/email';
 
 export async function GET() {
   try {
@@ -38,8 +40,9 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const { email, password, name, phone } = await request.json();
+    const normalizedEmail = email?.trim()?.toLowerCase();
 
-    if (!email || !password || !name || !phone) {
+    if (!normalizedEmail || !password || !name || !phone) {
       return NextResponse.json(
         { error: 'Email, password, name, and phone are required' },
         { status: 400 },
@@ -57,7 +60,7 @@ export async function POST(request: Request) {
 
     const { data: createdUser, error: createError } =
       await adminClient.auth.admin.createUser({
-        email,
+        email: normalizedEmail,
         password,
         phone,
         email_confirm: true,
@@ -86,7 +89,7 @@ export async function POST(request: Request) {
       .upsert(
         {
           auth_id: userId,
-          email,
+          email: normalizedEmail,
           full_name: name,
           phone,
           role: 'user',
@@ -102,6 +105,21 @@ export async function POST(request: Request) {
         { error: 'Profile creation failed. Please try again.' },
         { status: 400 },
       );
+    }
+
+    try {
+      await sendEmail({
+        to: normalizedEmail,
+        subject: 'Your RUTE account is ready',
+        html: adminCreatedUserTemplate({
+          fullName: name,
+          email: normalizedEmail,
+          loginUrl: `${process.env.NEXT_PUBLIC_APP_URL}/login`,
+          resetPasswordUrl: `${process.env.NEXT_PUBLIC_APP_URL}/forgot-password`,
+        }),
+      });
+    } catch (emailError) {
+      console.error('Admin-created user email send failed:', emailError);
     }
 
     return NextResponse.json(

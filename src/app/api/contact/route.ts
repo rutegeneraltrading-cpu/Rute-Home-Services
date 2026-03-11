@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { contactMessageSchema } from '@/lib/validations';
+import { sendEmail } from '@/lib/server/email/ses-mailer';
+import { contactFormAdminTemplate } from '@/lib/server/email';
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,6 +38,32 @@ export async function POST(request: NextRequest) {
     });
 
     if (error) throw error;
+
+    const adminEmail =
+      process.env.ADMIN_CONTACT_EMAIL || process.env.AWS_SES_FROM_EMAIL;
+
+    if (adminEmail) {
+      try {
+        await sendEmail({
+          to: adminEmail,
+          subject: `New Contact Form: ${data.subject}`,
+          html: contactFormAdminTemplate({
+            name: data.name,
+            email: data.email,
+            phone: data.phone || undefined,
+            subject: data.subject,
+            message: data.message,
+            createdAt: new Date().toLocaleString('en-ZA', {
+              dateStyle: 'medium',
+              timeStyle: 'short',
+            }),
+          }),
+          replyTo: data.email,
+        });
+      } catch (emailError) {
+        console.error('Contact admin email send failed:', emailError);
+      }
+    }
 
     return NextResponse.json({ message: 'Message received' }, { status: 201 });
   } catch (error) {
