@@ -6,10 +6,12 @@ import {
   // ServicesSection,
   TestimonialsSection,
 } from '@/components/common';
+import AuthCodeHandler from '@/components/common/AuthCodeHandler';
 
 const HomePage = () => {
   return (
     <div>
+      <AuthCodeHandler />
       <HeroSection />
       {/* <ServicesSection /> */}
       <AboutUsSection />

@@ -38,14 +38,3 @@ export async function sendEmail(options: EmailOptions) {
   }
 }
 
-// Verify SMTP connection
-export async function verifyEmailConnection() {
-  try {
-    await transporter.verify();
-    console.log('SMTP server is ready to send emails');
-    return true;
-  } catch (error) {
-    console.error('SMTP verification failed:', error);
-    return false;
-  }
-}

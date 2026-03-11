@@ -1,33 +1,42 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { Button, Input } from '@/components/ui';
 import { useForgotPassword } from '@/lib/client/api';
 
 const ForgotPasswordPage = () => {
-  const router = useRouter();
-  const forgotPasswordMutation = useForgotPassword({
-    onSuccess: () => {
-      setTimeout(() => router.push('/login'), 2000);
-    },
-  });
+  const forgotPasswordMutation = useForgotPassword();
 
   const [email, setEmail] = useState('');
-  const [submitted, setSubmitted] = useState(false);
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+
+  useEffect(() => {
+    if (cooldownSeconds <= 0) return;
+
+    const interval = setInterval(() => {
+      setCooldownSeconds((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [cooldownSeconds]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!email) {
+    if (!email || cooldownSeconds > 0) {
       return;
     }
 
     try {
       await forgotPasswordMutation.mutateAsync(email);
-      setSubmitted(true);
-      setEmail('');
+      setCooldownSeconds(60);
     } catch (err) {
       console.error('Forgot password failed:', err);
     }
@@ -40,40 +49,38 @@ const ForgotPasswordPage = () => {
         Enter your email address and we&apos;ll send you a password reset link.
       </p>
 
-      {submitted ? (
-        <div className="space-y-4">
-          <div className="p-3 bg-green-100 border border-green-400 text-green-700 rounded">
-            Check your email for the password reset link. Redirecting to
-            login...
-          </div>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">
+            Email Address
+          </label>
+          <Input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            required
+            disabled={forgotPasswordMutation.isPending || cooldownSeconds > 0}
+          />
+          {cooldownSeconds > 0 && (
+            <p className="mt-2 text-xs text-amber-700">
+              You can send another forgot password request after 1 mint.
+            </p>
+          )}
         </div>
-      ) : (
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Email Address
-            </label>
-            <Input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              required
-              disabled={forgotPasswordMutation.isPending}
-            />
-          </div>
 
-          <Button
-            type="submit"
-            className="w-full cursor-pointer"
-            disabled={forgotPasswordMutation.isPending}
-          >
-            {forgotPasswordMutation.isPending
-              ? 'Sending...'
+        <Button
+          type="submit"
+          className="w-full cursor-pointer"
+          disabled={forgotPasswordMutation.isPending || cooldownSeconds > 0}
+        >
+          {forgotPasswordMutation.isPending
+            ? 'Sending...'
+            : cooldownSeconds > 0
+              ? `Try again in ${cooldownSeconds}s`
               : 'Send Reset Link'}
-          </Button>
-        </form>
-      )}
+        </Button>
+      </form>
 
       <p className="text-center text-slate-600 text-sm mt-4">
         Remember your password?{' '}

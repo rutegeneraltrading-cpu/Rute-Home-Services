@@ -20,13 +20,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
+
     const supabase = await createClient();
 
     // 2. SIGN UP USER WITH SUPABASE AUTH
     const { error: authError, data: authData } = await supabase.auth.signUp({
-      email,
+      email: normalizedEmail,
       password,
       options: {
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?next=/user?verified=1`,
         data: {
           full_name: name,
           phone: phone,
@@ -67,8 +70,15 @@ export async function POST(request: NextRequest) {
     }
 
     // 5. RETURN USER DATA
+    const requiresEmailVerification =
+      !authData.session || !authData.user.email_confirmed_at;
+
     return NextResponse.json(
       {
+        requires_email_verification: requiresEmailVerification,
+        message: requiresEmailVerification
+          ? 'Account created. Please verify your email before signing in.'
+          : 'Account created successfully.',
         user: {
           id: profile.auth_id,
           email: profile.email,

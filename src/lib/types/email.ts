@@ -6,39 +6,17 @@ export interface EmailOptions {
   replyTo?: string;
 }
 
-export interface BookingEmailData {
-  customerName: string;
-  bookingNumber: string;
-  serviceName: string;
-  workerName: string;
-  date: string;
-  time: string;
-  totalPrice: number;
-  address: string;
-}
-
-export interface OrderEmailData {
-  customerName: string;
-  orderNumber: string;
-  items: Array<{
-    name: string;
-    quantity: number;
-    price: number;
-  }>;
-  totalPrice: number;
-  shippingAddress: string;
-  estimatedDelivery: string;
-}
-
-export interface ContactEmailData {
+export interface SigninAlertEmailData {
   name: string;
-  email: string;
-  phone?: string;
-  message: string;
+  loginTime: string;
+  device?: string;
+  ipAddress?: string;
+  location?: string;
+  resetPasswordUrl: string;
 }
 
-export interface EmailResponse {
-  success: boolean;
-  messageId?: string;
-  error?: string;
+export interface ResetPasswordChangedEmailData {
+  name: string;
+  changedAt: string;
+  resetPasswordUrl: string;
 }

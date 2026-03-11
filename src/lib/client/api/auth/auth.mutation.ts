@@ -23,16 +23,26 @@ export function useSignUp(options?: AuthMutationOptions) {
   return useMutation({
     mutationFn: signUpApi,
     onSuccess: (data) => {
-      // Cache user data after signup
-      queryClient.setQueryData(authKeys.me(), data.user);
-      // Also invalidate to refresh any other queries that depend on auth
-      queryClient.invalidateQueries({ queryKey: authKeys.all });
+      if (data.requires_email_verification) {
+        queryClient.removeQueries({ queryKey: authKeys.all });
+        toast({
+          variant: 'success',
+          title: 'Account Created!',
+          description:
+            'Verification email sent. Please verify your email before signing in.',
+        });
+      } else {
+        // Cache user data after signup
+        queryClient.setQueryData(authKeys.me(), data.user);
+        // Also invalidate to refresh any other queries that depend on auth
+        queryClient.invalidateQueries({ queryKey: authKeys.all });
 
-      toast({
-        variant: 'success',
-        title: 'Account Created!',
-        description: 'Welcome! Your account has been created successfully.',
-      });
+        toast({
+          variant: 'success',
+          title: 'Account Created!',
+          description: 'Welcome! Your account has been created successfully.',
+        });
+      }
 
       options?.onSuccess?.();
     },

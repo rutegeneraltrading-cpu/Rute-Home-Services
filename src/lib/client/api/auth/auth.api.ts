@@ -3,11 +3,17 @@ import { AuthUser, SignInDTO, SignUpDTO } from '@/lib/types';
 
 const BASE_URL = '/api/auth';
 
+export interface SignUpResponse {
+  user: AuthUser;
+  requires_email_verification?: boolean;
+  message?: string;
+}
+
 // Re-export types for convenience
 export type { AuthUser, SignInDTO, SignUpDTO };
 
 // POST - Sign up
-export const signUpApi = (data: SignUpDTO): Promise<{ user: AuthUser }> =>
+export const signUpApi = (data: SignUpDTO): Promise<SignUpResponse> =>
   httpClient.post(`${BASE_URL}/signup`, data);
 
 // POST - Sign in

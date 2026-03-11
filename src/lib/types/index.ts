@@ -4,10 +4,8 @@ export * from './common';
 export * from './table';
 export * from './user';
 export * from './blogs';
-// export * from './orders';
 export * from './orders';
-
-// Re-export types from API modules for backward compatibility
+export * from './email';
 export type {
   User,
   AdminCreateUserDTO,

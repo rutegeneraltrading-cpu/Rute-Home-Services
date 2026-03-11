@@ -51,6 +51,12 @@ const SignupPage = ({
         name,
         phone,
       });
+
+      if (response?.requires_email_verification) {
+        router.push(`/login?verify=1&email=${encodeURIComponent(email)}`);
+        return;
+      }
+
       await new Promise((resolve) => setTimeout(resolve, 500));
       if (onSuccess) {
         onSuccess();

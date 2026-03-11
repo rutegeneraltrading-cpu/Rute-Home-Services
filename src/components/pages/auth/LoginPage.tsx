@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useSignIn } from '@/lib/client/api';
 import { Button, Input, PasswordInput } from '@/components/ui';
 
@@ -20,9 +20,11 @@ export default function LoginPage({
   className,
 }: LoginPageProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const signInMutation = useSignIn();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const verificationRequired = searchParams.get('verify') === '1';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,6 +58,13 @@ export default function LoginPage({
       <p className="text-center text-slate-600 mb-6">
         Sign in to access your account
       </p>
+
+      {verificationRequired && (
+        <div className="mb-4 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+          Please verify your email first. Check your inbox (and spam folder),
+          then sign in.
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
