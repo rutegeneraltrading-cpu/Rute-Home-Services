@@ -96,6 +96,11 @@ const BookingDetails = () => {
   }
 
   const serviceDetails = booking.service_details;
+  const ratingValue = Number(booking.rating_value || 0);
+  const safeRatingValue = Math.max(0, Math.min(5, Math.round(ratingValue)));
+  const ratingStars = safeRatingValue
+    ? `${'★'.repeat(safeRatingValue)}${'☆'.repeat(5 - safeRatingValue)}`
+    : null;
 
   return (
     <div className="py-10 space-y-6">
@@ -312,6 +317,37 @@ const BookingDetails = () => {
         </Card>
 
         <div className="space-y-6">
+          {safeRatingValue > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Customer Rating</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <>
+                  <p className="text-amber-500 text-xl leading-none">
+                    {ratingStars}
+                  </p>
+                  <p className="font-semibold text-slate-900">
+                    {ratingValue}/5
+                  </p>
+                  {booking.rating_review ? (
+                    <p className="text-slate-700 whitespace-pre-wrap">
+                      {booking.rating_review}
+                    </p>
+                  ) : (
+                    <p className="text-slate-500">No review text provided.</p>
+                  )}
+                  {booking.rating_submitted_at && (
+                    <p className="text-xs text-slate-500">
+                      Submitted:{' '}
+                      {new Date(booking.rating_submitted_at).toLocaleString()}
+                    </p>
+                  )}
+                </>
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle>Status & Payment</CardTitle>

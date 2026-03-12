@@ -79,6 +79,9 @@ export interface Booking {
   assigned_worker_email?: string;
   assigned_worker_phone?: string;
   assignment_status?: BookingAssignmentStatus;
+  rating_value?: number | null;
+  rating_review?: string | null;
+  rating_submitted_at?: string | null;
   address: string;
   booking_date: string;
   booking_time: string;

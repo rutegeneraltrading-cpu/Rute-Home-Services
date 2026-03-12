@@ -149,6 +149,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
       { data: assignmentsData },
       { data: optionsData },
       { data: variantsData },
+      { data: bookingRating },
     ] = await Promise.all([
       supabaseAdmin
         .from('profiles')
@@ -185,6 +186,11 @@ export async function GET(_request: NextRequest, { params }: Params) {
             )
             .in('id', variantIds)
         : Promise.resolve({ data: [], error: null }),
+      supabaseAdmin
+        .from('booking_ratings')
+        .select('rating, review, created_at, updated_at')
+        .eq('booking_id', booking.id)
+        .maybeSingle(),
     ]);
 
     let serviceCategory: {
@@ -346,6 +352,10 @@ export async function GET(_request: NextRequest, { params }: Params) {
         assigned_worker_email: assignedWorkerEmail,
         assigned_worker_phone: assignedWorkerPhone,
         assignment_status: latestAssignment?.status || null,
+        rating_value: bookingRating?.rating ?? null,
+        rating_review: bookingRating?.review ?? null,
+        rating_submitted_at:
+          bookingRating?.updated_at || bookingRating?.created_at || null,
         selected_option_details: selectedOptionDetails,
         selected_variant_details: selectedVariantDetails,
       },
