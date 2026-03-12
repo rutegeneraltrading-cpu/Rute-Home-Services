@@ -16,6 +16,8 @@ import { bookingAssignmentAcceptedTemplate } from './bookingAssignmentAcceptedTe
 import { bookingAssignmentCancelledTemplate } from './bookingAssignmentCancelledTemplate';
 import { bookingStatusUpdateTemplate } from './bookingStatusUpdateTemplate';
 import { orderStatusUpdateTemplate } from './orderStatusUpdateTemplate';
+import { bookingCompletionTemplate } from './bookingCompletionTemplate';
+import { workerRatingReceivedTemplate } from './workerRatingReceivedTemplate';
 
 export {
   signinAlertTemplate,
@@ -36,4 +38,6 @@ export {
   bookingAssignmentCancelledTemplate,
   bookingStatusUpdateTemplate,
   orderStatusUpdateTemplate,
+  bookingCompletionTemplate,
+  workerRatingReceivedTemplate,
 };

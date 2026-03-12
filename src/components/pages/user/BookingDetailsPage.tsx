@@ -1,6 +1,7 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
   CalendarDays,
@@ -10,8 +11,17 @@ import {
   User,
   Wrench,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Loading } from '@/components/common';
 import { useGetBooking } from '@/lib/client/api/bookings/bookings.query';
 import type {
@@ -46,10 +56,92 @@ const assignmentStatusColor: Record<string, string> = {
 
 const BookingDetailsPage = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const params = useParams<{ id: string }>();
   const bookingId = params?.id;
 
   const { data: booking, isLoading, isError } = useGetBooking(bookingId || '');
+
+  const [ratingModalOpen, setRatingModalOpen] = useState(false);
+  const [rating, setRating] = useState<number>(0);
+  const [review, setReview] = useState('');
+  const [isSubmittingRating, setIsSubmittingRating] = useState(false);
+
+  const ratingFromUrl = useMemo(() => {
+    const raw = searchParams.get('rating');
+    const parsed = raw ? Number(raw) : NaN;
+    return Number.isInteger(parsed) && parsed >= 1 && parsed <= 5 ? parsed : 0;
+  }, [searchParams]);
+
+  const shouldOpenRatingModalFromUrl =
+    searchParams.get('rate') === 'true' && booking?.status === 'completed';
+
+  useEffect(() => {
+    if (!booking) return;
+
+    if (shouldOpenRatingModalFromUrl) {
+      setRating(ratingFromUrl);
+      setRatingModalOpen(true);
+      return;
+    }
+
+    if (searchParams.get('rate') === 'true' && booking.status !== 'completed') {
+      toast.error('Rating is available only after booking is completed.');
+    }
+  }, [booking, shouldOpenRatingModalFromUrl, ratingFromUrl, searchParams]);
+
+  const clearRatingQueryFromUrl = () => {
+    if (!bookingId) return;
+    router.replace(`/user/bookings/${bookingId}`);
+  };
+
+  const handleRatingModalOpenChange = (open: boolean) => {
+    setRatingModalOpen(open);
+    if (!open) {
+      clearRatingQueryFromUrl();
+    }
+  };
+
+  const handleSubmitRating = async () => {
+    if (!bookingId) return;
+
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      toast.error('Please select a rating from 1 to 5 stars.');
+      return;
+    }
+
+    try {
+      setIsSubmittingRating(true);
+
+      const response = await fetch('/api/ratings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          bookingId,
+          rating,
+          review: review.trim() || null,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result?.error || 'Failed to save rating');
+      }
+
+      toast.success('Thank you! Your rating has been submitted.');
+      setRatingModalOpen(false);
+      clearRatingQueryFromUrl();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to save your rating.',
+      );
+    } finally {
+      setIsSubmittingRating(false);
+    }
+  };
 
   const selectedOptions: BookingOptionDetail[] = Array.isArray(
     booking?.selected_option_details,
@@ -107,6 +199,24 @@ const BookingDetailsPage = () => {
           <p className="text-sm text-slate-500 font-mono">#{booking.id}</p>
         </div>
       </div>
+
+      {booking.status === 'completed' && (
+        <Card>
+          <CardContent className="py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <p className="font-semibold text-slate-900">
+                Rate your experience
+              </p>
+              <p className="text-sm text-slate-600">
+                Your feedback helps us improve service quality.
+              </p>
+            </div>
+            <Button onClick={() => setRatingModalOpen(true)}>
+              Rate Booking
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <Card className="xl:col-span-2">
@@ -339,6 +449,70 @@ const BookingDetailsPage = () => {
           </Card>
         </div>
       </div>
+
+      <Dialog open={ratingModalOpen} onOpenChange={handleRatingModalOpenChange}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Rate your booking</DialogTitle>
+            <DialogDescription>
+              Share your experience with the assigned professional.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm font-medium text-slate-700 mb-2">
+                Your rating
+              </p>
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setRating(value)}
+                    className={`text-3xl leading-none transition-colors cursor-pointer ${
+                      value <= rating ? 'text-amber-500' : 'text-slate-300'
+                    }`}
+                    aria-label={`Rate ${value} stars`}
+                  >
+                    ★
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label
+                htmlFor="rating-review"
+                className="text-sm font-medium text-slate-700 mb-2 block"
+              >
+                Review (optional)
+              </label>
+              <textarea
+                id="rating-review"
+                value={review}
+                onChange={(e) => setReview(e.target.value)}
+                rows={4}
+                placeholder="Tell us about your experience"
+                className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => handleRatingModalOpenChange(false)}
+              disabled={isSubmittingRating}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSubmitRating} disabled={isSubmittingRating}>
+              {isSubmittingRating ? 'Submitting...' : 'Submit Rating'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

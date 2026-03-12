@@ -6,6 +6,7 @@ import {
   bookingAssignmentAcceptedTemplate,
   bookingAssignmentCancelledTemplate,
   bookingStatusUpdateTemplate,
+  bookingCompletionTemplate,
 } from '@/lib/server/email';
 
 interface Params {
@@ -908,38 +909,104 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     }
 
     const updatedStatus = String(updatedBooking.status || 'pending');
-    const STATUS_UPDATE_NOTIFY_ALLOWED = new Set([
-      'in_progress',
-      'completed',
-      'cancelled',
-    ]);
-    const shouldSendStatusUpdateEmail =
-      !!customerProfile?.email &&
-      previousBookingStatus !== updatedStatus &&
-      STATUS_UPDATE_NOTIFY_ALLOWED.has(updatedStatus);
 
-    if (shouldSendStatusUpdateEmail) {
+    // Handle booking completion - send rating email instead of status update
+    if (
+      updatedStatus === 'completed' &&
+      previousBookingStatus !== 'completed' &&
+      customerProfile?.email
+    ) {
       try {
+        let workerNameForEmail = 'Assigned Professional';
+        let workerImageForEmail: string | undefined;
+
+        // Best-effort: prefer accepted assignment, fallback to latest assignment worker
+        const { data: acceptedAssignment } = await supabaseAdmin
+          .from('booking_assignments')
+          .select('worker_id, assigned_at')
+          .eq('booking_id', id)
+          .eq('status', 'accepted')
+          .order('assigned_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const workerIdForEmail =
+          acceptedAssignment?.worker_id || latestAssignment?.worker_id || null;
+
+        if (workerIdForEmail) {
+          const { data: workerData } = await supabaseAdmin
+            .from('workers')
+            .select('profile_id, profiles(full_name, avatar_url)')
+            .eq('id', workerIdForEmail)
+            .maybeSingle();
+
+          const workerProfile = workerData?.profiles?.[0];
+
+          if (workerProfile?.full_name) {
+            workerNameForEmail = workerProfile.full_name;
+          }
+
+          if (workerProfile?.avatar_url) {
+            workerImageForEmail = workerProfile.avatar_url;
+          }
+        }
+
+        const ratingLink = `${process.env.NEXT_PUBLIC_APP_URL}/user/bookings/${id}?rate=true`;
+
         await sendEmail({
           to: customerProfile.email,
-          subject: `Booking Status Updated - ${serviceSubject}`,
-          html: bookingStatusUpdateTemplate({
-            customerName,
+          subject: 'Booking Complete - Rate Your Professional',
+          html: await bookingCompletionTemplate({
+            userEmail: customerProfile.email,
+            userName: customerName,
             bookingId: id,
-            service: serviceDetailsForEmails,
+            serviceName: serviceDetailsForEmails.name,
+            serviceCategory: serviceDetailsForEmails.category,
             bookingDate,
             bookingTime,
-            previousStatus: previousBookingStatus,
-            newStatus: updatedStatus,
-            updatedAt: new Date().toLocaleString('en-ZA', {
-              dateStyle: 'medium',
-              timeStyle: 'short',
-            }),
-            detailsUrl: `${process.env.NEXT_PUBLIC_APP_URL}/user/bookings/${id}`,
+            workerName: workerNameForEmail,
+            workerImage: workerImageForEmail,
+            ratingLink,
           }),
         });
       } catch (emailError) {
-        console.error('Booking status update email failed:', emailError);
+        console.error('Booking completion email failed:', emailError);
+      }
+    }
+    // Send status update email for other allowed transitions
+    else {
+      const STATUS_UPDATE_NOTIFY_ALLOWED = new Set([
+        'in_progress',
+        'cancelled',
+      ]);
+      const shouldSendStatusUpdateEmail =
+        !!customerProfile?.email &&
+        previousBookingStatus !== updatedStatus &&
+        STATUS_UPDATE_NOTIFY_ALLOWED.has(updatedStatus);
+
+      if (shouldSendStatusUpdateEmail) {
+        try {
+          await sendEmail({
+            to: customerProfile.email,
+            subject: `Booking Status Updated - ${serviceSubject}`,
+            html: bookingStatusUpdateTemplate({
+              customerName,
+              bookingId: id,
+              service: serviceDetailsForEmails,
+              bookingDate,
+              bookingTime,
+              previousStatus: previousBookingStatus,
+              newStatus: updatedStatus,
+              updatedAt: new Date().toLocaleString('en-ZA', {
+                dateStyle: 'medium',
+                timeStyle: 'short',
+              }),
+              detailsUrl: `${process.env.NEXT_PUBLIC_APP_URL}/user/bookings/${id}`,
+            }),
+          });
+        } catch (emailError) {
+          console.error('Booking status update email failed:', emailError);
+        }
       }
     }
 
