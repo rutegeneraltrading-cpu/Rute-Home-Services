@@ -70,7 +70,7 @@ const ResetPasswordPage = () => {
 
   if (!isValidToken) {
     return (
-      <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-8 shadow-lg mt-16 lg:mt-0">
+      <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white md:p-8 p-6 shadow-lg mt-16 lg:mt-0">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-4">Invalid Reset Link</h1>
           <p className="text-slate-600 mb-6">{error}</p>

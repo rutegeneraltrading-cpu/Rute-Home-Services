@@ -10,7 +10,7 @@ export default function AuthLayout({
   return (
     <html lang="en">
       <body>
-        <div className="flex flex-col gap-8 justify-center p-12">
+        <div className="flex flex-col md:gap-8 gap-4 justify-center md:px-12 md:py-12 px-2 pt-10">
           <Link
             href="/"
             className="text-2xl font-bold text-center lg:text-left"

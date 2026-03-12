@@ -56,7 +56,7 @@ export default function LoginPage({
 
   return (
     <div
-      className={`w-full max-w-md rounded-lg border border-slate-200 bg-white p-8 shadow-lg mt-16 lg:mt-0 ${
+      className={`w-full max-w-md rounded-lg border border-slate-200 bg-white md:p-8 p-6 shadow-lg mt-16 lg:mt-0 ${
         className || ''
       }`}
     >

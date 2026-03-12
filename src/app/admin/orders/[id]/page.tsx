@@ -65,13 +65,13 @@ const SingleOrderPage = () => {
 
   return (
     <div className="py-10 space-y-6">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex md:flex-row flex-col md:items-center items-start md:justify-between gap-4">
         <Button variant="outline" onClick={() => router.push('/admin/orders')}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Orders
         </Button>
 
-        <div className="text-right">
+        <div className="md:text-right">
           <h1 className="text-2xl font-bold text-slate-900">Order Details</h1>
           <p className="text-sm text-slate-500 font-mono">#{order.id}</p>
         </div>
@@ -97,9 +97,9 @@ const SingleOrderPage = () => {
                 return (
                   <div
                     key={`${item.product_id}-${idx}`}
-                    className="border rounded-lg p-4 bg-slate-50"
+                    className="md:border rounded-lg md:p-4 md:bg-slate-50"
                   >
-                    <div className="flex items-start justify-between gap-4">
+                    <div className="flex md:flex-row flex-col md:items-start justify-between gap-4">
                       <div className="flex items-start gap-3">
                         <div className="h-14 w-14 rounded-md overflow-hidden bg-white border shrink-0">
                           {primaryImage ? (

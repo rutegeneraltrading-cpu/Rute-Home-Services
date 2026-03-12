@@ -104,7 +104,7 @@ const BookingDetails = () => {
 
   return (
     <div className="py-10 space-y-6">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex md:flex-row flex-col md:items-center items-start md:justify-between gap-4">
         <Button
           variant="outline"
           onClick={() => router.push('/admin/bookings')}
@@ -113,7 +113,7 @@ const BookingDetails = () => {
           Back to Bookings
         </Button>
 
-        <div className="text-right">
+        <div className="md:text-right">
           <h1 className="text-2xl font-bold text-slate-900">Booking Details</h1>
           <p className="text-sm text-slate-500 font-mono">#{booking.id}</p>
         </div>

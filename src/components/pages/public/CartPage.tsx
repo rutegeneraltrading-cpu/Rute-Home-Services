@@ -75,11 +75,11 @@ const CartPage = () => {
                 return (
                   <Card key={item.id}>
                     <CardContent className="p-4">
-                      <div className="flex gap-4">
+                      <div className="flex flex-col sm:flex-row gap-4">
                         {/* Product Image */}
                         <Link
                           href={`/shop/${item.slug || item.id}`}
-                          className="shrink-0"
+                          className="block shrink-0 self-center sm:self-start w-24 h-24"
                         >
                           <div className="relative w-24 h-24 bg-gray-100 rounded-md overflow-hidden">
                             <Image
@@ -93,7 +93,7 @@ const CartPage = () => {
 
                         {/* Product Details */}
                         <div className="flex-1 min-w-0">
-                          <div className="flex justify-between gap-4 mb-2">
+                          <div className="flex items-start justify-between gap-3 mb-2">
                             <div className="flex-1 min-w-0">
                               <Link
                                 href={`/shop/${item.slug || item.id}`}
@@ -117,9 +117,9 @@ const CartPage = () => {
                             </Button>
                           </div>
 
-                          <div className="flex items-center justify-between gap-4 mt-4">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mt-4">
                             {/* Quantity Controls */}
-                            <div className="flex items-center border border-gray-300 rounded-md">
+                            <div className="flex items-center border border-gray-300 rounded-md w-fit">
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -162,7 +162,7 @@ const CartPage = () => {
                             </div>
 
                             {/* Price */}
-                            <div className="text-right">
+                            <div className="text-left sm:text-right">
                               {item.sale_price && (
                                 <p className="text-xs text-slate-400 line-through">
                                   R{item.price.toFixed(2)}
