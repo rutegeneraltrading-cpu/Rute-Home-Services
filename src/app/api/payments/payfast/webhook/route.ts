@@ -5,6 +5,64 @@ import { sendEmail } from '@/lib/server/email/ses-mailer';
 import { orderPaymentSuccessTemplate } from '@/lib/server/email';
 import { bookingPaymentSuccessTemplate } from '@/lib/server/email';
 
+const SUBJECT_MAX_LENGTH = 70;
+
+function cleanProductNameForHeading(name: string): string {
+  return String(name || '')
+    .replace(/\s*\([^)]*\)\s*$/g, '')
+    .trim();
+}
+
+function resolveProductImageUrl(url?: string): string | undefined {
+  if (!url) return undefined;
+  if (/^https?:\/\//i.test(url)) return url;
+
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!base) return undefined;
+
+  const normalizedPath = String(url)
+    .replace(/^\/+/, '')
+    .replace(/^storage\/v1\/object\/public\/products\//, '');
+
+  return `${base}/storage/v1/object/public/products/${normalizedPath}`;
+}
+
+function getPrimaryProductImageUrl(images: any[]): string | undefined {
+  const sortedImages = [...images].sort(
+    (a: any, b: any) =>
+      Number(a?.sort_order ?? 9999) - Number(b?.sort_order ?? 9999),
+  );
+  return sortedImages.find((img: any) => img?.is_primary)?.url;
+}
+
+function buildOrderProductsSubject(
+  items: Array<{ productName: string }>,
+): string {
+  const products = Array.from(
+    new Set(
+      items
+        .map((item) => cleanProductNameForHeading(item.productName))
+        .filter(Boolean),
+    ),
+  );
+  const joined = products.join(', ') || 'Products';
+
+  if (joined.length <= SUBJECT_MAX_LENGTH) return joined;
+  return `${joined.slice(0, SUBJECT_MAX_LENGTH - 3).trimEnd()}...`;
+}
+
+function buildBookingServiceSubject(
+  serviceName: string,
+  serviceCategory?: string,
+): string {
+  const fullName = serviceCategory
+    ? `${serviceName} - ${serviceCategory}`
+    : serviceName;
+  return fullName.length > SUBJECT_MAX_LENGTH
+    ? fullName.substring(0, SUBJECT_MAX_LENGTH - 3) + '...'
+    : fullName;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createAdminClient();
@@ -115,19 +173,86 @@ export async function POST(request: NextRequest) {
           timeStyle: 'short',
         });
 
+        // Fetch full booking details for email
+        const { data: bookingDetails } = await supabase
+          .from('bookings')
+          .select(
+            'id, service_id, booking_date, booking_time, total_price, selected_options, selected_variants',
+          )
+          .eq('id', referenceId)
+          .maybeSingle();
+
+        let serviceDetails: any = { name: 'Service' };
+
+        if (bookingDetails?.service_id) {
+          const { data: serviceData } = await supabase
+            .from('services')
+            .select('id, name, category_id')
+            .eq('id', bookingDetails.service_id)
+            .maybeSingle();
+
+          if (serviceData) {
+            serviceDetails.name = serviceData.name;
+
+            if (serviceData.category_id) {
+              const { data: categoryData } = await supabase
+                .from('service_categories')
+                .select('name')
+                .eq('id', serviceData.category_id)
+                .maybeSingle();
+              serviceDetails.category = categoryData?.name;
+            }
+
+            // Fetch selected options details
+            if (bookingDetails.selected_options?.length > 0) {
+              const { data: optionsData } = await supabase
+                .from('service_options')
+                .select('id, name, description, price')
+                .in('id', bookingDetails.selected_options);
+
+              serviceDetails.options = (optionsData || []).map((opt) => ({
+                name: opt.name,
+                description: opt.description,
+                price: opt.price,
+              }));
+            }
+
+            // Fetch selected variants details
+            if (bookingDetails.selected_variants?.length > 0) {
+              const { data: variantsData } = await supabase
+                .from('service_option_variants')
+                .select('id, name, type, price')
+                .in('id', bookingDetails.selected_variants);
+
+              serviceDetails.variants = (variantsData || []).map((v) => ({
+                name: v.name,
+                type: v.type,
+                price: v.price,
+              }));
+            }
+          }
+        }
+
         if (customerEmail) {
           try {
+            const serviceSubject = buildBookingServiceSubject(
+              serviceDetails.name,
+              serviceDetails.category,
+            );
+
             await sendEmail({
               to: customerEmail,
-              subject: `Payment Successful - Booking ${referenceId}`,
+              subject: `Payment Successful - ${serviceSubject}`,
               html: bookingPaymentSuccessTemplate({
                 audience: 'user',
                 customerName,
                 bookingId: referenceId,
+                service: serviceDetails,
+                bookingDate: String(bookingDetails?.booking_date || ''),
+                bookingTime: String(bookingDetails?.booking_time || ''),
                 total: Number(existingBooking.total_price || 0),
-                transactionId,
-                paidAt,
-                detailsUrl: `${process.env.NEXT_PUBLIC_APP_URL}/user/bookings/${referenceId}`,
+                transactionId: webhookData.pf_payment_id,
+                dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL}/user/bookings/${referenceId}`,
               }),
             });
           } catch (emailError) {
@@ -140,17 +265,24 @@ export async function POST(request: NextRequest) {
 
         if (adminEmail) {
           try {
+            const serviceSubject = buildBookingServiceSubject(
+              serviceDetails.name,
+              serviceDetails.category,
+            );
+
             await sendEmail({
               to: adminEmail,
-              subject: `Booking Payment Received - ${referenceId}`,
+              subject: `Booking Payment Received - ${serviceSubject}`,
               html: bookingPaymentSuccessTemplate({
                 audience: 'admin',
                 customerName,
                 bookingId: referenceId,
+                service: serviceDetails,
+                bookingDate: String(bookingDetails?.booking_date || ''),
+                bookingTime: String(bookingDetails?.booking_time || ''),
                 total: Number(existingBooking.total_price || 0),
-                transactionId,
-                paidAt,
-                detailsUrl: `${process.env.NEXT_PUBLIC_APP_URL}/admin/bookings`,
+                transactionId: webhookData.pf_payment_id,
+                dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL}/admin/bookings`,
               }),
             });
           } catch (emailError) {
@@ -218,24 +350,88 @@ export async function POST(request: NextRequest) {
       const customerEmail = profile?.email || null;
       const adminEmail =
         process.env.ADMIN_ORDER_EMAIL || process.env.AWS_SES_FROM_EMAIL || '';
-      const paidAt = new Date().toLocaleString('en-ZA', {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-      });
+
+      // Fetch full order details for email
+      const { data: orderDetails } = await supabase
+        .from('orders')
+        .select('id, items')
+        .eq('id', referenceId)
+        .maybeSingle();
+
+      let orderItems: any[] = [];
+
+      if (orderDetails?.items && Array.isArray(orderDetails.items)) {
+        const productIds = orderDetails.items.map(
+          (item: any) => item.product_id,
+        );
+        const { data: productsData } = await supabase
+          .from('products')
+          .select(
+            'id, name, category_id, images:product_images(url, is_primary, sort_order)',
+          )
+          .in('id', productIds);
+
+        const categoryIds = Array.from(
+          new Set(
+            (productsData || []).map((p) => p.category_id).filter(Boolean),
+          ),
+        ) as string[];
+
+        const { data: categoriesData } = await supabase
+          .from('product_categories')
+          .select('id, name')
+          .in('id', categoryIds);
+
+        const productsMap = new Map((productsData || []).map((p) => [p.id, p]));
+        const categoriesMap = new Map(
+          (categoriesData || []).map((c) => [c.id, c.name]),
+        );
+
+        orderItems = (orderDetails.items || []).map((item: any) => {
+          const product = productsMap.get(item.product_id);
+          const images = Array.isArray((product as any)?.images)
+            ? [...(product as any).images]
+            : [];
+          const primaryImage = getPrimaryProductImageUrl(images);
+          const resolvedImageUrl = resolveProductImageUrl(primaryImage);
+
+          console.log('[Order Email][Point 9] image mapping:', {
+            referenceId,
+            transactionId: transactionId || null,
+            productId: item.product_id,
+            productName: product?.name || 'Product',
+            imageCount: images.length,
+            primaryImageRaw: primaryImage || null,
+            resolvedImageUrl: resolvedImageUrl || null,
+          });
+
+          return {
+            productName: product?.name || 'Product',
+            quantity: item.quantity,
+            price: item.price,
+            category: product?.category_id
+              ? categoriesMap.get(product.category_id)
+              : undefined,
+            imageUrl: resolvedImageUrl,
+          };
+        });
+      }
+
+      const productSummary = buildOrderProductsSubject(orderItems);
 
       if (customerEmail) {
         try {
           await sendEmail({
             to: customerEmail,
-            subject: `Payment Successful - Order ${referenceId}`,
+            subject: `Payment Successful - ${productSummary}`,
             html: orderPaymentSuccessTemplate({
               audience: 'user',
               customerName,
               orderId: referenceId,
+              items: orderItems,
               total: Number(existingOrder.total || 0),
               transactionId,
-              paidAt,
-              detailsUrl: `${process.env.NEXT_PUBLIC_APP_URL}/user/orders/${referenceId}`,
+              dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL}/user/orders/${referenceId}`,
             }),
           });
         } catch (emailError) {
@@ -247,15 +443,15 @@ export async function POST(request: NextRequest) {
         try {
           await sendEmail({
             to: adminEmail,
-            subject: `Order Payment Received - ${referenceId}`,
+            subject: `Order Payment Received - ${productSummary}`,
             html: orderPaymentSuccessTemplate({
               audience: 'admin',
               customerName,
               orderId: referenceId,
+              items: orderItems,
               total: Number(existingOrder.total || 0),
               transactionId,
-              paidAt,
-              detailsUrl: `${process.env.NEXT_PUBLIC_APP_URL}/admin/orders/${referenceId}`,
+              dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL}/admin/orders/${referenceId}`,
             }),
           });
         } catch (emailError) {

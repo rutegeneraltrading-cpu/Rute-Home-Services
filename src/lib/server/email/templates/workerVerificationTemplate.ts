@@ -11,30 +11,32 @@ export function workerVerificationTemplate(data: WorkerVerificationEmailData) {
   const approved = data.verificationStatus === 'approved';
 
   return renderNotificationTemplate({
-    title: approved ? 'Verification approved' : 'Verification update',
+    title: approved
+      ? 'Account verification approved'
+      : 'Account verification rejected',
     notificationMessage: approved
-      ? 'Your worker verification has been approved.'
-      : 'Your worker verification requires attention.',
-    sectionTitle: 'Verification details',
+      ? 'Congratulations! Your worker account has been verified and approved.'
+      : 'Your worker account verification was not approved. Please contact support for more details.',
+    sectionTitle: 'Verification status',
     details: [
-      { label: 'Name', value: data.fullName },
+      { label: 'Full Name', value: data.fullName },
       { label: 'Email', value: data.email },
       {
         label: 'Verification Status',
         value: approved ? 'Approved' : 'Rejected',
       },
       {
-        label: 'Next Step',
+        label: 'Update Details',
         value: approved
-          ? 'You can proceed with accepting service assignments.'
-          : 'Please review your documents and resubmit if required.',
+          ? 'You are now approved to accept service assignments from customers.'
+          : 'Please contact our support team for resubmission guidance.',
       },
       { label: 'Updated At', value: data.changedAt },
     ],
-    ctaLink: `${process.env.NEXT_PUBLIC_APP_URL}/login`,
-    ctaText: approved ? 'Open Worker Dashboard' : 'View Worker Profile',
+    ctaLink: `${process.env.NEXT_PUBLIC_APP_URL}`,
+    ctaText: 'Visit RUTE',
     preheader: approved
-      ? 'Your worker verification was approved.'
-      : 'Your worker verification status was updated.',
+      ? 'Your worker account has been verified and approved.'
+      : 'Your worker account verification was not approved.',
   });
 }

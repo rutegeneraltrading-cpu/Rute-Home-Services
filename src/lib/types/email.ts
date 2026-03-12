@@ -25,7 +25,6 @@ export interface WorkerWelcomeEmailData {
   fullName: string;
   email: string;
   servicesCount: number;
-  loginUrl: string;
 }
 
 export interface AdminCreatedUserEmailData {
@@ -42,4 +41,120 @@ export interface ContactFormAdminEmailData {
   subject: string;
   message: string;
   createdAt: string;
+}
+
+export interface ContactFormUserEmailData {
+  name: string;
+  subject: string;
+  message: string;
+  submittedAt: string;
+}
+
+export interface OrderItemDetail {
+  productName: string;
+  quantity: number;
+  price: number;
+  category?: string;
+  imageUrl?: string;
+}
+
+export interface OrderCreatedEmailData {
+  customerName: string;
+  orderId: string;
+  items: OrderItemDetail[];
+  total: number;
+  paymentStatus: string;
+  dashboardUrl: string;
+}
+
+export interface OrderPaymentSuccessEmailData {
+  customerName: string;
+  orderId: string;
+  items: OrderItemDetail[];
+  total: number;
+  audience?: 'user' | 'admin';
+  transactionId?: string;
+  dashboardUrl: string;
+}
+
+export interface ServiceOptionDetail {
+  name: string;
+  description?: string;
+  price?: number;
+}
+
+export interface ServiceVariantDetail {
+  name: string;
+  type?: string;
+  price?: number;
+}
+
+export interface BookingServiceDetail {
+  name: string;
+  category?: string;
+  options?: ServiceOptionDetail[];
+  variants?: ServiceVariantDetail[];
+}
+
+export interface BookingCreatedEmailData {
+  customerName: string;
+  bookingId: string;
+  service: BookingServiceDetail;
+  bookingDate: string;
+  bookingTime: string;
+  total: number;
+  paymentStatus: string;
+  detailsUrl?: string;
+  dashboardUrl?: string;
+}
+
+export interface BookingPaymentSuccessEmailData {
+  customerName: string;
+  bookingId: string;
+  service: BookingServiceDetail;
+  bookingDate: string;
+  bookingTime: string;
+  total: number;
+  audience?: 'user' | 'admin';
+  transactionId?: string;
+  detailsUrl?: string;
+  dashboardUrl?: string;
+}
+
+export interface WorkerProfileDetail {
+  name: string;
+  image?: string;
+  email?: string;
+  phone?: string;
+}
+
+export interface BookingAssignmentAcceptedEmailData {
+  customerName: string;
+  bookingId: string;
+  service: BookingServiceDetail;
+  bookingDate: string;
+  bookingTime: string;
+  worker: WorkerProfileDetail;
+}
+
+export interface BookingStatusUpdateEmailData {
+  customerName: string;
+  bookingId: string;
+  service: BookingServiceDetail;
+  bookingDate: string;
+  bookingTime: string;
+  previousStatus: string;
+  newStatus: string;
+  updatedAt: string;
+  detailsUrl: string;
+}
+
+export interface OrderStatusUpdateEmailData {
+  customerName: string;
+  orderId: string;
+  items: OrderItemDetail[];
+  previousStatus: string;
+  newStatus: string;
+  updatedAt: string;
+  detailsUrl: string;
 }

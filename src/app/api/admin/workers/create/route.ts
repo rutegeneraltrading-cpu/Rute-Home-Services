@@ -268,12 +268,11 @@ export async function POST(request: NextRequest) {
     try {
       await sendEmail({
         to: normalizedEmail,
-        subject: 'Welcome to RUTE Worker Portal',
+        subject: 'Welcome to RUTE',
         html: workerWelcomeTemplate({
           fullName: full_name,
           email: normalizedEmail,
           servicesCount: Array.isArray(service_ids) ? service_ids.length : 0,
-          loginUrl: `${process.env.NEXT_PUBLIC_APP_URL}/login`,
         }),
       });
     } catch (emailError) {
@@ -287,8 +286,7 @@ export async function POST(request: NextRequest) {
           profile_id: profileId,
           id: workerId,
         },
-        message:
-          'Worker created successfully. They can now log in with their email.',
+        message: 'Worker created successfully. Account is under review.',
       },
       { status: 201 },
     );

@@ -5,6 +5,20 @@ import type { CreateBookingDTO } from '@/lib/types/bookings';
 import { sendEmail } from '@/lib/server/email/ses-mailer';
 import { bookingCreatedTemplate } from '@/lib/server/email';
 
+const MAX_TITLE_LENGTH = 70;
+
+function buildBookingServiceSubject(
+  serviceName: string,
+  serviceCategory?: string,
+): string {
+  const fullName = serviceCategory
+    ? `${serviceName} - ${serviceCategory}`
+    : serviceName;
+  return fullName.length > MAX_TITLE_LENGTH
+    ? fullName.substring(0, MAX_TITLE_LENGTH - 3) + '...'
+    : fullName;
+}
+
 // GET all bookings (user sees own, admin sees all)
 export async function GET() {
   try {
@@ -307,19 +321,65 @@ export async function POST(request: NextRequest) {
 
     const { data: serviceData } = await supabase
       .from('services')
-      .select('name')
+      .select('id, name, category_id')
       .eq('id', service_id)
       .maybeSingle();
 
+    let serviceDetails: any = {
+      name: serviceData?.name || 'Service',
+    };
+
+    if (serviceData?.category_id) {
+      const { data: categoryData } = await supabase
+        .from('service_categories')
+        .select('name')
+        .eq('id', serviceData.category_id)
+        .maybeSingle();
+      serviceDetails.category = categoryData?.name;
+    }
+
+    // Fetch selected options details
+    if (selected_options.length > 0) {
+      const { data: optionsData } = await supabase
+        .from('service_options')
+        .select('id, name, description, price')
+        .in('id', selected_options);
+
+      serviceDetails.options = (optionsData || []).map((opt) => ({
+        name: opt.name,
+        description: opt.description,
+        price: opt.price,
+      }));
+    }
+
+    // Fetch selected variants details
+    if (selected_variants.length > 0) {
+      const { data: variantsData } = await supabase
+        .from('service_option_variants')
+        .select('id, name, type, price')
+        .in('id', selected_variants);
+
+      serviceDetails.variants = (variantsData || []).map((v) => ({
+        name: v.name,
+        type: v.type,
+        price: v.price,
+      }));
+    }
+
     if (user.email) {
       try {
+        const serviceSubject = buildBookingServiceSubject(
+          serviceDetails.name,
+          serviceDetails.category,
+        );
+
         await sendEmail({
           to: user.email,
-          subject: `Booking Created - ${data.id}`,
+          subject: `Booking Created - ${serviceSubject}`,
           html: bookingCreatedTemplate({
             customerName: user.full_name || 'Customer',
             bookingId: data.id,
-            serviceName: serviceData?.name || 'Service',
+            service: serviceDetails,
             bookingDate: String(booking_date),
             bookingTime: String(booking_time),
             total: Number(total_price),

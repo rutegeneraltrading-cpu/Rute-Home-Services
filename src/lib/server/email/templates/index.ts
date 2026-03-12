@@ -4,6 +4,7 @@ import { renderNotificationTemplate } from './renderNotificationTemplate';
 import { workerWelcomeTemplate } from './workerWelcomeTemplate';
 import { adminCreatedUserTemplate } from './adminCreatedUserTemplate';
 import { contactFormAdminTemplate } from './contactFormAdminTemplate';
+import { contactFormUserTemplate } from './contactFormUserTemplate';
 import { orderCreatedTemplate } from './orderCreatedTemplate';
 import { orderPaymentSuccessTemplate } from './orderPaymentSuccessTemplate';
 import { bookingCreatedTemplate } from './bookingCreatedTemplate';
@@ -23,6 +24,7 @@ export {
   workerWelcomeTemplate,
   adminCreatedUserTemplate,
   contactFormAdminTemplate,
+  contactFormUserTemplate,
   orderCreatedTemplate,
   orderPaymentSuccessTemplate,
   bookingCreatedTemplate,

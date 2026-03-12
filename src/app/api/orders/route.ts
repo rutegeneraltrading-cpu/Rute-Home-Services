@@ -4,6 +4,52 @@ import { createAdminClient } from '@/lib/supabase';
 import { sendEmail } from '@/lib/server/email/ses-mailer';
 import { orderCreatedTemplate } from '@/lib/server/email';
 
+const SUBJECT_MAX_LENGTH = 70;
+
+function cleanProductNameForHeading(name: string): string {
+  return String(name || '')
+    .replace(/\s*\([^)]*\)\s*$/g, '')
+    .trim();
+}
+
+function resolveProductImageUrl(url?: string): string | undefined {
+  if (!url) return undefined;
+  if (/^https?:\/\//i.test(url)) return url;
+
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!base) return undefined;
+
+  const normalizedPath = String(url)
+    .replace(/^\/+/, '')
+    .replace(/^storage\/v1\/object\/public\/products\//, '');
+
+  return `${base}/storage/v1/object/public/products/${normalizedPath}`;
+}
+
+function getPrimaryProductImageUrl(images: any[]): string | undefined {
+  const sortedImages = [...images].sort(
+    (a: any, b: any) =>
+      Number(a?.sort_order ?? 9999) - Number(b?.sort_order ?? 9999),
+  );
+  return sortedImages.find((img: any) => img?.is_primary)?.url;
+}
+
+function buildOrderProductsSubject(
+  items: Array<{ productName: string }>,
+): string {
+  const products = Array.from(
+    new Set(
+      items
+        .map((item) => cleanProductNameForHeading(item.productName))
+        .filter(Boolean),
+    ),
+  );
+  const joined = products.join(', ') || 'Products';
+
+  if (joined.length <= SUBJECT_MAX_LENGTH) return joined;
+  return `${joined.slice(0, SUBJECT_MAX_LENGTH - 3).trimEnd()}...`;
+}
+
 interface OrderItemPayload {
   product_id: string;
   quantity: number;
@@ -192,13 +238,68 @@ export async function POST(request: NextRequest) {
 
     if (profile.email) {
       try {
+        // Fetch product details for email
+        const productIds = items.map((item) => item.product_id);
+        const { data: productsData } = await supabase
+          .from('products')
+          .select(
+            'id, name, category_id, images:product_images(url, is_primary, sort_order)',
+          )
+          .in('id', productIds);
+
+        const categoryIds = Array.from(
+          new Set(
+            (productsData || []).map((p) => p.category_id).filter(Boolean),
+          ),
+        ) as string[];
+
+        const { data: categoriesData } = await supabase
+          .from('product_categories')
+          .select('id, name')
+          .in('id', categoryIds);
+
+        const productsMap = new Map((productsData || []).map((p) => [p.id, p]));
+        const categoriesMap = new Map(
+          (categoriesData || []).map((c) => [c.id, c.name]),
+        );
+
+        const orderItems = items.map((item) => {
+          const product = productsMap.get(item.product_id);
+          const images = Array.isArray((product as any)?.images)
+            ? [...(product as any).images]
+            : [];
+          const primaryImage = getPrimaryProductImageUrl(images);
+          const resolvedImageUrl = resolveProductImageUrl(primaryImage);
+
+          console.log('[Order Email][Point 8] image mapping:', {
+            orderId: order.id,
+            productId: item.product_id,
+            productName: product?.name || 'Product',
+            imageCount: images.length,
+            primaryImageRaw: primaryImage || null,
+            resolvedImageUrl: resolvedImageUrl || null,
+          });
+
+          return {
+            productName: product?.name || 'Product',
+            quantity: item.quantity,
+            price: item.price,
+            category: product?.category_id
+              ? categoriesMap.get(product.category_id)
+              : undefined,
+            imageUrl: resolvedImageUrl,
+          };
+        });
+
+        const productSummary = buildOrderProductsSubject(orderItems);
+
         await sendEmail({
           to: profile.email,
-          subject: `Order Created - ${order.id}`,
+          subject: `Order Created - ${productSummary}`,
           html: orderCreatedTemplate({
             customerName: profile.full_name || 'Customer',
             orderId: order.id,
-            itemsCount: items.length,
+            items: orderItems,
             total,
             paymentStatus: 'Pending',
             dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL}/user/orders`,

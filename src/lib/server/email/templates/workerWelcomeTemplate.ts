@@ -3,19 +3,18 @@ import { WorkerWelcomeEmailData } from '@/lib/types';
 
 export function workerWelcomeTemplate(data: WorkerWelcomeEmailData): string {
   return renderNotificationTemplate({
-    title: 'Welcome to RUTE Worker Portal',
+    title: 'Welcome to RUTE',
     notificationMessage:
-      'Your worker account has been created and submitted for review.',
-    sectionTitle: 'Worker account details',
+      'Your worker account has been created successfully and is now under review. We will notify you once your account is verified.',
+    sectionTitle: 'Account details',
     details: [
       { label: 'Full Name', value: data.fullName },
       { label: 'Email', value: data.email },
       { label: 'Assigned Services', value: String(data.servicesCount) },
-      { label: 'Status', value: 'Under verification / review' },
+      { label: 'Account Status', value: 'Under Review' },
     ],
-    ctaLink: data.loginUrl,
-    ctaText: 'Open Worker Login',
-    preheader:
-      'Your worker account is ready. Log in and complete your profile.',
+    ctaLink: `${process.env.NEXT_PUBLIC_APP_URL}/contact-us`,
+    ctaText: 'RUTE Support',
+    preheader: 'Your worker account has been created and is under review.',
   });
 }

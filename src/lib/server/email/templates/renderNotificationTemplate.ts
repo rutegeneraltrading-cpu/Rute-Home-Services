@@ -11,6 +11,7 @@ interface RenderNotificationTemplateOptions {
   ctaLink: string;
   ctaText: string;
   preheader?: string;
+  customHtml?: string;
 }
 
 export function renderNotificationTemplate({
@@ -21,6 +22,7 @@ export function renderNotificationTemplate({
   ctaLink,
   ctaText,
   preheader,
+  customHtml,
 }: RenderNotificationTemplateOptions): string {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || '#';
   const year = new Date().getFullYear();
@@ -106,6 +108,16 @@ export function renderNotificationTemplate({
                 </table>
               </td>
             </tr>
+
+            ${
+              customHtml
+                ? `<tr>
+              <td style="padding:12px 24px 0;">
+                ${customHtml}
+              </td>
+            </tr>`
+                : ''
+            }
 
             <tr>
               <td align="center" style="padding:22px 24px 24px;">

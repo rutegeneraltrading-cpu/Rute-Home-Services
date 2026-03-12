@@ -62,6 +62,17 @@ const ASSIGNMENT_STATUS_VALUES: AssignmentStatus[] = [
   'cancelled',
 ];
 
+const MAX_EMAIL_SUBJECT_LENGTH = 70;
+
+const buildServiceSubject = (serviceName: string, serviceCategory?: string) => {
+  const title = serviceCategory
+    ? `${serviceName} - ${serviceCategory}`
+    : serviceName;
+  return title.length > MAX_EMAIL_SUBJECT_LENGTH
+    ? `${title.slice(0, MAX_EMAIL_SUBJECT_LENGTH - 3).trimEnd()}...`
+    : title;
+};
+
 const assignmentEventTime = (assignment: {
   assigned_at: string | null;
   accepted_at: string | null;
@@ -467,6 +478,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       ? body.worker_id || null
       : undefined;
     let assignmentStatusWorkerId: string | null = null;
+    let shouldSendAssignmentAcceptedEmail = false;
     const isWorkerReassignment =
       hasWorkerField && assignedWorkerId !== currentAssignedWorkerId;
     let didAssignWorker = false;
@@ -482,10 +494,6 @@ export async function PATCH(request: NextRequest, { params }: Params) {
           .eq('booking_id', id)
           .eq('worker_id', currentAssignedWorkerId)
           .in('status', ['pending', 'accepted']);
-
-        if (currentAssignedWorkerId) {
-          cancelledWorkerIds.add(currentAssignedWorkerId);
-        }
       } else {
         const { data: workers, error: workersError } = await supabaseAdmin.rpc(
           'get_available_workers_for_booking',
@@ -580,7 +588,11 @@ export async function PATCH(request: NextRequest, { params }: Params) {
             );
           }
 
-          didAssignWorker = true;
+          const latestStatus = String(latestAssignment?.status || '');
+          const hasSameActiveAssignment =
+            currentAssignedWorkerId === assignedWorkerId &&
+            (latestStatus === 'pending' || latestStatus === 'accepted');
+          didAssignWorker = !hasSameActiveAssignment;
         }
       }
     }
@@ -595,6 +607,16 @@ export async function PATCH(request: NextRequest, { params }: Params) {
           { status: 400 },
         );
       }
+
+      const { data: existingTargetAssignment } = await supabaseAdmin
+        .from('booking_assignments')
+        .select('status')
+        .eq('booking_id', id)
+        .eq('worker_id', targetWorkerId)
+        .maybeSingle();
+
+      const previousTargetAssignmentStatus =
+        String(existingTargetAssignment?.status || '').toLowerCase() || null;
 
       const nowIso = new Date().toISOString();
       const assignmentUpdate: Record<string, unknown> = {
@@ -623,6 +645,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         assignmentUpdate.declined_at = nowIso;
         assignmentUpdate.completed_at = null;
         assignmentUpdate.cancelled_at = null;
+        cancelledWorkerIds.add(targetWorkerId);
       }
 
       if (body.assignment_status === 'completed') {
@@ -666,6 +689,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
           { status: 500 },
         );
       }
+
+      shouldSendAssignmentAcceptedEmail =
+        body.assignment_status === 'accepted' &&
+        previousTargetAssignmentStatus !== 'accepted';
     }
 
     const updatePayload: Record<string, unknown> = {};
@@ -727,18 +754,123 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       return workerProfile || null;
     };
 
+    const getServiceDetails = async (): Promise<any> => {
+      const details: any = { name: serviceName };
+
+      if (booking.service_id) {
+        const { data: svcData } = await supabaseAdmin
+          .from('services')
+          .select('id, category_id')
+          .eq('id', booking.service_id)
+          .maybeSingle();
+
+        if (svcData?.category_id) {
+          const { data: catData } = await supabaseAdmin
+            .from('service_categories')
+            .select('name')
+            .eq('id', svcData.category_id)
+            .maybeSingle();
+          details.category = catData?.name;
+        }
+
+        if (updatedBooking.selected_options?.length > 0) {
+          const { data: optData } = await supabaseAdmin
+            .from('service_options')
+            .select('id, name, description, price')
+            .in('id', updatedBooking.selected_options);
+          details.options = (optData || []).map((opt: any) => ({
+            name: opt.name,
+            description: opt.description,
+            price: opt.price,
+          }));
+        }
+
+        if (updatedBooking.selected_variants?.length > 0) {
+          const { data: varData } = await supabaseAdmin
+            .from('service_option_variants')
+            .select('id, name, type, price')
+            .in('id', updatedBooking.selected_variants);
+          details.variants = (varData || []).map((v: any) => ({
+            name: v.name,
+            type: v.type,
+            price: v.price,
+          }));
+        }
+      }
+
+      return details;
+    };
+
+    const serviceDetailsForEmails = await getServiceDetails();
+    const serviceSubject = buildServiceSubject(
+      serviceDetailsForEmails.name || serviceName,
+      serviceDetailsForEmails.category,
+    );
+
+    if (shouldSendAssignmentAcceptedEmail && assignmentStatusWorkerId) {
+      const acceptedWorkerProfile = await getWorkerProfile(
+        assignmentStatusWorkerId,
+      );
+
+      if (customerProfile?.email) {
+        try {
+          // Fetch worker image from profiles table
+          let workerImage: string | undefined = undefined;
+          const { data: workerFullProfile } = await supabaseAdmin
+            .from('workers')
+            .select('profile_id')
+            .eq('id', assignmentStatusWorkerId)
+            .maybeSingle();
+
+          if (workerFullProfile?.profile_id) {
+            const { data: profileData } = await supabaseAdmin
+              .from('profiles')
+              .select('avatar_url')
+              .eq('id', workerFullProfile.profile_id)
+              .maybeSingle();
+
+            if (profileData?.avatar_url) {
+              workerImage = profileData.avatar_url;
+            }
+          }
+
+          let workerDetails: any = {
+            name: acceptedWorkerProfile?.full_name || 'Assigned Professional',
+            image: workerImage,
+          };
+
+          await sendEmail({
+            to: customerProfile.email,
+            subject: `Professional Assigned - ${serviceSubject}`,
+            html: bookingAssignmentAcceptedTemplate({
+              customerName,
+              bookingId: id,
+              service: serviceDetailsForEmails,
+              bookingDate,
+              bookingTime,
+              worker: workerDetails,
+            }),
+          });
+        } catch (emailError) {
+          console.error('Booking accepted user email failed:', emailError);
+        }
+      }
+    }
+
     if (didAssignWorker && assignedWorkerId) {
+      const isPaidBooking =
+        String(updatedBooking.payment_status || '') === 'paid';
       const assignedWorkerProfile = await getWorkerProfile(assignedWorkerId);
 
-      if (assignedWorkerProfile?.email) {
+      if (isPaidBooking && assignedWorkerProfile?.email) {
         try {
           await sendEmail({
             to: assignedWorkerProfile.email,
-            subject: `New Booking Assigned - ${id}`,
+            subject: `New Booking Assigned - ${serviceSubject}`,
             html: bookingAssignedToWorkerTemplate({
               workerName: assignedWorkerProfile.full_name || 'Worker',
               bookingId: id,
-              serviceName,
+              service: serviceDetailsForEmails,
               bookingDate,
               bookingTime,
               customerName,
@@ -750,31 +882,6 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       }
     }
 
-    if (body.assignment_status === 'accepted' && assignmentStatusWorkerId) {
-      const acceptedWorkerProfile = await getWorkerProfile(
-        assignmentStatusWorkerId,
-      );
-
-      if (customerProfile?.email) {
-        try {
-          await sendEmail({
-            to: customerProfile.email,
-            subject: `Worker Accepted Booking - ${id}`,
-            html: bookingAssignmentAcceptedTemplate({
-              customerName,
-              bookingId: id,
-              workerName: acceptedWorkerProfile?.full_name || 'Assigned Worker',
-              serviceName,
-              bookingDate,
-              bookingTime,
-            }),
-          });
-        } catch (emailError) {
-          console.error('Booking accepted user email failed:', emailError);
-        }
-      }
-    }
-
     for (const cancelledWorkerId of cancelledWorkerIds) {
       const cancelledWorkerProfile = await getWorkerProfile(cancelledWorkerId);
 
@@ -782,11 +889,11 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         try {
           await sendEmail({
             to: cancelledWorkerProfile.email,
-            subject: `Booking Assignment Cancelled - ${id}`,
+            subject: `Booking Assignment Cancelled - ${serviceSubject}`,
             html: bookingAssignmentCancelledTemplate({
               workerName: cancelledWorkerProfile.full_name || 'Worker',
               bookingId: id,
-              serviceName,
+              service: serviceDetailsForEmails,
               bookingDate,
               bookingTime,
             }),
@@ -801,15 +908,27 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     }
 
     const updatedStatus = String(updatedBooking.status || 'pending');
-    if (customerProfile?.email && previousBookingStatus !== updatedStatus) {
+    const STATUS_UPDATE_NOTIFY_ALLOWED = new Set([
+      'in_progress',
+      'completed',
+      'cancelled',
+    ]);
+    const shouldSendStatusUpdateEmail =
+      !!customerProfile?.email &&
+      previousBookingStatus !== updatedStatus &&
+      STATUS_UPDATE_NOTIFY_ALLOWED.has(updatedStatus);
+
+    if (shouldSendStatusUpdateEmail) {
       try {
         await sendEmail({
           to: customerProfile.email,
-          subject: `Booking Status Updated - ${id}`,
+          subject: `Booking Status Updated - ${serviceSubject}`,
           html: bookingStatusUpdateTemplate({
             customerName,
             bookingId: id,
-            serviceName,
+            service: serviceDetailsForEmails,
+            bookingDate,
+            bookingTime,
             previousStatus: previousBookingStatus,
             newStatus: updatedStatus,
             updatedAt: new Date().toLocaleString('en-ZA', {

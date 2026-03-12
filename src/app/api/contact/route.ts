@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { contactMessageSchema } from '@/lib/validations';
 import { sendEmail } from '@/lib/server/email/ses-mailer';
-import { contactFormAdminTemplate } from '@/lib/server/email';
+import {
+  contactFormAdminTemplate,
+  contactFormUserTemplate,
+} from '@/lib/server/email';
 
 export async function POST(request: NextRequest) {
   try {
@@ -63,6 +66,24 @@ export async function POST(request: NextRequest) {
       } catch (emailError) {
         console.error('Contact admin email send failed:', emailError);
       }
+    }
+
+    try {
+      await sendEmail({
+        to: data.email,
+        subject: `We received your inquiry: ${data.subject}`,
+        html: contactFormUserTemplate({
+          name: data.name,
+          subject: data.subject,
+          message: data.message,
+          submittedAt: new Date().toLocaleString('en-ZA', {
+            dateStyle: 'medium',
+            timeStyle: 'short',
+          }),
+        }),
+      });
+    } catch (emailError) {
+      console.error('Contact user confirmation email failed:', emailError);
     }
 
     return NextResponse.json({ message: 'Message received' }, { status: 201 });

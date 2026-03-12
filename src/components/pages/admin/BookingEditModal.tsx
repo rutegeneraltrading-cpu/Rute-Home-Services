@@ -125,21 +125,38 @@ export function BookingEditModal({
 
     const currentAssignedWorkerId =
       workerData?.assigned_worker_id || booking.assigned_worker_id || null;
+    const currentAssignmentStatus =
+      (workerData?.assignment_status as BookingAssignmentStatus | null) ||
+      booking.assignment_status ||
+      'pending';
     const nextWorkerId = data.worker_id || null;
 
     const payload: {
-      status: BookingStatus;
-      payment_status: BookingPaymentStatus;
-      assignment_status: BookingAssignmentStatus;
+      status?: BookingStatus;
+      payment_status?: BookingPaymentStatus;
+      assignment_status?: BookingAssignmentStatus;
       worker_id?: string | null;
-    } = {
-      status: data.status,
-      payment_status: data.payment_status,
-      assignment_status: data.assignment_status,
-    };
+    } = {};
+
+    if (data.status !== booking.status) {
+      payload.status = data.status;
+    }
+
+    if (data.payment_status !== booking.payment_status) {
+      payload.payment_status = data.payment_status;
+    }
+
+    if (data.assignment_status !== currentAssignmentStatus) {
+      payload.assignment_status = data.assignment_status;
+    }
 
     if (nextWorkerId !== currentAssignedWorkerId) {
       payload.worker_id = nextWorkerId;
+    }
+
+    if (Object.keys(payload).length === 0) {
+      onOpenChange(false);
+      return;
     }
 
     updateBookingMutation.mutate(payload, {

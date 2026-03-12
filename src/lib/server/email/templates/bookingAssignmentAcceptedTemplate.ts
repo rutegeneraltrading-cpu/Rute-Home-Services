@@ -1,32 +1,109 @@
 import { renderNotificationTemplate } from './renderNotificationTemplate';
+import type { BookingAssignmentAcceptedEmailData } from '@/lib/types/email';
 
-interface BookingAssignmentAcceptedEmailData {
-  customerName: string;
-  bookingId: string;
-  workerName: string;
-  serviceName: string;
-  bookingDate: string;
-  bookingTime: string;
+const MAX_TITLE_LENGTH = 70;
+
+function buildServiceTitle(
+  serviceName: string,
+  serviceCategory?: string,
+): string {
+  const title = serviceCategory
+    ? `${serviceName} - ${serviceCategory}`
+    : serviceName;
+  return title.length > MAX_TITLE_LENGTH
+    ? `${title.slice(0, MAX_TITLE_LENGTH - 3).trimEnd()}...`
+    : title;
 }
 
 export function bookingAssignmentAcceptedTemplate(
   data: BookingAssignmentAcceptedEmailData,
 ) {
+  const serviceTitle = buildServiceTitle(
+    data.service.name,
+    data.service.category,
+  );
+
+  let serviceDetailsHtml = `
+    <div style="font-weight: 600; color: #1f2937; margin-bottom: 8px; font-size: 15px;">
+      ${data.service.name}
+      ${data.service.category ? `<span style="color: #6b7280; font-weight: 400;"> - ${data.service.category}</span>` : ''}
+    </div>
+  `;
+
+  if (data.service.options && data.service.options.length > 0) {
+    serviceDetailsHtml += `
+      <div style="margin-bottom: 8px; font-size: 13px; color: #4b5563;">
+        <div style="font-weight: 500; color: #1f2937; margin-bottom: 4px;">Options:</div>
+        ${data.service.options
+          .map(
+            (opt) => `
+          <div style="margin-left: 8px; margin-bottom: 3px;">
+            <span style="color: #374151;">• ${opt.name}</span>
+            ${opt.price ? `<span style="color: #6b7280;"> (+R${opt.price.toFixed(2)})</span>` : ''}
+          </div>
+        `,
+          )
+          .join('')}
+      </div>
+    `;
+  }
+
+  if (data.service.variants && data.service.variants.length > 0) {
+    serviceDetailsHtml += `
+      <div style="margin-bottom: 8px; font-size: 13px; color: #4b5563;">
+        <div style="font-weight: 500; color: #1f2937; margin-bottom: 4px;">Variants:</div>
+        ${data.service.variants
+          .map(
+            (variant) => `
+          <div style="margin-left: 8px; margin-bottom: 3px;">
+            <span style="color: #374151;">• ${variant.name}</span>
+            ${variant.price ? `<span style="color: #6b7280;"> (+R${variant.price.toFixed(2)})</span>` : ''}
+          </div>
+        `,
+          )
+          .join('')}
+      </div>
+    `;
+  }
+
+  const workerImageHtml = data.worker.image
+    ? `<img src="${data.worker.image}" alt="${data.worker.name}" style="width: 80px; height: 80px; border-radius: 8px; object-fit: cover; margin-bottom: 12px;">`
+    : '';
+
+  const customHtml = `
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-top: 12px;">
+      <div style="font-weight: 600; color: #0f172a; margin-bottom: 12px; font-size: 14px;">Service Details</div>
+      <div style="font-size: 14px;">
+        ${serviceDetailsHtml}
+      </div>
+    </div>
+
+    <div style="background: #f0fdf4; border: 1px solid #dcfce7; border-radius: 8px; padding: 16px; margin-top: 12px;">
+      <div style="font-weight: 600; color: #15803d; margin-bottom: 12px; font-size: 14px;">Your Assigned Professional</div>
+      <div style="text-align: center;">
+        ${workerImageHtml}
+        <div style="font-weight: 600; color: #1f2937; font-size: 16px; margin-bottom: 4px;">${data.worker.name}</div>
+        <div style="color: #6b7280; font-size: 13px;">Professional Service Provider</div>
+      </div>
+    </div>
+  `;
+
   return renderNotificationTemplate({
-    title: 'Worker accepted your booking',
+    title: `Professional assigned - ${serviceTitle}`,
     notificationMessage:
-      'Your assigned worker has accepted the booking and will attend your service.',
-    sectionTitle: 'Booking assignment',
+      'We have assigned a professional to your booking, and the professional has accepted the assignment. They will attend your service as scheduled.',
+    sectionTitle: 'Booking details',
     details: [
-      { label: 'Customer', value: data.customerName },
       { label: 'Booking ID', value: data.bookingId },
-      { label: 'Worker', value: data.workerName },
-      { label: 'Service', value: data.serviceName },
+      { label: 'Customer', value: data.customerName },
+      { label: 'Service', value: data.service.name },
       { label: 'Date', value: data.bookingDate },
       { label: 'Time', value: data.bookingTime },
     ],
+    customHtml,
     ctaLink: `${process.env.NEXT_PUBLIC_APP_URL}/user/bookings/${data.bookingId}`,
     ctaText: 'View Booking',
-    preheader: 'Your assigned worker accepted your booking.',
+    preheader:
+      'A professional has been assigned by our team and accepted your booking.',
   });
 }

@@ -4,6 +4,40 @@ import { sendEmail } from '@/lib/server/email/ses-mailer';
 import { orderStatusUpdateTemplate } from '@/lib/server/email';
 import { createAdminClient } from '@/lib/supabase';
 
+const MAX_TITLE_LENGTH = 70;
+
+function cleanProductNameForHeading(name: string): string {
+  return name.replace(/\s*\([^)]*\)\s*$/, '');
+}
+
+function resolveProductImageUrl(url: string): string {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  return `${supabaseUrl}/storage/v1/object/public${url}`;
+}
+
+function getPrimaryProductImageUrl(
+  images: Array<{ url: string; is_primary: boolean; sort_order: number }>,
+): string {
+  if (!images || images.length === 0) return '';
+  const primaryImage = images.find((img) => img.is_primary);
+  const imageUrl = primaryImage?.url || images[0]?.url || '';
+  return resolveProductImageUrl(imageUrl);
+}
+
+function buildOrderProductsSubject(
+  items: Array<{ productName: string }>,
+): string {
+  const uniqueNames = Array.from(
+    new Set(items.map((item) => cleanProductNameForHeading(item.productName))),
+  );
+  const subject = uniqueNames.join(', ');
+  return subject.length > MAX_TITLE_LENGTH
+    ? subject.substring(0, MAX_TITLE_LENGTH - 3) + '...'
+    : subject;
+}
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -235,12 +269,85 @@ export async function PATCH(
 
       if (customerProfile?.email) {
         try {
+          // Fetch product details for status update email
+          const { data: fullOrder } = await supabase
+            .from('orders')
+            .select('id, items')
+            .eq('id', orderId)
+            .maybeSingle();
+
+          let orderItems: any[] = [];
+
+          if (fullOrder?.items && Array.isArray(fullOrder.items)) {
+            const productIds = fullOrder.items.map(
+              (item: any) => item.product_id,
+            );
+            const { data: productsData } = await supabase
+              .from('products')
+              .select(
+                'id, name, category_id, images:product_images(url, is_primary, sort_order)',
+              )
+              .in('id', productIds);
+
+            console.log(
+              '[Order Status Email][Point 18] productsData fetched',
+              productsData,
+            );
+
+            const categoryIds = Array.from(
+              new Set(
+                (productsData || []).map((p) => p.category_id).filter(Boolean),
+              ),
+            ) as string[];
+
+            const { data: categoriesData } = await supabase
+              .from('product_categories')
+              .select('id, name')
+              .in('id', categoryIds);
+
+            const productsMap = new Map(
+              (productsData || []).map((p) => [p.id, p]),
+            );
+            const categoriesMap = new Map(
+              (categoriesData || []).map((c) => [c.id, c.name]),
+            );
+
+            const imageMapping = new Map();
+            (productsData || []).forEach((product: any) => {
+              const imageUrl = getPrimaryProductImageUrl(product.images || []);
+              if (imageUrl) {
+                imageMapping.set(product.id, imageUrl);
+              }
+            });
+
+            console.log(
+              '[Order Status Email][Point 18] image mapping',
+              imageMapping,
+            );
+
+            orderItems = (fullOrder.items || []).map((item: any) => {
+              const product = productsMap.get(item.product_id);
+              return {
+                productName: product?.name || 'Product',
+                quantity: item.quantity,
+                price: item.price,
+                category: product?.category_id
+                  ? categoriesMap.get(product.category_id)
+                  : undefined,
+                imageUrl: imageMapping.get(item.product_id) || '',
+              };
+            });
+          }
+
+          const productSummary = buildOrderProductsSubject(orderItems);
+
           await sendEmail({
             to: customerProfile.email,
-            subject: `Order Status Updated - ${orderId}`,
+            subject: `Status Update - ${productSummary}`,
             html: orderStatusUpdateTemplate({
               customerName: customerProfile.full_name || 'Customer',
               orderId,
+              items: orderItems,
               previousStatus,
               newStatus: updatedStatus,
               updatedAt: new Date().toLocaleString('en-ZA', {
