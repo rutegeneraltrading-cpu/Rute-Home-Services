@@ -5,6 +5,13 @@ import { createMiddlewareClient } from '@/lib/supabase';
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  const buildLoginRedirectResponse = () => {
+    const loginUrl = new URL('/login', request.url);
+    const redirectTarget = `${request.nextUrl.pathname}${request.nextUrl.search}`;
+    loginUrl.searchParams.set('redirect', redirectTarget);
+    return NextResponse.redirect(loginUrl);
+  };
+
   // Create Supabase client for middleware
   const supabase = createMiddlewareClient(request);
 
@@ -75,7 +82,7 @@ export async function middleware(request: NextRequest) {
     }
 
     // Redirect to login only if accessing protected routes (/admin or /user)
-    return NextResponse.redirect(new URL('/login', request.url));
+    return buildLoginRedirectResponse();
   }
 
   // ============================================
@@ -109,7 +116,7 @@ export async function middleware(request: NextRequest) {
       return NextResponse.next();
     }
     console.warn('User has no role assigned:', user.id);
-    return NextResponse.redirect(new URL('/login', request.url));
+    return buildLoginRedirectResponse();
   }
 
   // ============================================

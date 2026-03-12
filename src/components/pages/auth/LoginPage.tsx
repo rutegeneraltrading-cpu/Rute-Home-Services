@@ -25,6 +25,10 @@ export default function LoginPage({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const verificationRequired = searchParams.get('verify') === '1';
+  const redirectParam = searchParams.get('redirect');
+
+  const safeRedirectFromQuery =
+    redirectParam && redirectParam.startsWith('/') ? redirectParam : undefined;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,6 +42,8 @@ export default function LoginPage({
       }
       if (redirectTo) {
         router.push(redirectTo);
+      } else if (safeRedirectFromQuery) {
+        router.push(safeRedirectFromQuery);
       } else if (response?.user?.role === 'admin') {
         router.push('/admin');
       } else {
