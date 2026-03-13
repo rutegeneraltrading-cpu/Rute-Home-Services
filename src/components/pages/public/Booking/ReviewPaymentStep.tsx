@@ -268,7 +268,7 @@ const ReviewPaymentStep = ({
                 {selectedOptionsArray.map((opt) => (
                   <li
                     key={opt.id}
-                    className="flex justify-between items-center rounded-md bg-white border border-slate-200 px-3 py-2"
+                    className="flex flex-col sm:flex-row sm:justify-between sm:items-center items-start rounded-md bg-white border border-slate-200 px-3 py-2 gap-1"
                   >
                     <span className="text-sm font-semibold text-slate-900">
                       {opt.name}
@@ -293,9 +293,9 @@ const ReviewPaymentStep = ({
                 {selectedRequirementsArray.map((requirement) => (
                   <li
                     key={requirement.id}
-                    className="flex justify-between items-center rounded-md bg-white border border-slate-200 px-3 py-2"
+                    className="flex flex-col sm:flex-row sm:justify-between sm:items-center items-start rounded-md bg-white border border-slate-200 px-3 py-2 gap-1"
                   >
-                    <div>
+                    <div className="min-w-0">
                       <span className="text-sm font-semibold text-slate-900">
                         {requirement.name}
                       </span>
@@ -315,13 +315,13 @@ const ReviewPaymentStep = ({
       </div>
 
       <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="flex flex-row items-center justify-between rounded-lg bg-slate-100 px-5 py-2 text-center border border-slate-200">
+        <div className="flex items-center justify-between rounded-lg bg-slate-100 px-4 sm:px-5 py-3 text-center border border-slate-200">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
             Total Price
           </p>
           <p className="font-bold text-xl text-green-700">R{totalPrice}</p>
         </div>
-        <div className="flex flex-row items-center justify-between rounded-lg bg-slate-50 px-5 py-2 text-center border border-slate-200">
+        <div className="flex items-center justify-between rounded-lg bg-slate-50 px-4 sm:px-5 py-3 text-center border border-slate-200">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
             Total Duration
           </p>

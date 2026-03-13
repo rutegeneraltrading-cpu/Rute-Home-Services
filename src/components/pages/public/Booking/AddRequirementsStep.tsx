@@ -66,10 +66,7 @@ const AddRequirementsStep = ({
             const groupLabel = getFriendlyGroupLabel(groupType);
 
             return (
-              <div
-                key={groupKey}
-                className="border bg-white rounded-lg p-4"
-              >
+              <div key={groupKey} className="border bg-white rounded-lg p-4 sm:p-5">
                 <Label className="block font-semibold mb-3 text-base">
                   {groupLabel}
                 </Label>
@@ -78,7 +75,7 @@ const AddRequirementsStep = ({
                     // Selected state matches service card style
                     <div
                       key={requirement.id}
-                      className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
+                      className={`flex flex-col sm:flex-row sm:items-center items-start gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
                         selectedRequirements[groupKey] === requirement.id
                           ? 'border-black bg-green-50'
                           : 'border-slate-200 hover:border-slate-400 hover:bg-slate-50'
@@ -107,14 +104,16 @@ const AddRequirementsStep = ({
                           {requirement.name}
                         </span>
                       </Label>
-                      <span className="text-green-700 font-bold">
-                        +R{requirement.price}
-                      </span>
-                      {requirement.duration_minutes > 0 && (
-                        <span className="ml-2 text-xs text-slate-400">
-                          +{requirement.duration_minutes} min
+                      <div className="sm:ml-auto flex items-center gap-2">
+                        <span className="text-green-700 font-bold">
+                          +R{requirement.price}
                         </span>
-                      )}
+                        {requirement.duration_minutes > 0 && (
+                          <span className="text-xs text-slate-400">
+                            +{requirement.duration_minutes} min
+                          </span>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -123,19 +122,19 @@ const AddRequirementsStep = ({
           },
         )}
       </div>
-      <div className="flex justify-between mt-8">
+      <div className="flex flex-col-reverse sm:flex-row justify-between mt-8 gap-3">
         <Button
           type="button"
           variant="outline"
           onClick={onBack}
-          className="px-4"
+          className="px-4 w-full sm:w-auto"
         >
           Back
         </Button>
         <Button
           type="button"
           onClick={onNext}
-          className="px-4"
+          className="px-4 w-full sm:w-auto"
           disabled={
             Object.keys(groupedRequirements).length !==
             Object.keys(selectedRequirements).length

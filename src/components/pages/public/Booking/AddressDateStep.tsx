@@ -228,7 +228,7 @@ const AddressDateStep = ({
   };
 
   return (
-    <div className="border rounded-lg p-4 bg-white">
+    <div className="border rounded-lg p-4 sm:p-5 bg-white">
       <FormItem className="mb-6">
         <FormLabel>Street Address</FormLabel>
         <FormControl>
@@ -343,12 +343,12 @@ const AddressDateStep = ({
           <p className="text-sm text-red-600 mt-2">{availabilityError}</p>
         )}
       </FormItem>
-      <div className="flex justify-between mt-8">
+      <div className="flex flex-col-reverse sm:flex-row justify-between mt-8 gap-3">
         <Button
           type="button"
           variant="outline"
           onClick={onBack}
-          className="px-4"
+          className="px-4 w-full sm:w-auto"
         >
           Back
         </Button>
@@ -364,7 +364,7 @@ const AddressDateStep = ({
               selectedTime
             )
           }
-          className="px-4"
+          className="px-4 w-full sm:w-auto"
         >
           Next
         </Button>

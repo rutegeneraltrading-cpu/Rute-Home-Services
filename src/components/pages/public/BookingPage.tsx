@@ -289,11 +289,11 @@ const BookingPage = () => {
   if (serviceLoading && !isCategoryFlow) return <Loading />;
 
   return (
-    <div className="py-16 bg-slate-50 min-h-screen">
-      <div className="container mx-auto flex items-center justify-center gap-8">
+    <div className="py-10 md:py-16 bg-slate-50 min-h-screen">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-center gap-8">
         {/* Sidebar: Category and Service Details */}
-        <div className="max-w-5xl grid grid-cols-12 gap-8">
-          <div className="col-span-12 lg:col-span-4 bg-white border rounded-xl shadow p-6 flex flex-col gap-6">
+        <div className="max-w-6xl w-full grid grid-cols-12 gap-6 lg:gap-8">
+          <div className="col-span-12 lg:col-span-4 bg-white border rounded-xl shadow p-4 sm:p-6 flex flex-col gap-6">
             <div>
               <h2 className="text-lg font-bold mb-2">Category</h2>
               <div className="text-slate-800 font-semibold">
@@ -330,8 +330,8 @@ const BookingPage = () => {
           <main className="col-span-12 lg:col-span-8">
             <div className="mb-8">
               <div className="rounded-xl border border-slate-200 bg-white p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+                  <div className="min-w-0">
                     <p className="text-sm font-semibold text-slate-900">
                       {steps.find((step) => step.id === currentStep)?.name ||
                         'Booking'}
@@ -342,7 +342,7 @@ const BookingPage = () => {
                         'Please follow the steps to complete your booking.'}
                     </p>
                   </div>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-500 shrink-0">
                     {Math.max(
                       1,
                       steps.findIndex((step) => step.id === currentStep) + 1,
@@ -395,7 +395,7 @@ const BookingPage = () => {
                         Services
                       </Label>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {categoryServices.map((service) => {
                         const isSelected = selectedServiceSlug === service.slug;
                         return (
@@ -413,7 +413,7 @@ const BookingPage = () => {
                                 time: '',
                               });
                             }}
-                            className={`flex items-start gap-3 rounded-lg border p-4 cursor-pointer transition-colors ${
+                            className={`flex items-start gap-3 rounded-lg border p-3 sm:p-4 cursor-pointer transition-colors ${
                               isSelected
                                 ? 'border-black bg-green-50'
                                 : 'border-slate-200 hover:border-slate-400 hover:bg-slate-50'

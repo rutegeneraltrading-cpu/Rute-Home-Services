@@ -18,7 +18,7 @@ const AddDetailsStep = ({
   onBack,
 }: AddDetailsStepProps) => {
   return (
-    <div className="border bg-white rounded-lg p-4">
+    <div className="border bg-white rounded-lg p-4 sm:p-5">
       <div className="mb-2">
         <Label className="block font-semibold mb-3 text-base">
           Notes (Optional)
@@ -35,16 +35,16 @@ const AddDetailsStep = ({
         />
       </div>
 
-      <div className="flex justify-between mt-8">
+      <div className="flex flex-col-reverse sm:flex-row justify-between mt-8 gap-3">
         <Button
           type="button"
           variant="outline"
           onClick={onBack}
-          className="px-4"
+          className="px-4 w-full sm:w-auto"
         >
           Back
         </Button>
-        <Button type="button" onClick={onNext} className="px-4">
+        <Button type="button" onClick={onNext} className="px-4 w-full sm:w-auto">
           Next
         </Button>
       </div>

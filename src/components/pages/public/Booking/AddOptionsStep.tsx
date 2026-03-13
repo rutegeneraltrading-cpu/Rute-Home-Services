@@ -25,7 +25,7 @@ const AddOptionsStep = ({
   };
 
   return (
-    <div className="border bg-white rounded-lg p-4">
+    <div className="border bg-white rounded-lg p-4 sm:p-5">
       <div className="mb-2">
         <Label className="block font-semibold mb-3 text-base">Options</Label>
       </div>
@@ -38,7 +38,7 @@ const AddOptionsStep = ({
         {optionsData.map((option) => (
           <div
             key={option.id}
-            className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
+            className={`flex flex-col sm:flex-row sm:items-center items-start gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
               selectedOptions[option.id]
                 ? 'border-black bg-green-50'
                 : 'border-slate-200 hover:border-slate-400 hover:bg-slate-50'
@@ -65,29 +65,31 @@ const AddOptionsStep = ({
                 </span>
               )}
             </Label>
-            <span className="text-green-700 font-bold">+R{option.price}</span>
-            {option.duration_minutes ? (
-              <span className="ml-2 text-xs text-slate-400">
-                +{option.duration_minutes} min
-              </span>
-            ) : null}
+            <div className="sm:ml-auto flex items-center gap-2">
+              <span className="text-green-700 font-bold">+R{option.price}</span>
+              {option.duration_minutes ? (
+                <span className="text-xs text-slate-400">
+                  +{option.duration_minutes} min
+                </span>
+              ) : null}
+            </div>
           </div>
         ))}
       </div>
-      <div className="flex justify-between mt-8">
+      <div className="flex flex-col-reverse sm:flex-row justify-between mt-8 gap-3">
         {onBack ? (
           <Button
             type="button"
             variant="outline"
             onClick={onBack}
-            className="px-4"
+            className="px-4 w-full sm:w-auto"
           >
             Back
           </Button>
         ) : (
-          <span />
+          <span className="hidden sm:block" />
         )}
-        <Button type="button" onClick={onNext} className="px-4">
+        <Button type="button" onClick={onNext} className="px-4 w-full sm:w-auto">
           Next
         </Button>
       </div>
