@@ -138,7 +138,7 @@ export function useSignOut(options?: AuthMutationOptions) {
  */
 export function useForgotPassword(options?: AuthMutationOptions) {
   return useMutation({
-    mutationFn: (email: string) => forgotPasswordApi(email),
+    mutationFn: forgotPasswordApi,
     onSuccess: () => {
       toast({
         variant: 'success',
@@ -172,7 +172,7 @@ export function useResetPassword(options?: AuthMutationOptions) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (password: string) => resetPasswordApi(password),
+    mutationFn: resetPasswordApi,
     onSuccess: () => {
       queryClient.removeQueries({ queryKey: authKeys.all });
 

@@ -1,5 +1,11 @@
 import { httpClient } from '@/lib/client/http';
-import { AuthUser, SignInDTO, SignUpDTO } from '@/lib/types';
+import {
+  AuthUser,
+  ForgotPasswordDTO,
+  ResetPasswordDTO,
+  SignInDTO,
+  SignUpDTO,
+} from '@/lib/types';
 
 const BASE_URL = '/api/auth';
 
@@ -10,7 +16,13 @@ export interface SignUpResponse {
 }
 
 // Re-export types for convenience
-export type { AuthUser, SignInDTO, SignUpDTO };
+export type {
+  AuthUser,
+  ForgotPasswordDTO,
+  ResetPasswordDTO,
+  SignInDTO,
+  SignUpDTO,
+};
 
 // POST - Sign up
 export const signUpApi = (data: SignUpDTO): Promise<SignUpResponse> =>
@@ -30,12 +42,12 @@ export const getMeApi = (): Promise<AuthUser> =>
 
 // POST - Forgot password (send reset email)
 export const forgotPasswordApi = (
-  email: string,
+  data: ForgotPasswordDTO,
 ): Promise<{ message: string }> =>
-  httpClient.post(`${BASE_URL}/forgot-password`, { email });
+  httpClient.post(`${BASE_URL}/forgot-password`, data);
 
 // POST - Reset password (update password with token)
 export const resetPasswordApi = (
-  password: string,
+  data: ResetPasswordDTO,
 ): Promise<{ message: string }> =>
-  httpClient.post(`${BASE_URL}/reset-password`, { password });
+  httpClient.post(`${BASE_URL}/reset-password`, data);

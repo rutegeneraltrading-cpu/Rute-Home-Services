@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase';
 
+const normalizeToE164 = (value: unknown): string => {
+  const raw = String(value ?? '').trim();
+  const digitsOnly = raw.replace(/\D/g, '');
+  return `+${digitsOnly}`;
+};
+
+const isE164Phone = (value: string): boolean => /^\+[1-9]\d{7,14}$/.test(value);
+
 export async function POST(request: NextRequest) {
   try {
     const { email, password, name, phone } = await request.json();
@@ -21,7 +29,17 @@ export async function POST(request: NextRequest) {
     }
 
     const normalizedEmail = email.trim().toLowerCase();
-    const normalizedPhone = String(phone).trim();
+    const normalizedPhone = normalizeToE164(phone);
+
+    if (!isE164Phone(normalizedPhone)) {
+      return NextResponse.json(
+        {
+          error:
+            'Invalid phone number format. Use international format (E.164), e.g. +27821234567',
+        },
+        { status: 400 },
+      );
+    }
 
     const supabase = await createClient();
 
@@ -33,7 +51,7 @@ export async function POST(request: NextRequest) {
         emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?next=/user?verified=1`,
         data: {
           full_name: name,
-          phone: phone,
+          phone: normalizedPhone,
         },
       },
     });

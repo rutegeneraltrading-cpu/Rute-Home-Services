@@ -4,12 +4,20 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button, Input } from '@/components/ui';
 import { useForgotPassword } from '@/lib/client/api';
+import {
+  ForgotPasswordInput,
+  forgotPasswordSchema,
+  getFirstZodFieldErrors,
+} from '@/lib/validations';
 
 const ForgotPasswordPage = () => {
   const forgotPasswordMutation = useForgotPassword();
 
   const [email, setEmail] = useState('');
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
+  const [errors, setErrors] = useState<
+    Partial<Record<keyof ForgotPasswordInput, string>>
+  >({});
 
   useEffect(() => {
     if (cooldownSeconds <= 0) return;
@@ -30,12 +38,21 @@ const ForgotPasswordPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!email || cooldownSeconds > 0) {
+    if (cooldownSeconds > 0) {
       return;
     }
 
+    const validation = forgotPasswordSchema.safeParse({ email });
+
+    if (!validation.success) {
+      setErrors(getFirstZodFieldErrors(validation.error));
+      return;
+    }
+
+    setErrors({});
+
     try {
-      await forgotPasswordMutation.mutateAsync(email);
+      await forgotPasswordMutation.mutateAsync(validation.data);
       setCooldownSeconds(60);
     } catch (err) {
       console.error('Forgot password failed:', err);
@@ -57,14 +74,21 @@ const ForgotPasswordPage = () => {
           <Input
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              if (errors.email) {
+                setErrors((prev) => ({ ...prev, email: undefined }));
+              }
+            }}
             placeholder="you@example.com"
-            required
             disabled={forgotPasswordMutation.isPending || cooldownSeconds > 0}
           />
+          {errors.email && (
+            <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+          )}
           {cooldownSeconds > 0 && (
             <p className="mt-2 text-xs text-amber-700">
-              You can send another forgot password request after 1 mint.
+              You can send another forgot password request after 1 minute.
             </p>
           )}
         </div>

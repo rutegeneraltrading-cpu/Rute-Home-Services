@@ -6,6 +6,11 @@ import { useRouter } from 'next/navigation';
 import { useSignUp } from '@/lib/client/api';
 import PhoneInput from 'react-phone-input-2';
 import { Button, Input, Label, PasswordInput } from '@/components/ui';
+import {
+  getFirstZodFieldErrors,
+  SignupInput,
+  signupSchema,
+} from '@/lib/validations';
 
 interface SignupPageProps {
   redirectTo?: string;
@@ -28,28 +33,38 @@ const SignupPage = ({
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [errors, setErrors] = useState<
+    Partial<Record<keyof SignupInput, string>>
+  >({});
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setErrors({});
 
-    // Validation
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
+    const validation = signupSchema.safeParse({
+      name,
+      email,
+      phone,
+      password,
+      confirmPassword,
+    });
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (!validation.success) {
+      setErrors(getFirstZodFieldErrors(validation.error));
       return;
     }
 
     try {
+      const signUpData = {
+        name: validation.data.name,
+        email: validation.data.email,
+        phone: validation.data.phone,
+        password: validation.data.password,
+      };
+
       const response = await signUpMutation.mutateAsync({
-        email,
-        password,
-        name,
-        phone,
+        ...signUpData,
       });
 
       if (response?.requires_email_verification) {
@@ -97,11 +112,18 @@ const SignupPage = ({
           <Input
             type="text"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => {
+              setName(e.target.value);
+              if (errors.name) {
+                setErrors((prev) => ({ ...prev, name: undefined }));
+              }
+            }}
             placeholder="John Doe"
-            required
             disabled={signUpMutation.isPending}
           />
+          {errors.name && (
+            <p className="mt-1 text-sm text-red-600">{errors.name}</p>
+          )}
         </div>
 
         <div>
@@ -111,11 +133,18 @@ const SignupPage = ({
           <Input
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              if (errors.email) {
+                setErrors((prev) => ({ ...prev, email: undefined }));
+              }
+            }}
             placeholder="you@example.com"
-            required
             disabled={signUpMutation.isPending}
           />
+          {errors.email && (
+            <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+          )}
         </div>
         <div>
           <Label htmlFor="phone">Phone</Label>
@@ -123,14 +152,21 @@ const SignupPage = ({
             country={'za'}
             inputProps={{
               name: 'phone',
-              required: true,
               className: 'h-9 w-full border rounded-md shadow-xs px-2 pl-12',
             }}
             value={phone}
-            onChange={(value) => setPhone(value)}
+            onChange={(value) => {
+              setPhone(value);
+              if (errors.phone) {
+                setErrors((prev) => ({ ...prev, phone: undefined }));
+              }
+            }}
             enableSearch
             containerClass="mb-2"
           />
+          {errors.phone && (
+            <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
+          )}
         </div>
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -138,12 +174,19 @@ const SignupPage = ({
           </label>
           <PasswordInput
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              if (errors.password) {
+                setErrors((prev) => ({ ...prev, password: undefined }));
+              }
+            }}
             placeholder="••••••••"
-            required
-            minLength={6}
+            minLength={8}
             disabled={signUpMutation.isPending}
           />
+          {errors.password && (
+            <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+          )}
         </div>
 
         <div>
@@ -152,12 +195,21 @@ const SignupPage = ({
           </label>
           <PasswordInput
             value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
+            onChange={(e) => {
+              setConfirmPassword(e.target.value);
+              if (errors.confirmPassword) {
+                setErrors((prev) => ({ ...prev, confirmPassword: undefined }));
+              }
+            }}
             placeholder="••••••••"
-            required
-            minLength={6}
+            minLength={8}
             disabled={signUpMutation.isPending}
           />
+          {errors.confirmPassword && (
+            <p className="mt-1 text-sm text-red-600">
+              {errors.confirmPassword}
+            </p>
+          )}
         </div>
 
         <Button

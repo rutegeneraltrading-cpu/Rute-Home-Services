@@ -11,6 +11,18 @@ export interface SignInDTO {
   password: string;
 }
 
+export interface ForgotPasswordDTO {
+  email: string;
+}
+
+export interface ResetPasswordDTO {
+  password: string;
+}
+
+export interface ResetPasswordFormDTO extends ResetPasswordDTO {
+  confirmPassword: string;
+}
+
 export interface AuthUser {
   id: string;
   email: string;

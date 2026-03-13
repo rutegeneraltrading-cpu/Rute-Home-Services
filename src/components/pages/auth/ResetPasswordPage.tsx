@@ -6,6 +6,11 @@ import { useRouter } from 'next/navigation';
 import { Loading } from '@/components/common';
 import { useResetPassword } from '@/lib/client/api';
 import { createClient } from '@/lib/supabase/client';
+import {
+  getFirstZodFieldErrors,
+  ResetPasswordInput,
+  resetPasswordSchema,
+} from '@/lib/validations';
 import { Button, PasswordInput } from '@/components/ui';
 
 const ResetPasswordPage = () => {
@@ -18,7 +23,11 @@ const ResetPasswordPage = () => {
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
+  const [tokenError, setTokenError] = useState('');
+  const [formError, setFormError] = useState('');
+  const [errors, setErrors] = useState<
+    Partial<Record<keyof ResetPasswordInput, string>>
+  >({});
   const [isValidToken, setIsValidToken] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -33,10 +42,14 @@ const ResetPasswordPage = () => {
         if (user) {
           setIsValidToken(true);
         } else {
-          setError('Invalid or expired reset link. Please request a new one.');
+          setTokenError(
+            'Invalid or expired reset link. Please request a new one.',
+          );
         }
       } catch {
-        setError('Invalid or expired reset link. Please request a new one.');
+        setTokenError(
+          'Invalid or expired reset link. Please request a new one.',
+        );
       } finally {
         setIsLoading(false);
       }
@@ -47,21 +60,25 @@ const ResetPasswordPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setFormError('');
+    setErrors({});
 
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
+    const validation = resetPasswordSchema.safeParse({
+      password,
+      confirmPassword,
+    });
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (!validation.success) {
+      setErrors(getFirstZodFieldErrors(validation.error));
       return;
     }
 
     try {
-      await resetPasswordMutation.mutateAsync(password);
+      await resetPasswordMutation.mutateAsync({
+        password: validation.data.password,
+      });
     } catch (err) {
+      setFormError('Failed to update password. Please try again.');
       console.error('Reset password failed:', err);
     }
   };
@@ -73,7 +90,7 @@ const ResetPasswordPage = () => {
       <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white md:p-8 p-6 shadow-lg mt-16 lg:mt-0">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-4">Invalid Reset Link</h1>
-          <p className="text-slate-600 mb-6">{error}</p>
+          <p className="text-slate-600 mb-6">{tokenError}</p>
           <Link
             href="/forgot-password"
             className="text-slate-900 font-medium hover:underline"
@@ -95,9 +112,9 @@ const ResetPasswordPage = () => {
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {error && (
+        {formError && (
           <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-            {error}
+            {formError}
           </div>
         )}
 
@@ -107,12 +124,19 @@ const ResetPasswordPage = () => {
           </label>
           <PasswordInput
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              if (errors.password) {
+                setErrors((prev) => ({ ...prev, password: undefined }));
+              }
+            }}
             placeholder="••••••••"
-            required
-            minLength={6}
+            minLength={8}
             disabled={resetPasswordMutation.isPending}
           />
+          {errors.password && (
+            <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+          )}
         </div>
 
         <div>
@@ -121,12 +145,21 @@ const ResetPasswordPage = () => {
           </label>
           <PasswordInput
             value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
+            onChange={(e) => {
+              setConfirmPassword(e.target.value);
+              if (errors.confirmPassword) {
+                setErrors((prev) => ({ ...prev, confirmPassword: undefined }));
+              }
+            }}
             placeholder="••••••••"
-            required
-            minLength={6}
+            minLength={8}
             disabled={resetPasswordMutation.isPending}
           />
+          {errors.confirmPassword && (
+            <p className="mt-1 text-sm text-red-600">
+              {errors.confirmPassword}
+            </p>
+          )}
         </div>
 
         <Button

@@ -4,6 +4,11 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSignIn } from '@/lib/client/api';
+import {
+  getFirstZodFieldErrors,
+  LoginInput,
+  loginSchema,
+} from '@/lib/validations';
 import { Button, Input, PasswordInput } from '@/components/ui';
 
 interface LoginPageProps {
@@ -24,6 +29,9 @@ export default function LoginPage({
   const signInMutation = useSignIn();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [errors, setErrors] = useState<
+    Partial<Record<keyof LoginInput, string>>
+  >({});
   const verificationRequired = searchParams.get('verify') === '1';
   const redirectParam = searchParams.get('redirect');
 
@@ -33,8 +41,17 @@ export default function LoginPage({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const validation = loginSchema.safeParse({ email, password });
+
+    if (!validation.success) {
+      setErrors(getFirstZodFieldErrors(validation.error));
+      return;
+    }
+
+    setErrors({});
+
     try {
-      const response = await signInMutation.mutateAsync({ email, password });
+      const response = await signInMutation.mutateAsync(validation.data);
       await new Promise((resolve) => setTimeout(resolve, 500));
       if (onSuccess) {
         onSuccess();
@@ -80,11 +97,18 @@ export default function LoginPage({
           <Input
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              if (errors.email) {
+                setErrors((prev) => ({ ...prev, email: undefined }));
+              }
+            }}
             placeholder="you@example.com"
-            required
             disabled={signInMutation.isPending}
           />
+          {errors.email && (
+            <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+          )}
         </div>
 
         <div>
@@ -93,11 +117,18 @@ export default function LoginPage({
           </label>
           <PasswordInput
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              if (errors.password) {
+                setErrors((prev) => ({ ...prev, password: undefined }));
+              }
+            }}
             placeholder="••••••••"
-            required
             disabled={signInMutation.isPending}
           />
+          {errors.password && (
+            <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+          )}
         </div>
         <p className="text-start text-sm mt-2">
           <Link
