@@ -31,7 +31,6 @@ export interface UpdateUserDTO {
   name?: string;
   phone?: string;
   address?: string;
-  role?: 'admin' | 'user' | 'worker';
   status?: 'active' | 'inactive' | 'suspended';
 }
 

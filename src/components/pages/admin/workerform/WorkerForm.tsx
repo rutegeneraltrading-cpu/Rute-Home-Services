@@ -185,7 +185,7 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:w-full max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New Worker</DialogTitle>
           <DialogDescription>

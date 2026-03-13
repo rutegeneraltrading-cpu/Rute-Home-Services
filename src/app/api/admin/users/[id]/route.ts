@@ -53,7 +53,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { full_name, role, status } = body;
+    const { full_name, status } = body;
 
     const supabase = await createAdminClient();
 
@@ -63,12 +63,11 @@ export async function PUT(
       .eq('auth_id', id)
       .maybeSingle();
 
-    // Update profile - full_name, role, and status
+    // Update profile - full_name, and status
     const { data: profile, error } = await supabase
       .from('profiles')
       .update({
         full_name,
-        role,
         status,
         updated_at: new Date().toISOString(),
       })

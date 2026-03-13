@@ -58,6 +58,7 @@ export async function POST(request: NextRequest) {
     }
 
     const normalizedEmail = email.trim().toLowerCase();
+    const normalizedPhone = phone ? String(phone).trim() : null;
 
     const { data: existingProfile, error: existingProfileError } =
       await supabaseAdmin
@@ -117,9 +118,11 @@ export async function POST(request: NextRequest) {
       await supabaseAdmin.auth.admin.createUser({
         email: normalizedEmail,
         password: tempPassword,
+        ...(normalizedPhone ? { phone: normalizedPhone } : {}),
         user_metadata: {
           full_name,
           role: 'worker',
+          ...(normalizedPhone ? { phone: normalizedPhone } : {}),
         },
       });
 
@@ -139,6 +142,7 @@ export async function POST(request: NextRequest) {
           auth_id,
           full_name,
           email: normalizedEmail,
+          ...(normalizedPhone ? { phone: normalizedPhone } : {}),
           role: 'worker',
           status: statusToSet,
           ...(avatar_url ? { avatar_url } : {}),
@@ -176,7 +180,7 @@ export async function POST(request: NextRequest) {
         .from('workers')
         .insert({
           profile_id: profileId,
-          phone: phone || null,
+          phone: normalizedPhone,
           is_active: true,
         })
         .select()
@@ -229,7 +233,7 @@ export async function POST(request: NextRequest) {
           profile_id: profileId,
           label: address.label || 'home',
           recipient_name: address.recipient_name || full_name || null,
-          phone: address.phone || phone || null,
+          phone: address.phone || normalizedPhone,
           line1: address.line1,
           line2: address.line2 || null,
           city: address.city,
@@ -243,7 +247,7 @@ export async function POST(request: NextRequest) {
 
       await supabaseAdmin
         .from('profiles')
-        .update({ phone: address.phone || phone || null })
+        .update({ phone: address.phone || normalizedPhone })
         .eq('id', profileId);
     }
 

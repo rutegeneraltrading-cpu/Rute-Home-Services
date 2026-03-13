@@ -59,21 +59,21 @@ export function bookingAssignmentCancelledTemplate(
     serviceDetailsHtml += `<p style="margin:0 0 12px;font-size:13px;color:#6b7280;">Category: ${data.service.category}</p>`;
   }
 
-  if (data.service.options && data.service.options.length > 0) {
-    serviceDetailsHtml += `<p style="margin:12px 0 6px;font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:0.05em;">Selected Options</p><ul style="margin:0;padding-left:18px;">`;
-    for (const opt of data.service.options) {
-      serviceDetailsHtml += `<li style="font-size:13px;color:#374151;margin-bottom:4px;">${opt.name}${opt.price ? ` — R${opt.price}` : ''}${opt.description ? ` <span style="color:#6b7280;">(${opt.description})</span>` : ''}</li>`;
-    }
-    serviceDetailsHtml += `</ul>`;
-  }
-
   const selectedRequirements =
     data.service.requirements || data.service.variants;
 
   if (selectedRequirements && selectedRequirements.length > 0) {
-    serviceDetailsHtml += `<p style="margin:12px 0 6px;font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:0.05em;">Selected Requirements</p><ul style="margin:0;padding-left:18px;">`;
+    serviceDetailsHtml += `<p style="margin:12px 0 6px;font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:0.05em;">Details</p><ul style="margin:0;padding-left:18px;">`;
     for (const requirement of selectedRequirements) {
       serviceDetailsHtml += `<li style="font-size:13px;color:#374151;margin-bottom:4px;">${requirement.name}${requirement.type ? ` (${formatRequirementType(requirement.type)})` : ''}${typeof requirement.price === 'number' ? ` — R${requirement.price}` : ''}</li>`;
+    }
+    serviceDetailsHtml += `</ul>`;
+  }
+
+  if (data.service.options && data.service.options.length > 0) {
+    serviceDetailsHtml += `<p style="margin:12px 0 6px;font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:0.05em;">Selected Options</p><ul style="margin:0;padding-left:18px;">`;
+    for (const opt of data.service.options) {
+      serviceDetailsHtml += `<li style="font-size:13px;color:#374151;margin-bottom:4px;">${opt.name}${opt.price ? ` — R${opt.price}` : ''}${opt.description ? ` <span style="color:#6b7280;">(${opt.description})</span>` : ''}</li>`;
     }
     serviceDetailsHtml += `</ul>`;
   }

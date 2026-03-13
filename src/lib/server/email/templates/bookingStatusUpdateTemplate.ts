@@ -46,6 +46,28 @@ export function bookingStatusUpdateTemplate(
     </div>
   `;
 
+   const selectedRequirements =
+    data.service.requirements || data.service.variants || [];
+
+  if (selectedRequirements.length > 0) {
+    serviceDetailsHtml += `
+      <div style="margin-bottom: 8px; font-size: 13px; color: #4b5563;">
+        <div style="font-weight: 500; color: #1f2937; margin-bottom: 4px;">Details:</div>
+        ${selectedRequirements
+          .map(
+            (requirement) => `
+          <div style="margin-left: 8px; margin-bottom: 3px;">
+            <span style="color: #374151;">• ${requirement.name}</span>
+            ${requirement.type ? `<span style="color: #6b7280;"> (${formatRequirementType(requirement.type)})</span>` : ''}
+            ${typeof requirement.price === 'number' ? `<span style="color: #6b7280;"> (+R${requirement.price.toFixed(2)})</span>` : ''}
+          </div>
+        `,
+          )
+          .join('')}
+      </div>
+    `;
+  }
+
   if (data.service.options && data.service.options.length > 0) {
     serviceDetailsHtml += `
       <div style="margin-bottom: 8px; font-size: 13px; color: #4b5563;">
@@ -56,28 +78,6 @@ export function bookingStatusUpdateTemplate(
           <div style="margin-left: 8px; margin-bottom: 3px;">
             <span style="color: #374151;">• ${opt.name}</span>
             ${opt.price ? `<span style="color: #6b7280;"> (+R${opt.price.toFixed(2)})</span>` : ''}
-          </div>
-        `,
-          )
-          .join('')}
-      </div>
-    `;
-  }
-
-  const selectedRequirements =
-    data.service.requirements || data.service.variants || [];
-
-  if (selectedRequirements.length > 0) {
-    serviceDetailsHtml += `
-      <div style="margin-bottom: 8px; font-size: 13px; color: #4b5563;">
-        <div style="font-weight: 500; color: #1f2937; margin-bottom: 4px;">Requirements:</div>
-        ${selectedRequirements
-          .map(
-            (requirement) => `
-          <div style="margin-left: 8px; margin-bottom: 3px;">
-            <span style="color: #374151;">• ${requirement.name}</span>
-            ${requirement.type ? `<span style="color: #6b7280;"> (${formatRequirementType(requirement.type)})</span>` : ''}
-            ${typeof requirement.price === 'number' ? `<span style="color: #6b7280;"> (+R${requirement.price.toFixed(2)})</span>` : ''}
           </div>
         `,
           )

@@ -240,15 +240,6 @@ const ReviewPaymentStep = ({
               </span>
             </div>
           </div>
-
-          {additionalDetails.notes?.trim() && (
-            <div className="mt-3 pt-3 border-t border-slate-100">
-              <span className="text-sm text-slate-600">Additional Notes</span>
-              <p className="mt-1.5 rounded-md bg-white border border-slate-200 p-3 text-sm font-medium text-slate-900 whitespace-pre-wrap">
-                {additionalDetails.notes}
-              </p>
-            </div>
-          )}
         </section>
 
         {/* ── Selected Services ── */}
@@ -256,34 +247,8 @@ const ReviewPaymentStep = ({
           <h4 className="text-xs font-bold uppercase tracking-widest text-slate-600">
             Selected Services
           </h4>
-
           <div className="space-y-2">
-            <p className="text-sm text-slate-600">Additional Services</p>
-            {selectedOptionsArray.length === 0 ? (
-              <p className="text-sm italic text-slate-600">
-                No additional services selected.
-              </p>
-            ) : (
-              <ul className="space-y-1.5">
-                {selectedOptionsArray.map((opt) => (
-                  <li
-                    key={opt.id}
-                    className="flex flex-col sm:flex-row sm:justify-between sm:items-center items-start rounded-md bg-white border border-slate-200 px-3 py-2 gap-1"
-                  >
-                    <span className="text-sm font-semibold text-slate-900">
-                      {opt.name}
-                    </span>
-                    <span className="text-xs font-medium text-emerald-600">
-                      +R{opt.price} · {opt.duration_minutes || 0} min
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <p className="text-sm text-slate-600">Service Details</p>
+            <p className="text-sm text-slate-600">Details</p>
             {selectedRequirementsArray.length === 0 ? (
               <p className="text-sm italic text-slate-400">
                 No service details selected.
@@ -311,6 +276,38 @@ const ReviewPaymentStep = ({
               </ul>
             )}
           </div>
+          <div className="space-y-2">
+            <p className="text-sm text-slate-600">Additional Services</p>
+            {selectedOptionsArray.length === 0 ? (
+              <p className="text-sm italic text-slate-600">
+                No additional services selected.
+              </p>
+            ) : (
+              <ul className="space-y-1.5">
+                {selectedOptionsArray.map((opt) => (
+                  <li
+                    key={opt.id}
+                    className="flex flex-col sm:flex-row sm:justify-between sm:items-center items-start rounded-md bg-white border border-slate-200 px-3 py-2 gap-1"
+                  >
+                    <span className="text-sm font-semibold text-slate-900">
+                      {opt.name}
+                    </span>
+                    <span className="text-xs font-medium text-emerald-600">
+                      +R{opt.price} · {opt.duration_minutes || 0} min
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          {additionalDetails.notes?.trim() && (
+            <div className="mt-3 pt-3 border-t border-slate-100">
+              <span className="text-sm text-slate-600">Additional Notes</span>
+              <p className="mt-1.5 rounded-md bg-white border border-slate-200 p-3 text-sm font-medium text-slate-900 whitespace-pre-wrap">
+                {additionalDetails.notes}
+              </p>
+            </div>
+          )}
         </section>
       </div>
 

@@ -64,7 +64,6 @@ export function UserEditModal({
     if (user) {
       reset({
         full_name: user.full_name || user.name || '',
-        role: (user.role as 'admin' | 'user' | 'worker') || 'user',
         status:
           (user.status as 'active' | 'inactive' | 'suspended') || 'active',
       });
@@ -80,7 +79,7 @@ export function UserEditModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Edit User</DialogTitle>
           <DialogDescription>
@@ -116,38 +115,6 @@ export function UserEditModal({
               </p>
             )}
           </div>
-
-          <div>
-            <Label htmlFor="role">Role *</Label>
-            <Controller
-              name="role"
-              control={control}
-              render={({ field }) => (
-                <Select
-                  value={field.value}
-                  onValueChange={(value) => {
-                    field.onChange(value);
-                    setValue('role', value as 'admin' | 'user' | 'worker', {
-                      shouldDirty: true,
-                    });
-                  }}
-                >
-                  <SelectTrigger id="role" className="mt-2">
-                    <SelectValue placeholder="Select role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="user">User</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="worker">Worker</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-            />
-            {errors.role && (
-              <p className="text-sm text-red-500 mt-1">{errors.role.message}</p>
-            )}
-          </div>
-
           <div>
             <Label htmlFor="status">Status *</Label>
             <Controller

@@ -80,7 +80,6 @@ export type ServiceOptionFormValues = z.infer<typeof serviceOptionSchema>;
 
 export const userEditSchema = z.object({
   full_name: z.string().min(2, 'Name must be at least 2 characters'),
-  role: z.enum(['admin', 'user', 'worker']),
   status: z.enum(['active', 'inactive', 'suspended']),
 });
 

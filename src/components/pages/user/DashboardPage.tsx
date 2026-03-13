@@ -33,6 +33,13 @@ type PublicService = {
   base_price?: number;
 };
 
+const ACTIVE_BOOKING_STATUSES: Booking['status'][] = [
+  'pending',
+  'confirmed',
+  'assigned',
+  'in_progress',
+];
+
 const DashboardPage = () => {
   const { data: profile, isLoading: profileLoading } = useGetProfile();
   const { data: bookings = [], isLoading: bookingsLoading } = useGetBookings();
@@ -58,7 +65,9 @@ const DashboardPage = () => {
   const activeBookings = useMemo(
     () =>
       (bookings as Booking[]).filter(
-        (booking) => booking.payment_status === 'paid',
+        (booking) =>
+          booking.payment_status === 'paid' &&
+          ACTIVE_BOOKING_STATUSES.includes(booking.status),
       ).length,
     [bookings],
   );
