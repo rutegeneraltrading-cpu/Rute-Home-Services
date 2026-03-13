@@ -66,7 +66,10 @@ const AddRequirementsStep = ({
             const groupLabel = getFriendlyGroupLabel(groupType);
 
             return (
-              <div key={groupKey} className="border bg-white rounded-lg p-4 sm:p-5">
+              <div
+                key={groupKey}
+                className="border bg-white rounded-lg p-4 sm:p-5"
+              >
                 <Label className="block font-semibold mb-3 text-base">
                   {groupLabel}
                 </Label>

@@ -89,7 +89,11 @@ const AddOptionsStep = ({
         ) : (
           <span className="hidden sm:block" />
         )}
-        <Button type="button" onClick={onNext} className="px-4 w-full sm:w-auto">
+        <Button
+          type="button"
+          onClick={onNext}
+          className="px-4 w-full sm:w-auto"
+        >
           Next
         </Button>
       </div>
