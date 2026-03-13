@@ -141,7 +141,7 @@ const ServicesPage = () => {
                           {servicesForCategory.map((service) => (
                             <Link
                               key={service.id}
-                              href={`/booking?service=${service.slug}`}
+                              href={`/booking?service=${service.slug}&category=${category.slug}`}
                               className="group"
                             >
                               <span
