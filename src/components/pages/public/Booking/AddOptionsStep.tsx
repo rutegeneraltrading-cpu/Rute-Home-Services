@@ -25,10 +25,9 @@ const AddOptionsStep = ({
   };
 
   return (
-    <div>
-      <h2 className="text-xl font-bold mb-4">Select Additional Options</h2>
+    <div className="border bg-white rounded-lg p-4">
       <div className="mb-2">
-        <Label className="block font-semibold">Options</Label>
+        <Label className="block font-semibold mb-3 text-base">Options</Label>
       </div>
       <div className="flex flex-col gap-4">
         {optionsData.length === 0 && (
@@ -39,18 +38,25 @@ const AddOptionsStep = ({
         {optionsData.map((option) => (
           <div
             key={option.id}
-            className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-slate-50"
+            className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
+              selectedOptions[option.id]
+                ? 'border-black bg-green-50'
+                : 'border-slate-200 hover:border-slate-400 hover:bg-slate-50'
+            }`}
+            onClick={() => handleOptionChange(option.id)}
           >
             <Input
               type="checkbox"
               id={`option-${option.id}`}
               checked={!!selectedOptions[option.id]}
+              onClick={(e) => e.stopPropagation()}
               onChange={() => handleOptionChange(option.id)}
               className="accent-black w-5 h-5"
             />
             <Label
               htmlFor={`option-${option.id}`}
               className="flex-1 cursor-pointer"
+              onClick={(e) => e.stopPropagation()}
             >
               <span className="font-semibold">{option.name}</span>
               {option.description && (

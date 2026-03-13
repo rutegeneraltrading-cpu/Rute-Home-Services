@@ -18,14 +18,18 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
-import {
-  useGetCategories,
-  useGetServices,
-  useGetServiceOptions,
-} from '@/lib/client/api';
+import { useGetCategories, useGetServices } from '@/lib/client/api';
 
-import { useCreateServiceOptionVariant } from '@/lib/client/api/services/services.mutation';
-type Variant = {
+import { useCreateServiceRequirement } from '@/lib/client/api/services/services.mutation';
+
+const REQUIREMENT_TYPE_OPTIONS = [
+  { value: 'size', label: 'Size' },
+  { value: 'property_size', label: 'Property Size' },
+  { value: 'truck_size', label: 'Truck Size' },
+  { value: 'type', label: 'Type' },
+] as const;
+
+type Requirement = {
   name: string;
   type: string;
   price: number;
@@ -34,11 +38,10 @@ type Variant = {
   display_order: number;
 };
 
-export function ServiceVariantsForm() {
+export function ServiceRequirementsForm() {
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [selectedServiceId, setSelectedServiceId] = useState('');
-  const [selectedOptionId, setSelectedOptionId] = useState('');
-  const initialVariant: Variant = {
+  const initialRequirement: Requirement = {
     name: '',
     type: '',
     price: 0,
@@ -46,17 +49,15 @@ export function ServiceVariantsForm() {
     is_active: true,
     display_order: 0,
   };
-  const [variant, setVariant] = useState<Variant>(initialVariant);
+  const [requirement, setRequirement] =
+    useState<Requirement>(initialRequirement);
   const [dirty, setDirty] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const { data: categories, isLoading: categoriesLoading } = useGetCategories();
   const { data: allServices, isLoading: servicesLoading } = useGetServices();
-  const { data: options, isLoading: optionsLoading } =
-    useGetServiceOptions(selectedServiceId);
 
-  // Removed success state, use mutation status instead
-  const createVariantMutation = useCreateServiceOptionVariant();
+  const createRequirementMutation = useCreateServiceRequirement();
   const filteredServices = useMemo(
     () =>
       Array.isArray(allServices)
@@ -66,15 +67,6 @@ export function ServiceVariantsForm() {
           )
         : [],
     [allServices, selectedCategoryId],
-  );
-  const filteredOptions = useMemo(
-    () =>
-      Array.isArray(options)
-        ? options.filter(
-            (o: { service_id: string }) => o.service_id === selectedServiceId,
-          )
-        : [],
-    [options, selectedServiceId],
   );
 
   return (
@@ -93,7 +85,6 @@ export function ServiceVariantsForm() {
             onValueChange={(val) => {
               setSelectedCategoryId(val);
               setSelectedServiceId('');
-              setSelectedOptionId('');
             }}
           >
             <SelectTrigger className="mt-2">
@@ -126,17 +117,14 @@ export function ServiceVariantsForm() {
           <CardHeader>
             <CardTitle>Step 2: Select Service</CardTitle>
             <CardDescription>
-              Choose which service to add variants to
+              Choose which service to add requirements to
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Label>Service *</Label>
             <Select
               value={selectedServiceId}
-              onValueChange={(val) => {
-                setSelectedServiceId(val);
-                setSelectedOptionId('');
-              }}
+              onValueChange={setSelectedServiceId}
             >
               <SelectTrigger className="mt-2">
                 <SelectValue placeholder="Select a service" />
@@ -164,53 +152,15 @@ export function ServiceVariantsForm() {
           </CardContent>
         </Card>
       )}
-      {selectedServiceId && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Step 3: Select Service Option</CardTitle>
-            <CardDescription>
-              Choose which option to add variants to
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Label>Service Option *</Label>
-            <Select
-              value={selectedOptionId}
-              onValueChange={setSelectedOptionId}
-            >
-              <SelectTrigger className="mt-2">
-                <SelectValue placeholder="Select an option" />
-              </SelectTrigger>
-              <SelectContent>
-                {optionsLoading ? (
-                  <SelectItem value="loading" disabled>
-                    Loading...
-                  </SelectItem>
-                ) : filteredOptions.length ? (
-                  filteredOptions.map(
-                    (option: { id: string; name: string }) => (
-                      <SelectItem key={option.id} value={option.id}>
-                        {option.name}
-                      </SelectItem>
-                    ),
-                  )
-                ) : (
-                  <SelectItem value="none" disabled>
-                    No options for this service
-                  </SelectItem>
-                )}
-              </SelectContent>
-            </Select>
-          </CardContent>
-        </Card>
-      )}
 
-      {/* Show variant form only if all are selected */}
-      {selectedCategoryId && selectedServiceId && selectedOptionId && (
+      {/* Show requirement form only if category and service are selected */}
+      {selectedCategoryId && selectedServiceId && (
         <Card>
           <CardHeader>
-            <CardTitle>Add Variant</CardTitle>
-            <CardDescription>Add a new variant for this option</CardDescription>
+            <CardTitle>Step 3: Add Requirement</CardTitle>
+            <CardDescription>
+              Add a new requirement for this service
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <form
@@ -218,11 +168,11 @@ export function ServiceVariantsForm() {
                 e.preventDefault();
                 setSubmitting(true);
                 try {
-                  await createVariantMutation.mutateAsync({
-                    ...variant,
-                    service_option_id: selectedOptionId,
+                  await createRequirementMutation.mutateAsync({
+                    ...requirement,
+                    service_id: selectedServiceId,
                   });
-                  setVariant(initialVariant);
+                  setRequirement(initialRequirement);
                   setDirty(false);
                 } catch (err) {
                   // Optionally handle error
@@ -233,42 +183,50 @@ export function ServiceVariantsForm() {
               className="space-y-6"
             >
               <div>
-                <Label htmlFor="variant_name">Variant Name *</Label>
+                <Label htmlFor="requirement_name">Requirement Name *</Label>
                 <Input
-                  id="variant_name"
-                  value={variant.name}
+                  id="requirement_name"
+                  value={requirement.name}
                   onChange={(e) => {
-                    setVariant((v) => ({ ...v, name: e.target.value }));
+                    setRequirement((v) => ({ ...v, name: e.target.value }));
                     setDirty(true);
                   }}
                   required
                   className="mt-2"
                   disabled={submitting}
-                  placeholder="e.g. Large, Premium, etc."
+                  placeholder="e.g. Studio, 2-Bed, Small Truck"
                 />
               </div>
               <div>
-                <Label htmlFor="variant_type">Type</Label>
-                <Input
-                  id="variant_type"
-                  value={variant.type}
-                  onChange={(e) => {
-                    setVariant((v) => ({ ...v, type: e.target.value }));
+                <Label htmlFor="requirement_type">Type *</Label>
+                <Select
+                  value={requirement.type}
+                  onValueChange={(value) => {
+                    setRequirement((v) => ({ ...v, type: value }));
                     setDirty(true);
                   }}
-                  className="mt-2"
                   disabled={submitting}
-                  placeholder="e.g. size, color, etc."
-                />
+                >
+                  <SelectTrigger id="requirement_type" className="mt-2">
+                    <SelectValue placeholder="Select requirement type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {REQUIREMENT_TYPE_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
-                <Label htmlFor="variant_price">Price (ZAR)</Label>
+                <Label htmlFor="requirement_price">Price (ZAR)</Label>
                 <Input
-                  id="variant_price"
+                  id="requirement_price"
                   type="number"
-                  value={variant.price}
+                  value={requirement.price}
                   onChange={(e) => {
-                    setVariant((v) => ({
+                    setRequirement((v) => ({
                       ...v,
                       price: parseFloat(e.target.value) || 0,
                     }));
@@ -280,13 +238,13 @@ export function ServiceVariantsForm() {
                 />
               </div>
               <div>
-                <Label htmlFor="variant_duration">Duration (minutes)</Label>
+                <Label htmlFor="requirement_duration">Duration (minutes)</Label>
                 <Input
-                  id="variant_duration"
+                  id="requirement_duration"
                   type="number"
-                  value={variant.duration_minutes}
+                  value={requirement.duration_minutes}
                   onChange={(e) => {
-                    setVariant((v) => ({
+                    setRequirement((v) => ({
                       ...v,
                       duration_minutes: parseInt(e.target.value) || 0,
                     }));
@@ -298,13 +256,13 @@ export function ServiceVariantsForm() {
                 />
               </div>
               <div>
-                <Label htmlFor="variant_display_order">Display Order</Label>
+                <Label htmlFor="requirement_display_order">Display Order</Label>
                 <Input
-                  id="variant_display_order"
+                  id="requirement_display_order"
                   type="number"
-                  value={variant.display_order}
+                  value={requirement.display_order}
                   onChange={(e) => {
-                    setVariant((v) => ({
+                    setRequirement((v) => ({
                       ...v,
                       display_order: parseInt(e.target.value) || 0,
                     }));
@@ -317,16 +275,19 @@ export function ServiceVariantsForm() {
               </div>
               <div className="flex items-center gap-3">
                 <input
-                  id="variant_is_active"
+                  id="requirement_is_active"
                   type="checkbox"
-                  checked={variant.is_active}
+                  checked={requirement.is_active}
                   onChange={(e) =>
-                    setVariant((v) => ({ ...v, is_active: e.target.checked }))
+                    setRequirement((v) => ({
+                      ...v,
+                      is_active: e.target.checked,
+                    }))
                   }
                   className="w-4 h-4 rounded"
                   disabled={submitting}
                 />
-                <Label htmlFor="variant_is_active">Active</Label>
+                <Label htmlFor="requirement_is_active">Active</Label>
               </div>
               <div className="flex justify-end gap-3 pt-6 border-t">
                 {dirty && (
@@ -334,7 +295,7 @@ export function ServiceVariantsForm() {
                     type="button"
                     variant="outline"
                     onClick={() => {
-                      setVariant(initialVariant);
+                      setRequirement(initialRequirement);
                       setDirty(false);
                     }}
                     disabled={submitting}
@@ -342,8 +303,11 @@ export function ServiceVariantsForm() {
                     Cancel
                   </Button>
                 )}
-                <Button type="submit" disabled={submitting || !dirty}>
-                  {submitting ? 'Adding...' : 'Add Variant'}
+                <Button
+                  type="submit"
+                  disabled={submitting || !dirty || !requirement.type}
+                >
+                  {submitting ? 'Adding...' : 'Add Requirement'}
                 </Button>
               </div>
             </form>
@@ -353,3 +317,6 @@ export function ServiceVariantsForm() {
     </div>
   );
 }
+
+// Backward-compatible export
+export const ServiceVariantsForm = ServiceRequirementsForm;

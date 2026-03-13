@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
-// GET all requirements (legacy variants endpoint kept for backward compatibility)
+// GET all requirements (with joins for admin)
 export async function GET() {
   try {
     const supabase = await createClient();
@@ -27,37 +27,23 @@ export async function GET() {
   }
 }
 
-// CREATE requirement (accepts both service_id and legacy service_option_id)
+// CREATE requirement
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
     const body = await request.json();
-
-    let serviceId: string | undefined = body.service_id;
-
-    // Legacy support: map service_option_id -> service_id
-    if (!serviceId && body.service_option_id) {
-      const { data: optionRow, error: optionError } = await supabase
-        .from('service_options')
-        .select('service_id')
-        .eq('id', body.service_option_id)
-        .single();
-
-      if (optionError) {
-        return NextResponse.json(
-          { error: 'Invalid service option id' },
-          { status: 400 },
-        );
-      }
-
-      serviceId = optionRow?.service_id;
-    }
-
-    const { name, type, price, duration_minutes, is_active, display_order } =
-      body;
+    const {
+      service_id,
+      name,
+      type,
+      price,
+      duration_minutes,
+      is_active,
+      display_order,
+    } = body;
 
     if (
-      !serviceId ||
+      !service_id ||
       !name ||
       !type ||
       price === undefined ||
@@ -73,7 +59,7 @@ export async function POST(request: NextRequest) {
       .from('service_requirements')
       .insert([
         {
-          service_id: serviceId,
+          service_id,
           name,
           type,
           price,

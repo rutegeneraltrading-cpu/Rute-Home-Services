@@ -7,12 +7,12 @@ import {
   ServiceForm,
   ServiceOptionsForm,
   ServiceCategoryForm,
-  ServiceVariantsForm,
+  ServiceRequirementsForm,
 } from '@/components/pages/admin/serviceForms';
 
 const NewServicePage = () => {
   const [step, setStep] = useState<
-    'category' | 'service' | 'options' | 'variants'
+    'category' | 'service' | 'options' | 'requirements'
   >('category');
 
   return (
@@ -21,7 +21,7 @@ const NewServicePage = () => {
         <h1 className="text-3xl font-bold">Create Service Hierarchy</h1>
         <p className="text-gray-600 mt-2">
           Step 1: Category → Step 2: Service → Step 3: Options → Step 4:
-          Variants
+          Requirements
         </p>
       </div>
 
@@ -40,16 +40,16 @@ const NewServicePage = () => {
           2. Service
         </Button>
         <Button
+          onClick={() => setStep('requirements')}
+          variant={step === 'requirements' ? 'default' : 'outline'}
+        >
+          3. Requirements
+        </Button>
+        <Button
           onClick={() => setStep('options')}
           variant={step === 'options' ? 'default' : 'outline'}
         >
-          3. Options
-        </Button>
-        <Button
-          onClick={() => setStep('variants')}
-          variant={step === 'variants' ? 'default' : 'outline'}
-        >
-          4. Variants
+          4. Options
         </Button>
       </div>
 
@@ -76,10 +76,12 @@ const NewServicePage = () => {
           </div>
         )}
 
-        {step === 'variants' && (
+        {step === 'requirements' && (
           <div>
-            <h2 className="text-2xl font-semibold mb-6">Service Variants</h2>
-            <ServiceVariantsForm />
+            <h2 className="text-2xl font-semibold mb-6">
+              Service Requirements
+            </h2>
+            <ServiceRequirementsForm />
           </div>
         )}
       </Card>

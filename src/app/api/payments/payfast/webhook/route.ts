@@ -177,7 +177,7 @@ export async function POST(request: NextRequest) {
         const { data: bookingDetails } = await supabase
           .from('bookings')
           .select(
-            'id, service_id, booking_date, booking_time, total_price, selected_options, selected_variants',
+            'id, service_id, address, unit_or_flat, notes, booking_date, booking_time, total_price, selected_options, selected_variants',
           )
           .eq('id', referenceId)
           .maybeSingle();
@@ -217,14 +217,14 @@ export async function POST(request: NextRequest) {
               }));
             }
 
-            // Fetch selected variants details
+            // Fetch selected requirements details
             if (bookingDetails.selected_variants?.length > 0) {
               const { data: variantsData } = await supabase
-                .from('service_option_variants')
+                .from('service_requirements')
                 .select('id, name, type, price')
                 .in('id', bookingDetails.selected_variants);
 
-              serviceDetails.variants = (variantsData || []).map((v) => ({
+              serviceDetails.requirements = (variantsData || []).map((v) => ({
                 name: v.name,
                 type: v.type,
                 price: v.price,
@@ -248,6 +248,11 @@ export async function POST(request: NextRequest) {
                 customerName,
                 bookingId: referenceId,
                 service: serviceDetails,
+                address: String(bookingDetails?.address || ''),
+                unitOrFlat:
+                  String(bookingDetails?.unit_or_flat || '').trim() ||
+                  undefined,
+                notes: String(bookingDetails?.notes || '').trim() || undefined,
                 bookingDate: String(bookingDetails?.booking_date || ''),
                 bookingTime: String(bookingDetails?.booking_time || ''),
                 total: Number(existingBooking.total_price || 0),
@@ -278,6 +283,11 @@ export async function POST(request: NextRequest) {
                 customerName,
                 bookingId: referenceId,
                 service: serviceDetails,
+                address: String(bookingDetails?.address || ''),
+                unitOrFlat:
+                  String(bookingDetails?.unit_or_flat || '').trim() ||
+                  undefined,
+                notes: String(bookingDetails?.notes || '').trim() || undefined,
                 bookingDate: String(bookingDetails?.booking_date || ''),
                 bookingTime: String(bookingDetails?.booking_time || ''),
                 total: Number(existingBooking.total_price || 0),

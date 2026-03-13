@@ -15,6 +15,22 @@ function buildServiceTitle(
     : fullName;
 }
 
+function formatRequirementType(type?: string): string {
+  if (!type) return '';
+  const normalized = type.trim().toLowerCase();
+  const labelMap: Record<string, string> = {
+    size: 'Size',
+    property_size: 'Property Size',
+    truck_size: 'Truck Size',
+    type: 'Type',
+  };
+
+  return (
+    labelMap[normalized] ||
+    normalized.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+  );
+}
+
 export function bookingPaymentSuccessTemplate(
   data: BookingPaymentSuccessEmailData,
 ): string {
@@ -52,16 +68,20 @@ export function bookingPaymentSuccessTemplate(
     `;
   }
 
-  if (data.service.variants && data.service.variants.length > 0) {
+  const selectedRequirements =
+    data.service.requirements || data.service.variants || [];
+
+  if (selectedRequirements.length > 0) {
     serviceDetailsHtml += `
       <div style="margin-bottom: 8px; font-size: 13px; color: #4b5563;">
-        <div style="font-weight: 500; color: #1f2937; margin-bottom: 4px;">Variants:</div>
-        ${data.service.variants
+        <div style="font-weight: 500; color: #1f2937; margin-bottom: 4px;">Requirements:</div>
+        ${selectedRequirements
           .map(
-            (variant) => `
+            (requirement) => `
           <div style="margin-left: 8px; margin-bottom: 3px;">
-            <span style="color: #374151;">• ${variant.name}</span>
-            ${variant.price ? `<span style="color: #6b7280;"> (+R${variant.price.toFixed(2)})</span>` : ''}
+            <span style="color: #374151;">• ${requirement.name}</span>
+            ${requirement.type ? `<span style="color: #6b7280;"> (${formatRequirementType(requirement.type)})</span>` : ''}
+            ${typeof requirement.price === 'number' ? `<span style="color: #6b7280;"> (+R${requirement.price.toFixed(2)})</span>` : ''}
           </div>
         `,
           )
@@ -87,6 +107,8 @@ export function bookingPaymentSuccessTemplate(
     details: [
       { label: 'Booking ID', value: data.bookingId },
       { label: 'Customer', value: data.customerName },
+      { label: 'Address', value: data.address || 'N/A' },
+      { label: 'Unit / Flat', value: data.unitOrFlat || 'N/A' },
       { label: 'Booking Date', value: data.bookingDate },
       { label: 'Booking Time', value: data.bookingTime },
       { label: 'Total Paid', value: `R${data.total.toFixed(2)}` },
@@ -94,6 +116,7 @@ export function bookingPaymentSuccessTemplate(
         ? [{ label: 'Transaction ID', value: data.transactionId }]
         : []),
       { label: 'Payment Status', value: 'Paid' },
+      { label: 'Notes', value: data.notes || 'N/A' },
     ],
     customHtml,
     ctaLink:

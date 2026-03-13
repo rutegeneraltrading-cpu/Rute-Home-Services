@@ -3,15 +3,16 @@
 import { useState, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import AddOptionsStep from './Booking/AddOptionsStep';
+import AddDetailsStep from './Booking/AddDetailsStep';
 import AddressDateStep from './Booking/AddressDateStep';
-import AddVariantsStep from './Booking/AddVariantsStep';
+import AddRequirementsStep from './Booking/AddRequirementsStep';
 import ReviewPaymentStep from './Booking/ReviewPaymentStep';
 import { Form } from '@/components/ui/form';
 import { Button, Input, Label } from '@/components/ui';
 import { useQuery } from '@tanstack/react-query';
 
 import type { Service, ServiceOptionItem } from '@/lib/types';
-import type { ServiceOptionVariant } from '@/lib/types/admin/services/variant';
+import type { ServiceRequirement } from '@/lib/types/admin/services/variant';
 import { Loading } from '@/components/common';
 
 const BookingPage = () => {
@@ -29,14 +30,18 @@ const BookingPage = () => {
   const [selectedOptions, setSelectedOptions] = useState<
     Record<string, boolean>
   >({});
-  const [selectedVariants, setSelectedVariants] = useState<
+  const [selectedRequirements, setSelectedRequirements] = useState<
     Record<string, string>
   >({});
+  const [additionalDetails, setAdditionalDetails] = useState<{ notes: string }>(
+    { notes: '' },
+  );
   const [addressDateData, setAddressDateData] = useState<{
     address: string;
+    unit_or_flat: string;
     date: string;
     time: string;
-  }>({ address: '', date: '', time: '' });
+  }>({ address: '', unit_or_flat: '', date: '', time: '' });
 
   const {
     data: categoryServices = [],
@@ -102,7 +107,11 @@ const BookingPage = () => {
   const categoryLoading = categoryServicesLoading;
 
   // Fetch options for the service
-  const { data: optionsData = [] } = useQuery({
+  const {
+    data: optionsData = [],
+    isLoading: optionsLoading,
+    isFetching: optionsFetching,
+  } = useQuery({
     queryKey: ['public-service-options', serviceData?.id],
     queryFn: async (): Promise<ServiceOptionItem[]> => {
       if (!serviceData?.id) return [];
@@ -114,51 +123,58 @@ const BookingPage = () => {
     enabled: !!serviceData?.id,
   });
 
-  // Get selected option IDs
-  const selectedOptionIds = Object.keys(selectedOptions).filter(
-    (key) => selectedOptions[key],
-  );
-
-  // Fetch variants for selected options
-  const { data: variantsData = [] } = useQuery({
-    queryKey: ['service-option-variants', selectedOptionIds.join(',')],
-    queryFn: async (): Promise<ServiceOptionVariant[]> => {
-      if (selectedOptionIds.length === 0) return [];
+  // Fetch requirements for selected service
+  const {
+    data: requirementsData = [],
+    isLoading: requirementsLoading,
+    isFetching: requirementsFetching,
+  } = useQuery({
+    queryKey: ['service-requirements', serviceData?.id],
+    queryFn: async (): Promise<ServiceRequirement[]> => {
+      if (!serviceData?.id) return [];
       const response = await fetch(
-        `/api/services/options/variants?option_ids=${selectedOptionIds.join(',')}`,
+        `/api/services/requirements?service_id=${serviceData.id}`,
       );
       if (!response.ok) return [];
       const data = await response.json();
-      return data?.variants || [];
+      return data?.requirements || [];
     },
-    enabled: selectedOptionIds.length > 0,
+    enabled: !!serviceData?.id,
   });
 
   const hasOptions = optionsData.length > 0;
-  const hasVariantStep = hasOptions && variantsData.length > 0;
+  const hasRequirementsStep = requirementsData.length > 0;
+  const isServiceConfigurationLoading =
+    !!selectedServiceSlug &&
+    (serviceLoading ||
+      optionsLoading ||
+      requirementsLoading ||
+      optionsFetching ||
+      requirementsFetching);
 
   const stepMap = useMemo(() => {
     let stepNo = 1;
     const map = {
       selectService: isCategoryFlow ? stepNo++ : null,
+      requirements: hasRequirementsStep ? stepNo++ : null,
       options: hasOptions ? stepNo++ : null,
-      variants: hasVariantStep ? stepNo++ : null,
+      additionalDetails: stepNo++,
       address: stepNo++,
       review: stepNo++,
     };
 
     return map;
-  }, [isCategoryFlow, hasOptions, hasVariantStep]);
+  }, [isCategoryFlow, hasRequirementsStep, hasOptions]);
 
   const selectedOptionsArray = optionsData.filter(
     (opt) => selectedOptions[opt.id],
   );
 
-  const selectedVariantsArray = Object.values(selectedVariants)
-    .map((variantId) =>
-      variantsData.find((variant) => variant.id === variantId),
+  const selectedRequirementsArray = Object.values(selectedRequirements)
+    .map((requirementId) =>
+      requirementsData.find((requirement) => requirement.id === requirementId),
     )
-    .filter(Boolean) as ServiceOptionVariant[];
+    .filter(Boolean) as ServiceRequirement[];
 
   const totalDurationMinutes =
     (serviceData?.duration_minutes || 0) +
@@ -166,27 +182,65 @@ const BookingPage = () => {
       (sum, option) => sum + (option.duration_minutes || 0),
       0,
     ) +
-    selectedVariantsArray.reduce(
-      (sum, variant) => sum + (variant.duration_minutes || 0),
+    selectedRequirementsArray.reduce(
+      (sum, requirement) => sum + (requirement.duration_minutes || 0),
       0,
     );
 
-  // Calculate dynamic steps based on category flow + options + variants
+  // Calculate dynamic steps based on category flow + options + requirements
   const steps = useMemo(() => {
-    const baseSteps: Array<{ id: number; name: string }> = [];
+    const baseSteps: Array<{
+      id: number;
+      name: string;
+      shortName: string;
+      description?: string;
+    }> = [];
 
     if (stepMap.selectService) {
-      baseSteps.push({ id: stepMap.selectService, name: 'Select Service' });
+      baseSteps.push({
+        id: stepMap.selectService,
+        name: 'Choose Service',
+        shortName: 'Service',
+        description: 'Choose one service from this category to continue.',
+      });
+    }
+    if (stepMap.requirements) {
+      baseSteps.push({
+        id: stepMap.requirements,
+        name: 'Service Details',
+        shortName: 'Details',
+        description: 'Please choose the details that best match your booking.',
+      });
     }
     if (stepMap.options) {
-      baseSteps.push({ id: stepMap.options, name: 'Add Options' });
+      baseSteps.push({
+        id: stepMap.options,
+        name: 'Additional Services',
+        shortName: 'Additional',
+        description:
+          'Select any additional services you would like to include.',
+      });
     }
-    if (stepMap.variants) {
-      baseSteps.push({ id: stepMap.variants, name: 'Select Variants' });
-    }
-
-    baseSteps.push({ id: stepMap.address, name: 'Address & Date' });
-    baseSteps.push({ id: stepMap.review, name: 'Review & Pay' });
+    baseSteps.push({
+      id: stepMap.additionalDetails,
+      name: 'Notes',
+      shortName: 'Notes',
+      description:
+        'Add any additional details or instructions for your booking.',
+    });
+    baseSteps.push({
+      id: stepMap.address,
+      name: 'Address, Date & Time',
+      shortName: 'Schedule',
+      description:
+        'Provide the address and select a date and time for the booking.',
+    });
+    baseSteps.push({
+      id: stepMap.review,
+      name: 'Review & Pay',
+      shortName: 'Review',
+      description: 'Review your booking details and proceed to payment.',
+    });
 
     return baseSteps;
   }, [stepMap]);
@@ -203,7 +257,7 @@ const BookingPage = () => {
     (!!selectedServiceSlug && !serviceLoading && !serviceData) ||
     (!categoryLoading && !categoryData);
 
-  if (categoryLoading) return <Loading fullScreen />;
+  if (categoryLoading) return <Loading />;
 
   if (shouldShowNotFound) {
     return (
@@ -232,14 +286,14 @@ const BookingPage = () => {
 
   const resolvedCategoryData = categoryData as NonNullable<typeof categoryData>;
 
-  if (serviceLoading) return <Loading fullScreen />;
+  if (serviceLoading && !isCategoryFlow) return <Loading />;
 
   return (
     <div className="py-16 bg-slate-50 min-h-screen">
       <div className="container mx-auto flex items-center justify-center gap-8">
         {/* Sidebar: Category and Service Details */}
         <div className="max-w-5xl grid grid-cols-12 gap-8">
-          <div className="col-span-12 lg:col-span-4 bg-white rounded-xl shadow p-6 flex flex-col gap-6">
+          <div className="col-span-12 lg:col-span-4 bg-white border rounded-xl shadow p-6 flex flex-col gap-6">
             <div>
               <h2 className="text-lg font-bold mb-2">Category</h2>
               <div className="text-slate-800 font-semibold">
@@ -275,53 +329,72 @@ const BookingPage = () => {
           {/* Stepper Form */}
           <main className="col-span-12 lg:col-span-8">
             <div className="mb-8">
-              <div className="flex items-center justify-between">
-                {steps.map((step, index) => (
-                  <div key={step.id} className="flex items-center flex-1">
-                    <div className="flex flex-col items-center flex-1">
-                      <div
-                        className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all ${
-                          currentStep === step.id
-                            ? 'bg-black text-white'
-                            : currentStep > step.id
-                              ? 'bg-green-600 text-white'
-                              : 'bg-slate-200 text-slate-600'
-                        }`}
-                      >
-                        {step.id}
-                      </div>
-                      <p
-                        className={`mt-2 text-sm font-medium ${
-                          currentStep === step.id
-                            ? 'text-black'
-                            : 'text-slate-600'
-                        }`}
-                      >
-                        {step.name}
-                      </p>
-                    </div>
-                    {index < steps.length - 1 && (
-                      <div
-                        className={`h-1 flex-1 mx-2 transition-all ${
-                          currentStep > step.id
-                            ? 'bg-green-600'
-                            : 'bg-slate-200'
-                        }`}
-                      />
-                    )}
+              <div className="rounded-xl border border-slate-200 bg-white p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="">
+                    <p className="text-sm font-semibold text-slate-900">
+                      {steps.find((step) => step.id === currentStep)?.name ||
+                        'Booking'}
+                    </p>
+                    <p className="text-sm text-slate-500">
+                      {steps.find((step) => step.id === currentStep)
+                        ?.description ||
+                        'Please follow the steps to complete your booking.'}
+                    </p>
                   </div>
-                ))}
+                  <p className="text-xs text-slate-500">
+                    {Math.max(
+                      1,
+                      steps.findIndex((step) => step.id === currentStep) + 1,
+                    )}{' '}
+                    / {steps.length}
+                  </p>
+                </div>
+
+                <div className="mt-3 h-2 w-full rounded-full bg-slate-200">
+                  <div
+                    className="h-2 rounded-full bg-black transition-all"
+                    style={{
+                      width: `${
+                        (Math.max(
+                          1,
+                          steps.findIndex((step) => step.id === currentStep) +
+                            1,
+                        ) /
+                          steps.length) *
+                        100
+                      }%`,
+                    }}
+                  />
+                </div>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {steps.map((step) => (
+                    <span
+                      key={step.id}
+                      className={`rounded-full px-3 py-1 text-xs font-medium ${
+                        currentStep === step.id
+                          ? 'bg-black text-white'
+                          : currentStep > step.id
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-slate-100 text-slate-600'
+                      }`}
+                    >
+                      {step.shortName}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
             <Form>
               {stepMap.selectService &&
                 currentStep === stepMap.selectService && (
-                  <div>
-                    <h2 className="text-xl font-bold mb-4">Select Service</h2>
-                    <p className="text-slate-600 mb-6 text-sm">
-                      Choose one service from this category to continue.
-                    </p>
-
+                  <div className="border bg-white rounded-lg p-4">
+                    <div className="mb-2">
+                      <Label className="block font-semibold mb-3 text-base">
+                        Services
+                      </Label>
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {categoryServices.map((service) => {
                         const isSelected = selectedServiceSlug === service.slug;
@@ -331,16 +404,18 @@ const BookingPage = () => {
                             onClick={() => {
                               setSelectedServiceSlug(service.slug);
                               setSelectedOptions({});
-                              setSelectedVariants({});
+                              setSelectedRequirements({});
+                              setAdditionalDetails({ notes: '' });
                               setAddressDateData({
                                 address: '',
+                                unit_or_flat: '',
                                 date: '',
                                 time: '',
                               });
                             }}
                             className={`flex items-start gap-3 rounded-lg border p-4 cursor-pointer transition-colors ${
                               isSelected
-                                ? 'border-black bg-slate-50'
+                                ? 'border-black bg-green-50'
                                 : 'border-slate-200 hover:border-slate-400 hover:bg-slate-50'
                             }`}
                           >
@@ -350,9 +425,11 @@ const BookingPage = () => {
                               onChange={() => {
                                 setSelectedServiceSlug(service.slug);
                                 setSelectedOptions({});
-                                setSelectedVariants({});
+                                setSelectedRequirements({});
+                                setAdditionalDetails({ notes: '' });
                                 setAddressDateData({
                                   address: '',
+                                  unit_or_flat: '',
                                   date: '',
                                   time: '',
                                 });
@@ -377,54 +454,122 @@ const BookingPage = () => {
                       })}
                     </div>
 
-                    <div className="flex justify-end mt-8">
+                    <div className="mt-8 flex items-center justify-between gap-3">
+                      <p className="text-sm text-slate-500">
+                        {isServiceConfigurationLoading
+                          ? 'Loading service details...'
+                          : 'Select a service and continue'}
+                      </p>
                       <Button
                         type="button"
                         onClick={() => {
-                          if (!selectedServiceSlug) return;
-                          setCurrentStep(stepMap.options || stepMap.address);
+                          if (
+                            !selectedServiceSlug ||
+                            isServiceConfigurationLoading
+                          )
+                            return;
+                          setCurrentStep(
+                            stepMap.requirements ||
+                              stepMap.options ||
+                              stepMap.additionalDetails ||
+                              stepMap.address,
+                          );
                         }}
-                        disabled={!selectedServiceSlug}
+                        disabled={
+                          !selectedServiceSlug || isServiceConfigurationLoading
+                        }
                       >
-                        Next
+                        {isServiceConfigurationLoading
+                          ? 'Please wait...'
+                          : 'Next'}
                       </Button>
                     </div>
                   </div>
                 )}
 
               {stepMap.options && currentStep === stepMap.options && (
-                <AddOptionsStep
-                  optionsData={optionsData}
-                  selectedOptions={selectedOptions}
-                  setSelectedOptions={setSelectedOptions}
-                  onNext={() =>
-                    setCurrentStep(stepMap.variants || stepMap.address)
-                  }
-                  onBack={
-                    stepMap.selectService
-                      ? () => {
-                          setCurrentStep(stepMap.selectService as number);
-                        }
-                      : undefined
-                  }
-                />
+                <>
+                  {optionsLoading || optionsFetching ? (
+                    <div className="rounded-xl border border-slate-200 bg-white p-6">
+                      <p className="text-sm font-medium text-slate-700">
+                        Loading additional services...
+                      </p>
+                      <div className="mt-4 space-y-3">
+                        <div className="h-12 w-full animate-pulse rounded-md bg-slate-100" />
+                        <div className="h-12 w-full animate-pulse rounded-md bg-slate-100" />
+                        <div className="h-12 w-full animate-pulse rounded-md bg-slate-100" />
+                      </div>
+                    </div>
+                  ) : (
+                    <AddOptionsStep
+                      optionsData={optionsData}
+                      selectedOptions={selectedOptions}
+                      setSelectedOptions={setSelectedOptions}
+                      onNext={() => setCurrentStep(stepMap.additionalDetails)}
+                      onBack={
+                        stepMap.requirements
+                          ? () => {
+                              setCurrentStep(stepMap.requirements as number);
+                            }
+                          : stepMap.selectService
+                            ? () => {
+                                setCurrentStep(stepMap.selectService as number);
+                              }
+                            : undefined
+                      }
+                    />
+                  )}
+                </>
               )}
 
               {serviceData &&
-                stepMap.variants &&
-                currentStep === stepMap.variants && (
-                  <AddVariantsStep
-                    variants={variantsData}
-                    selectedVariants={selectedVariants}
-                    setSelectedVariants={setSelectedVariants}
-                    onNext={() => setCurrentStep(stepMap.address)}
-                    onBack={() =>
-                      setCurrentStep(
-                        stepMap.options || stepMap.selectService || 1,
-                      )
-                    }
-                  />
+                stepMap.requirements &&
+                currentStep === stepMap.requirements && (
+                  <>
+                    {requirementsLoading || requirementsFetching ? (
+                      <div className="rounded-xl border border-slate-200 bg-white p-6">
+                        <p className="text-sm font-medium text-slate-700">
+                          Loading service details...
+                        </p>
+                        <div className="mt-4 space-y-3">
+                          <div className="h-12 w-full animate-pulse rounded-md bg-slate-100" />
+                          <div className="h-12 w-full animate-pulse rounded-md bg-slate-100" />
+                          <div className="h-12 w-full animate-pulse rounded-md bg-slate-100" />
+                        </div>
+                      </div>
+                    ) : (
+                      <AddRequirementsStep
+                        requirements={requirementsData}
+                        selectedRequirements={selectedRequirements}
+                        setSelectedRequirements={setSelectedRequirements}
+                        onNext={() =>
+                          setCurrentStep(
+                            stepMap.options || stepMap.additionalDetails,
+                          )
+                        }
+                        onBack={() =>
+                          setCurrentStep(stepMap.selectService || 1)
+                        }
+                      />
+                    )}
+                  </>
                 )}
+
+              {currentStep === stepMap.additionalDetails && (
+                <AddDetailsStep
+                  details={additionalDetails}
+                  setDetails={setAdditionalDetails}
+                  onNext={() => setCurrentStep(stepMap.address)}
+                  onBack={() =>
+                    setCurrentStep(
+                      stepMap.options ||
+                        stepMap.requirements ||
+                        stepMap.selectService ||
+                        1,
+                    )
+                  }
+                />
+              )}
 
               {serviceData && currentStep === stepMap.address && (
                 <AddressDateStep
@@ -435,8 +580,9 @@ const BookingPage = () => {
                   onNext={() => setCurrentStep(stepMap.review)}
                   onBack={() =>
                     setCurrentStep(
-                      stepMap.variants ||
+                      stepMap.additionalDetails ||
                         stepMap.options ||
+                        stepMap.requirements ||
                         stepMap.selectService ||
                         stepMap.address,
                     )
@@ -450,8 +596,9 @@ const BookingPage = () => {
                   categoryData={resolvedCategoryData}
                   optionsData={optionsData}
                   selectedOptions={selectedOptions}
-                  selectedVariants={selectedVariants}
-                  variantsData={variantsData}
+                  selectedRequirements={selectedRequirements}
+                  requirementsData={requirementsData}
+                  additionalDetails={additionalDetails}
                   addressDateData={addressDateData}
                   onBack={() => {
                     // Go back to address step

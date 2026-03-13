@@ -1,20 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
-// GET single requirement (legacy variants endpoint)
-
+// GET single requirement
 export async function GET(
   req: NextRequest,
-  context: { params: Promise<{ variantId: string }> },
+  context: { params: Promise<{ requirementId: string }> },
 ) {
   try {
-    const { variantId } = await context.params;
+    const { requirementId } = await context.params;
     const supabase = await createClient();
+
     const { data, error } = await supabase
       .from('service_requirements')
       .select('*')
-      .eq('id', variantId)
+      .eq('id', requirementId)
       .single();
+
     if (error) throw error;
     return NextResponse.json(data);
   } catch {
@@ -26,21 +27,22 @@ export async function GET(
 }
 
 // UPDATE requirement
-
 export async function PUT(
   request: NextRequest,
-  context: { params: Promise<{ variantId: string }> },
+  context: { params: Promise<{ requirementId: string }> },
 ) {
   try {
-    const { variantId } = await context.params;
+    const { requirementId } = await context.params;
     const supabase = await createClient();
     const body = await request.json();
+
     const { data, error } = await supabase
       .from('service_requirements')
       .update(body)
-      .eq('id', variantId)
+      .eq('id', requirementId)
       .select()
       .single();
+
     if (error) throw error;
     return NextResponse.json(data);
   } catch {
@@ -52,18 +54,19 @@ export async function PUT(
 }
 
 // DELETE requirement
-
 export async function DELETE(
   req: NextRequest,
-  context: { params: Promise<{ variantId: string }> },
+  context: { params: Promise<{ requirementId: string }> },
 ) {
   try {
-    const { variantId } = await context.params;
+    const { requirementId } = await context.params;
     const supabase = await createClient();
+
     const { error } = await supabase
       .from('service_requirements')
       .delete()
-      .eq('id', variantId);
+      .eq('id', requirementId);
+
     if (error) throw error;
     return NextResponse.json({ success: true });
   } catch {

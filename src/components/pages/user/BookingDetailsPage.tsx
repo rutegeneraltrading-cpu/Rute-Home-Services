@@ -246,6 +246,14 @@ const BookingDetailsPage = () => {
                   <MapPin className="h-4 w-4 mt-0.5" />
                   <span>{booking.address || 'N/A'}</span>
                 </p>
+                {booking.unit_or_flat && (
+                  <p className="text-xs text-slate-500 mt-1 ml-6">
+                    Unit / Flat:{' '}
+                    <span className="font-medium text-slate-700">
+                      {booking.unit_or_flat}
+                    </span>
+                  </p>
+                )}
               </div>
             </div>
 
@@ -293,7 +301,7 @@ const BookingDetailsPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="border rounded-lg p-4">
                 <p className="font-semibold text-slate-900 mb-2">
-                  Selected Options
+                  Additional Services
                 </p>
                 {selectedOptions.length > 0 ? (
                   <ul className="space-y-2 text-slate-700">
@@ -303,10 +311,7 @@ const BookingDetailsPage = () => {
                         className="text-xs rounded border p-2 bg-slate-50"
                       >
                         <p>
-                          <span className="font-medium">{option.name}</span>{' '}
-                          <span className="font-mono text-slate-500">
-                            ({option.id})
-                          </span>
+                          <span className="font-medium">{option.name}</span>
                         </p>
                         {option.description && (
                           <p className="text-slate-600 mt-1">
@@ -330,14 +335,14 @@ const BookingDetailsPage = () => {
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-slate-500">No options selected</p>
+                  <p className="text-slate-500">
+                    No additional services selected
+                  </p>
                 )}
               </div>
 
               <div className="border rounded-lg p-4">
-                <p className="font-semibold text-slate-900 mb-2">
-                  Selected Variants
-                </p>
+                <p className="font-semibold text-slate-900 mb-2">Details</p>
                 {selectedVariants.length > 0 ? (
                   <ul className="space-y-2 text-slate-700">
                     {selectedVariants.map((variant) => (
@@ -346,16 +351,8 @@ const BookingDetailsPage = () => {
                         className="text-xs rounded border p-2 bg-slate-50"
                       >
                         <p>
-                          <span className="font-medium">{variant.name}</span>{' '}
-                          <span className="font-mono text-slate-500">
-                            ({variant.id})
-                          </span>
+                          <span className="font-medium">{variant.name}</span>
                         </p>
-                        {variant.service_option_name && (
-                          <p className="text-slate-600 mt-1">
-                            Option: {variant.service_option_name}
-                          </p>
-                        )}
                         <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-slate-600">
                           {typeof variant.price !== 'undefined' && (
                             <span>
@@ -373,7 +370,7 @@ const BookingDetailsPage = () => {
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-slate-500">No variants selected</p>
+                  <p className="text-slate-500">No service details selected</p>
                 )}
               </div>
             </div>

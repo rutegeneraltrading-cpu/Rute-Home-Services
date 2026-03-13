@@ -6,66 +6,80 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import type {
-  ServiceOptionVariant,
-  UpdateServiceOptionVariantDTO,
+  ServiceRequirement,
+  UpdateServiceRequirementDTO,
 } from '@/lib/types/admin/services';
-import { useUpdateServiceOptionVariant } from '@/lib/client/api';
+import { useUpdateServiceRequirement } from '@/lib/client/api';
 
-interface ServiceOptionVariantsEditModalProps {
+const REQUIREMENT_TYPE_OPTIONS = [
+  { value: 'size', label: 'Size' },
+  { value: 'property_size', label: 'Property Size' },
+  { value: 'truck_size', label: 'Truck Size' },
+  { value: 'type', label: 'Type' },
+] as const;
+
+interface ServiceRequirementEditModalProps {
   open: boolean;
-  variant: ServiceOptionVariant | null;
+  requirement: ServiceRequirement | null;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
 }
 
-export function ServiceOptionVariantsEditModal({
+export function ServiceRequirementEditModal({
   open,
-  variant,
+  requirement,
   onOpenChange,
-}: ServiceOptionVariantsEditModalProps) {
-  const [form, setForm] = useState<Partial<UpdateServiceOptionVariantDTO>>({});
-  const updateVariantMutation = useUpdateServiceOptionVariant(
-    variant?.id || '',
+}: ServiceRequirementEditModalProps) {
+  const [form, setForm] = useState<Partial<UpdateServiceRequirementDTO>>({});
+  const updateRequirementMutation = useUpdateServiceRequirement(
+    requirement?.id || '',
   );
 
   React.useEffect(() => {
-    if (variant) {
+    if (requirement) {
       setForm({
-        name: variant.name,
-        type: variant.type,
-        price: variant.price,
-        duration_minutes: variant.duration_minutes,
-        display_order: variant.display_order,
-        is_active: variant.is_active,
+        name: requirement.name,
+        type: requirement.type,
+        price: requirement.price,
+        duration_minutes: requirement.duration_minutes,
+        display_order: requirement.display_order,
+        is_active: requirement.is_active,
       });
     } else {
       setForm({});
     }
-  }, [variant]);
+  }, [requirement]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!variant) return;
-    updateVariantMutation.mutate(form as UpdateServiceOptionVariantDTO, {
+    if (!requirement) return;
+    updateRequirementMutation.mutate(form as UpdateServiceRequirementDTO, {
       onSuccess: () => {
         onOpenChange(false);
       },
     });
   };
 
-  if (!variant) return null;
+  if (!requirement) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Edit Variant</DialogTitle>
+          <DialogTitle>Edit Requirement</DialogTitle>
           <DialogDescription>
-            Update the selected service option variant details.
+            Update the selected service requirement details.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -76,19 +90,28 @@ export function ServiceOptionVariantsEditModal({
               value={form.name || ''}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               required
-              disabled={updateVariantMutation.isPending}
+              disabled={updateRequirementMutation.isPending}
               className="mt-2"
             />
           </div>
           <div>
-            <Label htmlFor="variant-type">Type</Label>
-            <Input
-              id="variant-type"
+            <Label htmlFor="variant-type">Type *</Label>
+            <Select
               value={form.type || ''}
-              onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
-              disabled={updateVariantMutation.isPending}
-              className="mt-2"
-            />
+              onValueChange={(value) => setForm((f) => ({ ...f, type: value }))}
+              disabled={updateRequirementMutation.isPending}
+            >
+              <SelectTrigger id="variant-type" className="mt-2">
+                <SelectValue placeholder="Select requirement type" />
+              </SelectTrigger>
+              <SelectContent>
+                {REQUIREMENT_TYPE_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <Label htmlFor="variant-price">Price (ZAR)</Label>
@@ -100,7 +123,7 @@ export function ServiceOptionVariantsEditModal({
                 setForm((f) => ({ ...f, price: Number(e.target.value) }))
               }
               required
-              disabled={updateVariantMutation.isPending}
+              disabled={updateRequirementMutation.isPending}
               className="mt-2"
               placeholder="0.00"
             />
@@ -118,7 +141,7 @@ export function ServiceOptionVariantsEditModal({
                 }))
               }
               required
-              disabled={updateVariantMutation.isPending}
+              disabled={updateRequirementMutation.isPending}
               className="mt-2"
               placeholder="0"
             />
@@ -135,7 +158,7 @@ export function ServiceOptionVariantsEditModal({
                   display_order: Number(e.target.value),
                 }))
               }
-              disabled={updateVariantMutation.isPending}
+              disabled={updateRequirementMutation.isPending}
               className="mt-2"
               placeholder="0"
             />
@@ -149,7 +172,7 @@ export function ServiceOptionVariantsEditModal({
                 setForm((f) => ({ ...f, is_active: e.target.checked }))
               }
               className="w-4 h-4 rounded"
-              disabled={updateVariantMutation.isPending}
+              disabled={updateRequirementMutation.isPending}
             />
             <Label htmlFor="variant-is-active">Active</Label>
           </div>
@@ -158,14 +181,17 @@ export function ServiceOptionVariantsEditModal({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={updateVariantMutation.isPending}
+              disabled={updateRequirementMutation.isPending}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={updateVariantMutation.isPending}>
-              {updateVariantMutation.isPending
+            <Button
+              type="submit"
+              disabled={updateRequirementMutation.isPending || !form.type}
+            >
+              {updateRequirementMutation.isPending
                 ? 'Updating...'
-                : 'Update Variant'}
+                : 'Update Requirement'}
             </Button>
           </div>
         </form>
@@ -173,3 +199,6 @@ export function ServiceOptionVariantsEditModal({
     </Dialog>
   );
 }
+
+// Backward-compatible export
+export const ServiceOptionVariantsEditModal = ServiceRequirementEditModal;

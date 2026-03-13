@@ -147,6 +147,14 @@ const BookingDetails = () => {
                   <MapPin className="h-4 w-4 mt-0.5" />
                   <span>{booking.address || 'N/A'}</span>
                 </p>
+                {booking.unit_or_flat && (
+                  <p className="text-xs text-slate-500 mt-1 ml-6">
+                    Unit / Flat:{' '}
+                    <span className="font-medium text-slate-700">
+                      {booking.unit_or_flat}
+                    </span>
+                  </p>
+                )}
               </div>
               <div className="rounded-lg border p-3 bg-slate-50">
                 <p className="text-xs text-slate-500 mb-1">Service Duration</p>
@@ -170,12 +178,6 @@ const BookingDetails = () => {
                       : ''}
                   </span>
                 </p>
-                <p className="text-slate-600">
-                  Service ID: {booking.service_id}
-                </p>
-                {serviceDetails?.slug && (
-                  <p className="text-slate-600">Slug: {serviceDetails.slug}</p>
-                )}
                 {serviceDetails?.description && (
                   <p className="text-slate-600 whitespace-pre-wrap">
                     {serviceDetails.description}
@@ -223,10 +225,7 @@ const BookingDetails = () => {
                         className="text-xs rounded border p-2 bg-slate-50"
                       >
                         <p>
-                          <span className="font-medium">{option.name}</span>{' '}
-                          <span className="font-mono text-slate-500">
-                            ({option.id})
-                          </span>
+                          <span className="font-medium">{option.name}</span>
                         </p>
                         {option.description && (
                           <p className="text-slate-600 mt-1">
@@ -261,9 +260,7 @@ const BookingDetails = () => {
               </div>
 
               <div className="border rounded-lg p-4">
-                <p className="font-semibold text-slate-900 mb-2">
-                  Selected Variants
-                </p>
+                <p className="font-semibold text-slate-900 mb-2">Details</p>
                 {selectedVariants.length > 0 ? (
                   <ul className="space-y-2 text-slate-700">
                     {selectedVariants.map((variant) => (
@@ -272,16 +269,8 @@ const BookingDetails = () => {
                         className="text-xs rounded border p-2 bg-slate-50"
                       >
                         <p>
-                          <span className="font-medium">{variant.name}</span>{' '}
-                          <span className="font-mono text-slate-500">
-                            ({variant.id})
-                          </span>
+                          <span className="font-medium">{variant.name}</span>
                         </p>
-                        {variant.service_option_name && (
-                          <p className="text-slate-600 mt-1">
-                            Option: {variant.service_option_name}
-                          </p>
-                        )}
                         <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-slate-600">
                           {typeof variant.price !== 'undefined' && (
                             <span>
@@ -294,13 +283,20 @@ const BookingDetails = () => {
                               mins
                             </span>
                           )}
-                          {variant.type && <span>Type: {variant.type}</span>}
+                          {variant.type && (
+                            <span>
+                              Type:{' '}
+                              {variant.type
+                                .replace(/_/g, ' ')
+                                .replace(/\b\w/g, (c) => c.toUpperCase())}
+                            </span>
+                          )}
                         </div>
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-slate-500">No variants selected</p>
+                  <p className="text-slate-500">No service details selected</p>
                 )}
               </div>
             </div>

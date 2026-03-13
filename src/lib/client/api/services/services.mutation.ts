@@ -1,59 +1,65 @@
 // ============================================
-// SERVICE OPTION VARIANTS MUTATIONS
+// SERVICE REQUIREMENTS MUTATIONS
 // ============================================
 import {
-  createServiceOptionVariantApi,
-  updateServiceOptionVariantApi,
-  deleteServiceOptionVariantApi,
+  createServiceRequirementApi,
+  updateServiceRequirementApi,
+  deleteServiceRequirementApi,
 } from './services.api';
 import type {
-  CreateServiceOptionVariantDTO,
-  UpdateServiceOptionVariantDTO,
+  CreateServiceRequirementDTO,
+  UpdateServiceRequirementDTO,
 } from '@/lib/types/admin/services/variant';
 
-export const useCreateServiceOptionVariant = () => {
+export const useCreateServiceRequirement = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: CreateServiceOptionVariantDTO) =>
-      createServiceOptionVariantApi(data),
+    mutationFn: (data: CreateServiceRequirementDTO) =>
+      createServiceRequirementApi(data),
     onSuccess: (data) => {
       queryClient.invalidateQueries();
-      toast.success(`Variant "${data.name}" added successfully!`);
+      toast.success(`Requirement "${data.name}" added successfully!`);
     },
     onError: (error: any) => {
-      toast.error(error?.message || 'Failed to add variant');
+      toast.error(error?.message || 'Failed to add requirement');
     },
   });
 };
 
-export const useUpdateServiceOptionVariant = (variantId: string) => {
+export const useUpdateServiceRequirement = (requirementId: string) => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: UpdateServiceOptionVariantDTO) =>
-      updateServiceOptionVariantApi(variantId, data),
+    mutationFn: (data: UpdateServiceRequirementDTO) =>
+      updateServiceRequirementApi(requirementId, data),
     onSuccess: (data) => {
       queryClient.invalidateQueries();
-      toast.success(`Variant "${data.name}" updated successfully!`);
+      toast.success(`Requirement "${data.name}" updated successfully!`);
     },
     onError: (error: any) => {
-      toast.error(error?.message || 'Failed to update variant');
+      toast.error(error?.message || 'Failed to update requirement');
     },
   });
 };
 
-export const useDeleteServiceOptionVariant = () => {
+export const useDeleteServiceRequirement = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (variantId: string) => deleteServiceOptionVariantApi(variantId),
+    mutationFn: (requirementId: string) =>
+      deleteServiceRequirementApi(requirementId),
     onSuccess: () => {
       queryClient.invalidateQueries();
-      toast.success('Variant deleted successfully!');
+      toast.success('Requirement deleted successfully!');
     },
     onError: (error: any) => {
-      toast.error(error?.message || 'Failed to delete variant');
+      toast.error(error?.message || 'Failed to delete requirement');
     },
   });
 };
+
+// Backward-compatible aliases
+export const useCreateServiceOptionVariant = useCreateServiceRequirement;
+export const useUpdateServiceOptionVariant = useUpdateServiceRequirement;
+export const useDeleteServiceOptionVariant = useDeleteServiceRequirement;
 import { toast } from 'sonner';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {

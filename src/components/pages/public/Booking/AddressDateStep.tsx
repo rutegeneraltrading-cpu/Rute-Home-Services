@@ -35,9 +35,15 @@ const isSupportedServiceArea = (place: google.maps.places.PlaceResult) => {
 interface AddressDateStepProps {
   serviceId: string;
   totalDurationMinutes: number;
-  addressDateData: { address: string; date: string; time: string };
+  addressDateData: {
+    address: string;
+    unit_or_flat: string;
+    date: string;
+    time: string;
+  };
   setAddressDateData: (data: {
     address: string;
+    unit_or_flat: string;
     date: string;
     time: string;
   }) => void;
@@ -222,10 +228,9 @@ const AddressDateStep = ({
   };
 
   return (
-    <div>
-      <h2 className="text-xl font-bold mb-4">Select Location, Date & Time</h2>
+    <div className="border rounded-lg p-4 bg-white">
       <FormItem className="mb-6">
-        <FormLabel>Location</FormLabel>
+        <FormLabel>Street Address</FormLabel>
         <FormControl>
           <Input
             ref={inputRef}
@@ -252,6 +257,22 @@ const AddressDateStep = ({
         {serviceAreaError && (
           <p className="text-sm text-amber-600 mt-2">{serviceAreaError}</p>
         )}
+      </FormItem>
+      <FormItem className="mb-6">
+        <FormLabel>Unit or Flat # (Optional)</FormLabel>
+        <FormControl>
+          <Input
+            type="text"
+            placeholder="e.g. Flat 12B / Unit 5"
+            value={addressDateData.unit_or_flat}
+            onChange={(e) => {
+              setAddressDateData({
+                ...addressDateData,
+                unit_or_flat: e.target.value,
+              });
+            }}
+          />
+        </FormControl>
       </FormItem>
       <FormItem className="mb-6">
         <FormLabel>Date</FormLabel>

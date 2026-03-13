@@ -180,9 +180,9 @@ export async function GET(_request: NextRequest, { params }: Params) {
         : Promise.resolve({ data: [], error: null }),
       variantIds.length
         ? supabaseAdmin
-            .from('service_option_variants')
+            .from('service_requirements')
             .select(
-              'id, service_option_id, name, type, price, duration_minutes, display_order, is_active',
+              'id, service_id, name, type, price, duration_minutes, display_order, is_active',
             )
             .in('id', variantIds)
         : Promise.resolve({ data: [], error: null }),
@@ -278,7 +278,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
       (
         (variantsData || []) as Array<{
           id: string;
-          service_option_id: string;
+          service_id: string;
           name: string;
           type: string | null;
           price: number | null;
@@ -308,15 +308,9 @@ export async function GET(_request: NextRequest, { params }: Params) {
 
     const selectedVariantDetails = variantIds.map((id: string) => {
       const variant = variantsMap.get(id);
-      const parentOption = variant?.service_option_id
-        ? optionsMap.get(variant.service_option_id)
-        : null;
-
       return {
         id,
         name: variant?.name || id,
-        service_option_id: variant?.service_option_id,
-        service_option_name: parentOption?.name || null,
         type: variant?.type || null,
         price: variant?.price ?? null,
         duration_minutes: variant?.duration_minutes ?? null,
@@ -445,7 +439,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     const { data: booking, error: bookingError } = await supabaseAdmin
       .from('bookings')
       .select(
-        'id, user_id, service_id, booking_date, booking_time, total_duration, status',
+        'id, user_id, service_id, booking_date, booking_time, total_duration, status, address, unit_or_flat, notes',
       )
       .eq('id', id)
       .single();
@@ -798,10 +792,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
         if (updatedBooking.selected_variants?.length > 0) {
           const { data: varData } = await supabaseAdmin
-            .from('service_option_variants')
+            .from('service_requirements')
             .select('id, name, type, price')
             .in('id', updatedBooking.selected_variants);
-          details.variants = (varData || []).map((v: any) => ({
+          details.requirements = (varData || []).map((v: any) => ({
             name: v.name,
             type: v.type,
             price: v.price,
@@ -813,6 +807,15 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     };
 
     const serviceDetailsForEmails = await getServiceDetails();
+    const bookingAddressForEmails = String(
+      updatedBooking.address || booking.address || '',
+    );
+    const unitOrFlatForEmails =
+      String(
+        updatedBooking.unit_or_flat || booking.unit_or_flat || '',
+      ).trim() || undefined;
+    const notesForEmails =
+      String(updatedBooking.notes || booking.notes || '').trim() || undefined;
     const serviceSubject = buildServiceSubject(
       serviceDetailsForEmails.name || serviceName,
       serviceDetailsForEmails.category,
@@ -857,6 +860,9 @@ export async function PATCH(request: NextRequest, { params }: Params) {
               customerName,
               bookingId: id,
               service: serviceDetailsForEmails,
+              address: bookingAddressForEmails,
+              unitOrFlat: unitOrFlatForEmails,
+              notes: notesForEmails,
               bookingDate,
               bookingTime,
               worker: workerDetails,
@@ -882,6 +888,9 @@ export async function PATCH(request: NextRequest, { params }: Params) {
               workerName: assignedWorkerProfile.full_name || 'Worker',
               bookingId: id,
               service: serviceDetailsForEmails,
+              address: bookingAddressForEmails,
+              unitOrFlat: unitOrFlatForEmails,
+              notes: notesForEmails,
               bookingDate,
               bookingTime,
               customerName,
@@ -905,6 +914,9 @@ export async function PATCH(request: NextRequest, { params }: Params) {
               workerName: cancelledWorkerProfile.full_name || 'Worker',
               bookingId: id,
               service: serviceDetailsForEmails,
+              address: bookingAddressForEmails,
+              unitOrFlat: unitOrFlatForEmails,
+              notes: notesForEmails,
               bookingDate,
               bookingTime,
             }),
@@ -1003,6 +1015,9 @@ export async function PATCH(request: NextRequest, { params }: Params) {
               customerName,
               bookingId: id,
               service: serviceDetailsForEmails,
+              address: bookingAddressForEmails,
+              unitOrFlat: unitOrFlatForEmails,
+              notes: notesForEmails,
               bookingDate,
               bookingTime,
               previousStatus: previousBookingStatus,

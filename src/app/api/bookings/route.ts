@@ -256,6 +256,7 @@ export async function POST(request: NextRequest) {
       user_id,
       service_id,
       address,
+      unit_or_flat,
       booking_date,
       booking_time,
       total_price,
@@ -301,6 +302,7 @@ export async function POST(request: NextRequest) {
           user_id: user.id,
           service_id,
           address,
+          unit_or_flat: unit_or_flat?.trim() || null,
           booking_date,
           booking_time,
           total_price,
@@ -352,14 +354,14 @@ export async function POST(request: NextRequest) {
       }));
     }
 
-    // Fetch selected variants details
+    // Fetch selected requirements details
     if (selected_variants.length > 0) {
       const { data: variantsData } = await supabase
-        .from('service_option_variants')
+        .from('service_requirements')
         .select('id, name, type, price')
         .in('id', selected_variants);
 
-      serviceDetails.variants = (variantsData || []).map((v) => ({
+      serviceDetails.requirements = (variantsData || []).map((v) => ({
         name: v.name,
         type: v.type,
         price: v.price,
@@ -380,6 +382,9 @@ export async function POST(request: NextRequest) {
             customerName: user.full_name || 'Customer',
             bookingId: data.id,
             service: serviceDetails,
+            address: String(address || ''),
+            unitOrFlat: unit_or_flat?.trim() || undefined,
+            notes: notes?.trim() || undefined,
             bookingDate: String(booking_date),
             bookingTime: String(booking_time),
             total: Number(total_price),

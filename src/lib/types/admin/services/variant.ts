@@ -1,8 +1,8 @@
-// Service Option Variant Types
+// Service Requirement Types
 
-export interface ServiceOptionVariant {
+export interface ServiceRequirement {
   id: string;
-  service_option_id: string;
+  service_id: string;
   name: string;
   type: string;
   price: number;
@@ -12,8 +12,8 @@ export interface ServiceOptionVariant {
   created_at: string;
 }
 
-export interface CreateServiceOptionVariantDTO {
-  service_option_id: string;
+export interface CreateServiceRequirementDTO {
+  service_id: string;
   name: string;
   type: string;
   price: number;
@@ -22,7 +22,7 @@ export interface CreateServiceOptionVariantDTO {
   display_order?: number;
 }
 
-export interface UpdateServiceOptionVariantDTO {
+export interface UpdateServiceRequirementDTO {
   name?: string;
   type?: string;
   price?: number;
@@ -30,3 +30,8 @@ export interface UpdateServiceOptionVariantDTO {
   is_active?: boolean;
   display_order?: number;
 }
+
+// Backward-compatible aliases
+export type ServiceOptionVariant = ServiceRequirement;
+export type CreateServiceOptionVariantDTO = CreateServiceRequirementDTO;
+export type UpdateServiceOptionVariantDTO = UpdateServiceRequirementDTO;

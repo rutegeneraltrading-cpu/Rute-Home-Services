@@ -8,8 +8,8 @@ import {
   useGetCategories,
   useDeleteService,
   useDeleteServiceOption,
-  useDeleteServiceOptionVariant,
-  useGetServiceOptionVariants,
+  useDeleteServiceRequirement,
+  useGetServiceRequirements,
   useDeleteServiceCategory,
   useGetAllServiceOptions,
 } from '@/lib/client/api';
@@ -19,13 +19,28 @@ import {
   ServiceEditModal,
   ServiceOptionEditModal,
   ServiceCategoryEditModal,
-  ServiceOptionVariantsEditModal,
+  ServiceRequirementEditModal,
 } from '@/components/pages/admin/serviceForms';
 import { DeleteConfirmationDialog, DataTable } from '@/components/common';
 import { Button } from '@/components/ui';
 import type { TableColumn, TableAction } from '@/lib/types';
+import type { ServiceRequirement } from '@/lib/types/admin/services/variant';
 
-type TabKey = 'categories' | 'services' | 'options' | 'variants';
+type TabKey = 'categories' | 'services' | 'options' | 'requirements';
+
+type RequirementRow = ServiceRequirement & {
+  service_name: string;
+  category_name: string;
+};
+
+type RequirementApiRow = ServiceRequirement & {
+  service?: {
+    name?: string;
+    category?: {
+      name?: string;
+    };
+  };
+};
 
 export default function ServicesPage() {
   const { data: categoriesData, isLoading: categoriesLoading } =
@@ -34,7 +49,7 @@ export default function ServicesPage() {
   const deleteCategoryMutation = useDeleteServiceCategory();
   const deleteServiceMutation = useDeleteService();
   const deleteOptionMutation = useDeleteServiceOption();
-  const deleteVariantMutation = useDeleteServiceOptionVariant();
+  const deleteRequirementMutation = useDeleteServiceRequirement();
   const { data: optionsData, isLoading: optionsLoading } =
     useGetAllServiceOptions();
 
@@ -62,26 +77,23 @@ export default function ServicesPage() {
   const [deleteOption, setDeleteOption] = useState<ServiceOption | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>('categories');
 
-  // Variants tab logic
-  // Flatten variant data for table
-  const { data: rawVariantsData = [], isLoading: variantsLoading } =
-    useGetServiceOptionVariants();
-  const variantsData = useMemo(
+  // Requirements tab logic
+  const { data: rawRequirementsData = [], isLoading: requirementsLoading } =
+    useGetServiceRequirements();
+  const requirementsData = useMemo<RequirementRow[]>(
     () =>
-      rawVariantsData.map((v: any) => ({
-        ...v,
-        service_option_name: v.service_option?.name || '',
-        service_name: v.service_option?.service?.name || '',
-        category_name: v.service_option?.service?.category?.name || '',
+      (rawRequirementsData as RequirementApiRow[]).map((r) => ({
+        ...r,
+        service_name: r.service?.name || '',
+        category_name: r.service?.category?.name || '',
       })),
-    [rawVariantsData],
+    [rawRequirementsData],
   );
-  const variantColumns: TableColumn<any>[] = [
-    { id: 'name', header: 'Variant Name', accessorKey: 'name', sortable: true },
+  const requirementColumns: TableColumn<RequirementRow>[] = [
     {
-      id: 'service_option_name',
-      header: 'Service Option',
-      accessorKey: 'service_option_name',
+      id: 'name',
+      header: 'Requirement Name',
+      accessorKey: 'name',
       sortable: true,
     },
     {
@@ -123,25 +135,27 @@ export default function ServicesPage() {
       sortable: true,
     },
   ];
-  const [editingVariant, setEditingVariant] = useState<any | null>(null);
-  const [deleteVariant, setDeleteVariant] = useState<any | null>(null);
-  const variantActions: TableAction[] = [
+  const [editingRequirement, setEditingRequirement] =
+    useState<RequirementRow | null>(null);
+  const [deleteRequirement, setDeleteRequirement] =
+    useState<RequirementRow | null>(null);
+  const requirementActions: TableAction[] = [
     {
       id: 'edit',
       label: 'Edit',
       icon: Edit2,
-      onClick: (row) => setEditingVariant(row),
+      onClick: (row) => setEditingRequirement(row),
     },
     {
       id: 'delete',
       label: 'Delete',
       icon: Trash2,
-      onClick: (row) => setDeleteVariant(row),
+      onClick: (row) => setDeleteRequirement(row),
       variant: 'destructive',
     },
   ];
 
-  const categoryColumns: TableColumn<any>[] = [
+  const categoryColumns: TableColumn<(typeof categories)[number]>[] = [
     {
       id: 'image',
       header: 'Image',
@@ -195,7 +209,7 @@ export default function ServicesPage() {
     },
   ];
 
-  const serviceColumns: TableColumn<any>[] = [
+  const serviceColumns: TableColumn<(typeof services)[number]>[] = [
     {
       id: 'name',
       header: 'Name',
@@ -350,11 +364,6 @@ export default function ServicesPage() {
     },
   ];
   const optionActions: TableAction[] = [
-    // {
-    //   id: 'variants',
-    //   label: 'Variants',
-    //   onClick: (row) => setVariantsModalOption(row),
-    // },
     {
       id: 'edit',
       label: 'Edit',
@@ -401,32 +410,32 @@ export default function ServicesPage() {
             Services
           </Button>
           <Button
+            variant={activeTab === 'requirements' ? 'default' : 'outline'}
+            onClick={() => setActiveTab('requirements')}
+          >
+            Requirements
+          </Button>
+          <Button
             variant={activeTab === 'options' ? 'default' : 'outline'}
             onClick={() => setActiveTab('options')}
           >
             Options
           </Button>
-          <Button
-            variant={activeTab === 'variants' ? 'default' : 'outline'}
-            onClick={() => setActiveTab('variants')}
-          >
-            Variants
-          </Button>
         </div>
         {/* Tab Content */}
-        {activeTab === 'variants' && (
+        {activeTab === 'requirements' && (
           <DataTable
             config={{
-              data: variantsData,
-              columns: variantColumns,
-              actions: variantActions,
-              isLoading: variantsLoading,
+              data: requirementsData,
+              columns: requirementColumns,
+              actions: requirementActions,
+              isLoading: requirementsLoading,
               pageSize: 10,
               showSearch: true,
               showPagination: true,
               emptyState: {
-                title: 'No variants',
-                description: 'No service option variants found.',
+                title: 'No requirements',
+                description: 'No service requirements found.',
               },
             }}
           />
@@ -509,34 +518,34 @@ export default function ServicesPage() {
         }}
         onSuccess={() => setEditingOption(null)}
       />
-      {/* Edit Variant Modal (for variants tab) */}
-      {editingVariant && (
-        <ServiceOptionVariantsEditModal
-          open={!!editingVariant}
-          variant={editingVariant}
+      {/* Edit Requirement Modal (for requirements tab) */}
+      {editingRequirement && (
+        <ServiceRequirementEditModal
+          open={!!editingRequirement}
+          requirement={editingRequirement}
           onOpenChange={(open) => {
-            if (!open) setEditingVariant(null);
+            if (!open) setEditingRequirement(null);
           }}
-          onSuccess={() => setEditingVariant(null)}
+          onSuccess={() => setEditingRequirement(null)}
         />
       )}
-      {/* Delete Variant Dialog (for variants tab) */}
+      {/* Delete Requirement Dialog (for requirements tab) */}
       <DeleteConfirmationDialog
-        open={!!deleteVariant}
+        open={!!deleteRequirement}
         onOpenChange={(open) => {
-          if (!open) setDeleteVariant(null);
+          if (!open) setDeleteRequirement(null);
         }}
-        title="Delete Variant"
-        itemName={deleteVariant?.name}
+        title="Delete Requirement"
+        itemName={deleteRequirement?.name}
         onConfirm={() => {
-          if (!deleteVariant) return;
-          deleteVariantMutation.mutate(deleteVariant.id, {
+          if (!deleteRequirement) return;
+          deleteRequirementMutation.mutate(deleteRequirement.id, {
             onSuccess: () => {
-              setDeleteVariant(null);
+              setDeleteRequirement(null);
             },
           });
         }}
-        isDeleting={deleteVariantMutation.isPending}
+        isDeleting={deleteRequirementMutation.isPending}
       />
       <DeleteConfirmationDialog
         open={!!deleteCategory}

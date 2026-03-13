@@ -19,8 +19,27 @@ interface BookingAssignmentCancelledEmailData {
   workerName: string;
   bookingId: string;
   service: BookingServiceDetail;
+  address?: string;
+  unitOrFlat?: string;
+  notes?: string;
   bookingDate: string;
   bookingTime: string;
+}
+
+function formatRequirementType(type?: string): string {
+  if (!type) return '';
+  const normalized = type.trim().toLowerCase();
+  const labelMap: Record<string, string> = {
+    size: 'Size',
+    property_size: 'Property Size',
+    truck_size: 'Truck Size',
+    type: 'Type',
+  };
+
+  return (
+    labelMap[normalized] ||
+    normalized.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+  );
 }
 
 export function bookingAssignmentCancelledTemplate(
@@ -48,12 +67,31 @@ export function bookingAssignmentCancelledTemplate(
     serviceDetailsHtml += `</ul>`;
   }
 
-  if (data.service.variants && data.service.variants.length > 0) {
-    serviceDetailsHtml += `<p style="margin:12px 0 6px;font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:0.05em;">Selected Variants</p><ul style="margin:0;padding-left:18px;">`;
-    for (const v of data.service.variants) {
-      serviceDetailsHtml += `<li style="font-size:13px;color:#374151;margin-bottom:4px;">${v.name}${v.type ? ` (${v.type})` : ''}${v.price ? ` — R${v.price}` : ''}</li>`;
+  const selectedRequirements =
+    data.service.requirements || data.service.variants;
+
+  if (selectedRequirements && selectedRequirements.length > 0) {
+    serviceDetailsHtml += `<p style="margin:12px 0 6px;font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:0.05em;">Selected Requirements</p><ul style="margin:0;padding-left:18px;">`;
+    for (const requirement of selectedRequirements) {
+      serviceDetailsHtml += `<li style="font-size:13px;color:#374151;margin-bottom:4px;">${requirement.name}${requirement.type ? ` (${formatRequirementType(requirement.type)})` : ''}${typeof requirement.price === 'number' ? ` — R${requirement.price}` : ''}</li>`;
     }
     serviceDetailsHtml += `</ul>`;
+  }
+
+  if (data.address || data.unitOrFlat || data.notes) {
+    serviceDetailsHtml += `<p style="margin:12px 0 6px;font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:0.05em;">Booking Info</p>`;
+
+    if (data.address) {
+      serviceDetailsHtml += `<p style="margin:0 0 4px;font-size:13px;color:#374151;">Address: ${data.address}</p>`;
+    }
+
+    if (data.unitOrFlat) {
+      serviceDetailsHtml += `<p style="margin:0 0 4px;font-size:13px;color:#374151;">Unit / Flat: ${data.unitOrFlat}</p>`;
+    }
+
+    if (data.notes) {
+      serviceDetailsHtml += `<p style="margin:0 0 4px;font-size:13px;color:#374151;">Notes: ${data.notes}</p>`;
+    }
   }
 
   serviceDetailsHtml += `</div>`;

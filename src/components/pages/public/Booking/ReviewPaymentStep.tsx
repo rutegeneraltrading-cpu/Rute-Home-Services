@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Button, Label } from '@/components/ui';
+import { Button } from '@/components/ui';
 import type { Service, ServiceOptionItem } from '@/lib/types/admin/services';
-import type { ServiceOptionVariant } from '@/lib/types/admin/services/variant';
+import type { ServiceRequirement } from '@/lib/types/admin/services/variant';
 import { useCreateBooking } from '@/lib/client/api/bookings/bookings.mutation';
 import { usePayFastPayment } from '@/lib/client/api/bookings/payments.mutation';
 import { useGetMe } from '@/lib/client/api';
@@ -20,9 +20,15 @@ interface ReviewPaymentStepProps {
   };
   optionsData: ServiceOptionItem[];
   selectedOptions: Record<string, boolean>;
-  selectedVariants: Record<string, string>;
-  variantsData: ServiceOptionVariant[];
-  addressDateData: { address: string; date: string; time: string };
+  selectedRequirements: Record<string, string>;
+  requirementsData: ServiceRequirement[];
+  additionalDetails: { notes: string };
+  addressDateData: {
+    address: string;
+    unit_or_flat: string;
+    date: string;
+    time: string;
+  };
   onBack: () => void;
 }
 
@@ -31,8 +37,9 @@ const ReviewPaymentStep = ({
   categoryData,
   optionsData,
   selectedOptions,
-  selectedVariants,
-  variantsData,
+  selectedRequirements,
+  requirementsData,
+  additionalDetails,
   addressDateData,
   onBack,
 }: ReviewPaymentStepProps) => {
@@ -53,16 +60,36 @@ const ReviewPaymentStep = ({
     (opt) => selectedOptions[opt.id],
   );
 
-  // Get selected variants details
-  const selectedVariantsArray = Object.values(selectedVariants)
-    .map((variantId) => variantsData.find((v) => v.id === variantId))
-    .filter(Boolean) as ServiceOptionVariant[];
+  const formatRequirementType = (type: string) => {
+    const normalized = (type || '').trim().toLowerCase();
+    const labelMap: Record<string, string> = {
+      size: 'Size',
+      property_size: 'Property Size',
+      truck_size: 'Truck Size',
+      type: 'Service Type',
+    };
+
+    return (
+      labelMap[normalized] ||
+      type.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())
+    );
+  };
+
+  // Get selected requirements details
+  const selectedRequirementsArray = Object.values(selectedRequirements)
+    .map((requirementId) =>
+      requirementsData.find((requirement) => requirement.id === requirementId),
+    )
+    .filter(Boolean) as ServiceRequirement[];
 
   // Calculate totals
   const totalPrice =
     (serviceData?.base_price || 0) +
     selectedOptionsArray.reduce((sum, opt) => sum + opt.price, 0) +
-    selectedVariantsArray.reduce((sum, variant) => sum + variant.price, 0);
+    selectedRequirementsArray.reduce(
+      (sum, requirement) => sum + requirement.price,
+      0,
+    );
 
   const totalDuration =
     (serviceData?.duration_minutes || 0) +
@@ -70,8 +97,8 @@ const ReviewPaymentStep = ({
       (sum, opt) => sum + (opt.duration_minutes || 0),
       0,
     ) +
-    selectedVariantsArray.reduce(
-      (sum, variant) => sum + variant.duration_minutes,
+    selectedRequirementsArray.reduce(
+      (sum, requirement) => sum + requirement.duration_minutes,
       0,
     );
 
@@ -95,6 +122,7 @@ const ReviewPaymentStep = ({
         user_id: user.id,
         service_id: serviceData.id,
         address: addressDateData.address,
+        unit_or_flat: addressDateData.unit_or_flat?.trim() || undefined,
         booking_date: addressDateData.date,
         booking_time: addressDateData.time,
         total_price: totalPrice,
@@ -102,7 +130,8 @@ const ReviewPaymentStep = ({
         selected_options: Object.keys(selectedOptions).filter(
           (key) => selectedOptions[key],
         ),
-        selected_variants: Object.values(selectedVariants),
+        selected_variants: Object.values(selectedRequirements),
+        notes: additionalDetails.notes?.trim() || undefined,
       };
 
       const booking = await createBookingMutation.mutateAsync(bookingData);
@@ -128,91 +157,177 @@ const ReviewPaymentStep = ({
   };
   if (isProcessing) return <Loading fullScreen />;
   return (
-    <div className="max-w-150">
-      <h2 className="text-2xl font-extrabold mb-6 text-center text-gray-900">
-        Review & Payment
-      </h2>
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <Label className="font-semibold text-gray-700">Category:</Label>
-          <span className="text-gray-900 font-medium">{categoryData.name}</span>
-        </div>
-        <div className="flex justify-between items-center">
-          <Label className="font-semibold text-gray-700">Service:</Label>
-          <span className="text-gray-900 font-medium">{serviceData.name}</span>
-        </div>
-        <div className="flex justify-between items-center">
-          <Label className="font-semibold text-gray-700">Base Price:</Label>
-          <span className="text-gray-900">R{serviceData.base_price}</span>
-        </div>
-        <div className="flex justify-between items-center">
-          <Label className="font-semibold text-gray-700">Base Duration:</Label>
-          <span className="text-gray-900">
-            {serviceData.duration_minutes} min
-          </span>
-        </div>
-        <div>
-          <Label className="font-semibold text-gray-700">
-            Selected Options:
-          </Label>
-          {selectedOptionsArray.length === 0 ? (
-            <span className="ml-2 text-slate-500">None</span>
-          ) : (
-            <ul className="ml-4 mt-2 list-disc text-gray-800">
-              {selectedOptionsArray.map((opt) => (
-                <li key={opt.id} className="mb-1">
-                  <span className="font-medium">{opt.name}</span>
-                  <span className="ml-2 text-sm text-gray-600">
-                    (+R{opt.price}, +{opt.duration_minutes || 0} min)
-                  </span>
-                </li>
-              ))}
-            </ul>
+    <div className="rounded-xl border border-slate-200 bg-white p-5 md:p-6">
+      <div className="mb-5">
+        <h3 className="text-lg font-bold text-slate-900">
+          Review your booking
+        </h3>
+        <p className="mt-1 text-sm text-slate-600">
+          Please confirm your details before continuing to payment.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* ── Booking Summary ── */}
+        <section className="rounded-lg border border-slate-200 bg-slate-50/70 p-4">
+          <h4 className="mb-3 text-xs font-bold uppercase tracking-widest text-slate-600">
+            Booking Summary
+          </h4>
+
+          <div className="divide-y divide-slate-100">
+            <div className="flex justify-between items-center gap-3 py-2">
+              <span className="text-sm text-slate-600 shrink-0">
+                Service Category
+              </span>
+              <span className="text-sm font-semibold text-slate-900 text-right">
+                {categoryData.name}
+              </span>
+            </div>
+            <div className="flex justify-between items-center gap-3 py-2">
+              <span className="text-sm text-slate-600 shrink-0">
+                Selected Service
+              </span>
+              <span className="text-sm font-semibold text-slate-900 text-right">
+                {serviceData.name}
+              </span>
+            </div>
+            <div className="flex justify-between items-center gap-3 py-2">
+              <span className="text-sm text-slate-600 shrink-0">
+                Service Price
+              </span>
+              <span className="text-sm font-semibold text-slate-900">
+                R{serviceData.base_price}
+              </span>
+            </div>
+            <div className="flex justify-between items-center gap-3 py-2">
+              <span className="text-sm text-slate-600 shrink-0">
+                Service Duration
+              </span>
+              <span className="text-sm font-semibold text-slate-900">
+                {serviceData.duration_minutes} min
+              </span>
+            </div>
+            {addressDateData.unit_or_flat && (
+              <div className="flex justify-between items-center gap-3 py-2">
+                <span className="text-sm text-slate-600 shrink-0">
+                  Unit / Flat #
+                </span>
+                <span className="text-sm font-semibold text-slate-900 text-right">
+                  {addressDateData.unit_or_flat}
+                </span>
+              </div>
+            )}
+            <div className="flex justify-between items-start gap-3 py-2">
+              <span className="text-sm text-slate-600 shrink-0">Address</span>
+              <span className="text-sm font-semibold text-slate-900 text-right">
+                {addressDateData.address}
+              </span>
+            </div>
+            <div className="flex justify-between items-center gap-3 py-2">
+              <span className="text-sm text-slate-600 shrink-0">
+                Booking Date
+              </span>
+              <span className="text-sm font-semibold text-slate-900">
+                {addressDateData.date}
+              </span>
+            </div>
+            <div className="flex justify-between items-center gap-3 py-2">
+              <span className="text-sm text-slate-600 shrink-0">
+                Booking Time
+              </span>
+              <span className="text-sm font-semibold text-slate-900">
+                {addressDateData.time}
+              </span>
+            </div>
+          </div>
+
+          {additionalDetails.notes?.trim() && (
+            <div className="mt-3 pt-3 border-t border-slate-100">
+              <span className="text-sm text-slate-600">Additional Notes</span>
+              <p className="mt-1.5 rounded-md bg-white border border-slate-200 p-3 text-sm font-medium text-slate-900 whitespace-pre-wrap">
+                {additionalDetails.notes}
+              </p>
+            </div>
           )}
-        </div>
-        {selectedVariantsArray.length > 0 && (
-          <div>
-            <Label className="font-semibold text-gray-700">
-              Selected Variants:
-            </Label>
-            <ul className="ml-4 mt-2 list-disc text-gray-800">
-              {selectedVariantsArray.map((variant) => (
-                <li key={variant.id} className="mb-1">
-                  <span className="font-medium">{variant.name}</span>
-                  <span className="text-xs text-slate-500 ml-1">
-                    ({variant.type})
-                  </span>
-                  <span className="ml-2 text-sm text-gray-600">
-                    (+R{variant.price}, +{variant.duration_minutes} min)
-                  </span>
-                </li>
-              ))}
-            </ul>
+        </section>
+
+        {/* ── Selected Services ── */}
+        <section className="rounded-lg border border-slate-200 bg-slate-50/70 p-4 space-y-4">
+          <h4 className="text-xs font-bold uppercase tracking-widest text-slate-600">
+            Selected Services
+          </h4>
+
+          <div className="space-y-2">
+            <p className="text-sm text-slate-600">Additional Services</p>
+            {selectedOptionsArray.length === 0 ? (
+              <p className="text-sm italic text-slate-600">
+                No additional services selected.
+              </p>
+            ) : (
+              <ul className="space-y-1.5">
+                {selectedOptionsArray.map((opt) => (
+                  <li
+                    key={opt.id}
+                    className="flex justify-between items-center rounded-md bg-white border border-slate-200 px-3 py-2"
+                  >
+                    <span className="text-sm font-semibold text-slate-900">
+                      {opt.name}
+                    </span>
+                    <span className="text-xs font-medium text-emerald-600">
+                      +R{opt.price} · {opt.duration_minutes || 0} min
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
-        )}
-        <div className="flex justify-between items-center">
-          <Label className="font-semibold text-gray-700">Address:</Label>
-          <span className="text-gray-900">{addressDateData.address}</span>
-        </div>
-        <div className="flex justify-between items-center">
-          <Label className="font-semibold text-gray-700">Date:</Label>
-          <span className="text-gray-900">{addressDateData.date}</span>
-        </div>
-        <div className="flex justify-between items-center">
-          <Label className="font-semibold text-gray-700">Time:</Label>
-          <span className="text-gray-900">{addressDateData.time}</span>
-        </div>
-        <div className="flex flex-col items-center mt-6">
-          <div className="bg-slate-100 rounded-xl px-6 py-3 mb-2 w-full text-center">
-            <span className="font-bold text-xl text-green-700">
-              Total Price: R{totalPrice}
-            </span>
+
+          <div className="space-y-2">
+            <p className="text-sm text-slate-600">Service Details</p>
+            {selectedRequirementsArray.length === 0 ? (
+              <p className="text-sm italic text-slate-400">
+                No service details selected.
+              </p>
+            ) : (
+              <ul className="space-y-1.5">
+                {selectedRequirementsArray.map((requirement) => (
+                  <li
+                    key={requirement.id}
+                    className="flex justify-between items-center rounded-md bg-white border border-slate-200 px-3 py-2"
+                  >
+                    <div>
+                      <span className="text-sm font-semibold text-slate-900">
+                        {requirement.name}
+                      </span>
+                      <span className="ml-1.5 text-xs text-slate-400">
+                        ({formatRequirementType(requirement.type)})
+                      </span>
+                    </div>
+                    <span className="text-xs font-medium text-emerald-600">
+                      +R{requirement.price} · {requirement.duration_minutes} min
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
-          <div className="bg-slate-50 rounded-xl px-6 py-2 w-full text-center">
-            <span className="font-semibold text-lg">
-              Total Duration: {totalDuration} min
-            </span>
-          </div>
+        </section>
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="flex flex-row items-center justify-between rounded-lg bg-slate-100 px-5 py-2 text-center border border-slate-200">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+            Total Price
+          </p>
+          <p className="font-bold text-xl text-green-700">R{totalPrice}</p>
+        </div>
+        <div className="flex flex-row items-center justify-between rounded-lg bg-slate-50 px-5 py-2 text-center border border-slate-200">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+            Total Duration
+          </p>
+          <p className="font-bold text-xl text-slate-800">
+            {totalDuration} min
+          </p>
         </div>
       </div>
       {!user && !userLoading && (

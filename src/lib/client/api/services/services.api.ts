@@ -1,47 +1,57 @@
 // ============================================
-// SERVICE OPTION VARIANTS API
+// SERVICE REQUIREMENTS API
 // ============================================
 import type {
-  ServiceOptionVariant,
-  CreateServiceOptionVariantDTO,
-  UpdateServiceOptionVariantDTO,
+  ServiceRequirement,
+  CreateServiceRequirementDTO,
+  UpdateServiceRequirementDTO,
 } from '@/lib/types/admin/services/variant';
 
-// Get all variants (admin, with joins)
-export const getServiceOptionVariantsApi = async (): Promise<
-  ServiceOptionVariant[]
+// Get all requirements (admin, with joins)
+export const getServiceRequirementsApi = async (): Promise<
+  ServiceRequirement[]
 > => {
-  return httpClient.get('/api/admin/services/variants');
+  return httpClient.get('/api/admin/services/requirements');
 };
 
-// Get single variant
-export const getServiceOptionVariantApi = async (
-  variantId: string,
-): Promise<ServiceOptionVariant> => {
-  return httpClient.get(`/api/admin/services/variants/${variantId}`);
+// Get single requirement
+export const getServiceRequirementApi = async (
+  requirementId: string,
+): Promise<ServiceRequirement> => {
+  return httpClient.get(`/api/admin/services/requirements/${requirementId}`);
 };
 
-// Create variant
-export const createServiceOptionVariantApi = async (
-  data: CreateServiceOptionVariantDTO,
-): Promise<ServiceOptionVariant> => {
-  return httpClient.post('/api/admin/services/variants', data);
+// Create requirement
+export const createServiceRequirementApi = async (
+  data: CreateServiceRequirementDTO,
+): Promise<ServiceRequirement> => {
+  return httpClient.post('/api/admin/services/requirements', data);
 };
 
-// Update variant
-export const updateServiceOptionVariantApi = async (
-  variantId: string,
-  data: UpdateServiceOptionVariantDTO,
-): Promise<ServiceOptionVariant> => {
-  return httpClient.put(`/api/admin/services/variants/${variantId}`, data);
+// Update requirement
+export const updateServiceRequirementApi = async (
+  requirementId: string,
+  data: UpdateServiceRequirementDTO,
+): Promise<ServiceRequirement> => {
+  return httpClient.put(
+    `/api/admin/services/requirements/${requirementId}`,
+    data,
+  );
 };
 
-// Delete variant
-export const deleteServiceOptionVariantApi = async (
-  variantId: string,
+// Delete requirement
+export const deleteServiceRequirementApi = async (
+  requirementId: string,
 ): Promise<void> => {
-  return httpClient.delete(`/api/admin/services/variants/${variantId}`);
+  return httpClient.delete(`/api/admin/services/requirements/${requirementId}`);
 };
+
+// Backward-compatible aliases
+export const getServiceOptionVariantsApi = getServiceRequirementsApi;
+export const getServiceOptionVariantApi = getServiceRequirementApi;
+export const createServiceOptionVariantApi = createServiceRequirementApi;
+export const updateServiceOptionVariantApi = updateServiceRequirementApi;
+export const deleteServiceOptionVariantApi = deleteServiceRequirementApi;
 import { httpClient } from '@/lib/client/http/client';
 
 export interface Service {

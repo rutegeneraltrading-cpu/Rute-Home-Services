@@ -89,10 +89,18 @@ export interface ServiceVariantDetail {
   price?: number;
 }
 
+export interface ServiceRequirementDetail {
+  name: string;
+  type?: string;
+  price?: number;
+}
+
 export interface BookingServiceDetail {
   name: string;
   category?: string;
   options?: ServiceOptionDetail[];
+  requirements?: ServiceRequirementDetail[];
+  // Backward-compatible alias
   variants?: ServiceVariantDetail[];
 }
 
@@ -100,6 +108,9 @@ export interface BookingCreatedEmailData {
   customerName: string;
   bookingId: string;
   service: BookingServiceDetail;
+  address?: string;
+  unitOrFlat?: string;
+  notes?: string;
   bookingDate: string;
   bookingTime: string;
   total: number;
@@ -112,6 +123,9 @@ export interface BookingPaymentSuccessEmailData {
   customerName: string;
   bookingId: string;
   service: BookingServiceDetail;
+  address?: string;
+  unitOrFlat?: string;
+  notes?: string;
   bookingDate: string;
   bookingTime: string;
   total: number;
@@ -132,6 +146,9 @@ export interface BookingAssignmentAcceptedEmailData {
   customerName: string;
   bookingId: string;
   service: BookingServiceDetail;
+  address?: string;
+  unitOrFlat?: string;
+  notes?: string;
   bookingDate: string;
   bookingTime: string;
   worker: WorkerProfileDetail;
@@ -141,6 +158,9 @@ export interface BookingStatusUpdateEmailData {
   customerName: string;
   bookingId: string;
   service: BookingServiceDetail;
+  address?: string;
+  unitOrFlat?: string;
+  notes?: string;
   bookingDate: string;
   bookingTime: string;
   previousStatus: string;

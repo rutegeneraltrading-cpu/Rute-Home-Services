@@ -5,6 +5,11 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { XCircle, AlertCircle, ShoppingCart, CalendarX2 } from 'lucide-react';
 import { Button } from '@/components/ui';
+import { useGetBooking } from '@/lib/client/api/bookings/bookings.query';
+import { useGetOrder } from '@/lib/client/api/orders/orders.query';
+import { usePayFastPayment } from '@/lib/client/api/bookings/payments.mutation';
+import { useOrderPayFastPayment } from '@/lib/client/api/orders/orders.mutation';
+import { useGetProfile } from '@/lib/client/api/profile/profile.query';
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -12,9 +17,15 @@ const UUID_REGEX =
 const CancelledPage = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { data: profile } = useGetProfile();
 
   const orderId = searchParams.get('order');
   const bookingId = searchParams.get('booking');
+
+  const { data: booking } = useGetBooking(bookingId || '');
+  const { data: order } = useGetOrder(orderId || '');
+  const bookingPaymentMutation = usePayFastPayment();
+  const orderPaymentMutation = useOrderPayFastPayment();
 
   const paymentType = useMemo(() => {
     if (orderId && !bookingId && UUID_REGEX.test(orderId)) return 'order';
@@ -33,6 +44,56 @@ const CancelledPage = () => {
   }
 
   const id = paymentType === 'order' ? orderId : bookingId;
+
+  const isRetrying =
+    paymentType === 'order'
+      ? orderPaymentMutation.isPending
+      : bookingPaymentMutation.isPending;
+
+  const canRetryPayment = paymentType === 'order' ? !!order : !!booking;
+
+  const handleRetryPayment = async () => {
+    if (paymentType === 'order') {
+      if (!order) return;
+
+      const fullName = profile?.full_name || 'Customer User';
+      const [firstName, ...lastNameParts] = fullName.split(' ');
+      const lastName = lastNameParts.join(' ') || 'User';
+
+      await orderPaymentMutation.mutateAsync({
+        order_id: order.id,
+        user_id: order.user_id,
+        first_name: firstName || 'Customer',
+        last_name: lastName,
+        email: profile?.email || order.profile?.email || '',
+        phone: profile?.phone || order.profile?.phone || undefined,
+        total: Number(order.total || 0),
+      });
+
+      return;
+    }
+
+    if (!booking) return;
+
+    const fullName = profile?.full_name || booking.customer_name || 'Customer';
+    const [firstName, ...lastNameParts] = fullName.split(' ');
+    const lastName = lastNameParts.join(' ') || 'User';
+
+    await bookingPaymentMutation.mutateAsync({
+      booking_id: booking.id,
+      user_id: booking.user_id,
+      first_name: firstName || 'Customer',
+      last_name: lastName,
+      email: booking.customer_email || profile?.email || '',
+      phone: booking.customer_phone || profile?.phone || undefined,
+      total_price: Number(booking.total_price || 0),
+      service_name:
+        booking.service_name ||
+        booking.service_details?.name ||
+        'Service Booking',
+      service_description: booking.service_details?.description || '',
+    });
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4 py-12">
@@ -93,10 +154,18 @@ const CancelledPage = () => {
               {paymentType === 'order' ? 'View My Orders' : 'View My Bookings'}
             </Link>
           </Button>
-          <Button asChild variant="outline" size="lg" className="w-full">
-            <Link href={paymentType === 'order' ? '/cart' : '/booking'}>
-              {paymentType === 'order' ? 'Back to Cart' : 'Try Booking Again'}
-            </Link>
+          <Button
+            variant="outline"
+            size="lg"
+            className="w-full"
+            onClick={handleRetryPayment}
+            disabled={!canRetryPayment || isRetrying}
+          >
+            {isRetrying
+              ? 'Processing...'
+              : paymentType === 'order'
+                ? 'Try Again & Pay Now'
+                : 'Try Again & Pay Now'}
           </Button>
         </div>
       </div>

@@ -1,6 +1,6 @@
 import {
-  getServiceOptionVariantsApi,
-  getServiceOptionVariantApi,
+  getServiceRequirementsApi,
+  getServiceRequirementApi,
   getAllServiceOptionsApi,
 } from './services.api';
 
@@ -12,22 +12,26 @@ export const useGetAllServiceOptions = () => {
   });
 };
 
-export const useGetServiceOptionVariants = () => {
+export const useGetServiceRequirements = () => {
   return useQuery({
-    queryKey: ['service_option_variants'],
-    queryFn: getServiceOptionVariantsApi,
+    queryKey: ['service_requirements'],
+    queryFn: getServiceRequirementsApi,
     staleTime: 5 * 60 * 1000,
   });
 };
 
-export const useGetServiceOptionVariant = (variantId: string) => {
+export const useGetServiceRequirement = (requirementId: string) => {
   return useQuery({
-    queryKey: ['service_option_variant', variantId],
-    queryFn: () => getServiceOptionVariantApi(variantId),
-    enabled: !!variantId,
+    queryKey: ['service_requirement', requirementId],
+    queryFn: () => getServiceRequirementApi(requirementId),
+    enabled: !!requirementId,
     staleTime: 5 * 60 * 1000,
   });
 };
+
+// Backward-compatible aliases
+export const useGetServiceOptionVariants = useGetServiceRequirements;
+export const useGetServiceOptionVariant = useGetServiceRequirement;
 import { useQuery } from '@tanstack/react-query';
 import {
   getServicesApi,

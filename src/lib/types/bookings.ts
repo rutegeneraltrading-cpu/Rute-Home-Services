@@ -83,6 +83,7 @@ export interface Booking {
   rating_review?: string | null;
   rating_submitted_at?: string | null;
   address: string;
+  unit_or_flat?: string;
   booking_date: string;
   booking_time: string;
   status: BookingStatus;
@@ -104,6 +105,7 @@ export interface CreateBookingDTO {
   user_id: string;
   service_id: string;
   address: string;
+  unit_or_flat?: string;
   booking_date: string;
   booking_time: string;
   total_price: number;
