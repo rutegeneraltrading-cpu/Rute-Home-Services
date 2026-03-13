@@ -74,7 +74,7 @@ const PublicNavbar = () => {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-white/90 backdrop-blur px-4">
-      <div className="flex h-16 container mx-auto items-center justify-between">
+      <div className="container mx-auto grid h-16 grid-cols-[auto_auto] items-center justify-between lg:grid-cols-[1fr_auto_1fr]">
         <Link
           href="/"
           className="text-3xl font-bold text-slate-900"
@@ -83,7 +83,7 @@ const PublicNavbar = () => {
           RUTE<span className="text-green-600">.</span>
         </Link>
 
-        <nav className="hidden lg:flex items-center gap-6 text-base text-slate-700">
+        <nav className="hidden lg:flex items-center justify-self-center gap-6 text-base text-slate-700">
           {navItems.map((item) => (
             <Link
               key={item.href}
@@ -95,7 +95,7 @@ const PublicNavbar = () => {
           ))}
         </nav>
 
-        <div className="hidden lg:flex items-center gap-2">
+        <div className="hidden lg:flex items-center justify-self-end gap-2">
           <Link href="/cart" className="relative">
             <Button
               variant="ghost"
@@ -145,7 +145,7 @@ const PublicNavbar = () => {
                       {initials}
                     </div>
                   )}
-                  <span className="text-sm font-medium text-slate-700">
+                  <span className="min-w-0 max-w-32 truncate text-sm font-medium text-slate-700 xl:max-w-40">
                     {user.name || 'User'}
                   </span>
                 </button>
@@ -158,11 +158,11 @@ const PublicNavbar = () => {
                 onPointerLeave={handleUserMenuLeave}
               >
                 <DropdownMenuLabel className="font-normal">
-                  <div className="flex flex-col">
-                    <span className="text-sm font-medium">
+                  <div className="flex min-w-0 flex-col">
+                    <span className="truncate text-sm font-medium">
                       {user.name || 'User'}
                     </span>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="break-all text-xs text-muted-foreground">
                       {user.email}
                     </span>
                   </div>
@@ -185,7 +185,7 @@ const PublicNavbar = () => {
             </DropdownMenu>
           )}
         </div>
-        <div className="flex lg:hidden items-center justify-center gap-2">
+        <div className="flex lg:hidden items-center justify-self-end justify-center gap-2">
           <Link href="/cart" className="" onClick={() => setOpen(false)}>
             <Button
               variant="outline"
@@ -281,11 +281,11 @@ const PublicNavbar = () => {
                         {initials}
                       </div>
                     )}
-                    <div className="flex flex-col">
-                      <span className="text-sm font-medium text-slate-700">
+                    <div className="flex min-w-0 flex-col">
+                      <span className="truncate text-sm font-medium text-slate-700">
                         {user.name || 'User'}
                       </span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="break-all text-xs text-muted-foreground">
                         {user.email}
                       </span>
                     </div>

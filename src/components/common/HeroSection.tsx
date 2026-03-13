@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Search, ChevronDown } from 'lucide-react';
@@ -29,6 +29,7 @@ const HeroSection = () => {
   const categories: Array<{
     id: string;
     name: string;
+    slug?: string;
     image_url?: string | null;
     created_at?: string;
     charge_type?: string;
@@ -36,23 +37,6 @@ const HeroSection = () => {
     if (!a.created_at || !b.created_at) return 0;
     return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
   });
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(
-    () => {
-      return categories && categories.length > 0 ? categories[0].id : null;
-    },
-  );
-
-  useEffect(() => {
-    if (categories.length === 0) return;
-    if (
-      !selectedCategory ||
-      !categories.some((c) => c.id === selectedCategory)
-    ) {
-      setSelectedCategory(categories[0].id);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categories]);
-
   type Service = {
     id: string;
     slug: string;
@@ -65,6 +49,7 @@ const HeroSection = () => {
   type Category = {
     id: string;
     name: string;
+    slug?: string;
     image_url?: string | null;
     created_at?: string;
     charge_type?: string;
@@ -88,15 +73,6 @@ const HeroSection = () => {
       );
     }
   }, [search, filter, servicesData, productsData]);
-
-  const servicesForCategory = useMemo(() => {
-    if (!selectedCategory) return [];
-    return (
-      (servicesData as Service[]).filter(
-        (s) => s.category_id === selectedCategory,
-      ) || []
-    );
-  }, [selectedCategory, servicesData]);
 
   if (categoriesLoading || servicesLoading)
     return <Loading fullScreen className="bg-white" />;
@@ -217,8 +193,11 @@ const HeroSection = () => {
             {categories.map((cat: Category) => (
               <div
                 key={cat.id}
-                className={`flex flex-col items-center min-w-30 cursor-pointer px-2 py-4 rounded-lg transition-all border-b-2 border-l-2 ${selectedCategory === cat.id ? 'border-green-500 shadow-md' : 'border-transparent hover:border-slate-200'}`}
-                onClick={() => setSelectedCategory(cat.id)}
+                className="flex flex-col items-center min-w-30 cursor-pointer px-2 py-4 rounded-lg transition-all border-2 border-transparent hover:border-green-500"
+                onClick={() => {
+                  const categorySlug = cat.slug || cat.id;
+                  router.push(`/booking?category=${encodeURIComponent(categorySlug)}`);
+                }}
               >
                 {cat.image_url && typeof cat.image_url === 'string' && (
                   <Image
@@ -232,45 +211,6 @@ const HeroSection = () => {
                 <span className={`text-sm font-medium `}>{cat.name}</span>
               </div>
             ))}
-          </div>
-        </div>
-        {/* Services List for Selected Category */}
-        <div className="w-full overflow-x-auto">
-          <div className="flex gap-4 min-w-max">
-            {servicesForCategory.length === 0 && (
-              <div className="text-slate-500 text-center w-full">
-                No services found for this category.
-              </div>
-            )}
-            {servicesForCategory.map((service: Service) => {
-              const category = categories.find(
-                (c) => c.id === service.category_id,
-              );
-              const chargeType = category?.charge_type || '';
-              return (
-                <a
-                  key={service.id}
-                  href={`/booking?service=${service.slug}`}
-                  className="border-2 border-green-500 rounded-full bg-white hover:bg-green-50 hover:border-green-200 px-4 py-2 flex items-center cursor-pointer transition-colors"
-                  style={{ minWidth: 'fit-content', width: 'fit-content' }}
-                >
-                  <span
-                    className="text-base font-semibold text-slate-900 whitespace-nowrap"
-                    style={{ width: 'fit-content' }}
-                  >
-                    {service.name} {' | '}
-                    {service.base_price != null
-                      ? `${service.base_price} ZAR`
-                      : 'Price on request'}
-                    {chargeType && (
-                      <span className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full border border-green-200 ml-2">
-                        {`per ${chargeType}`}
-                      </span>
-                    )}
-                  </span>
-                </a>
-              );
-            })}
           </div>
         </div>
       </div>

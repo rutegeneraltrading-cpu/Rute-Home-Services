@@ -59,7 +59,6 @@ export function UserNav() {
 
   return (
     <>
-      
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
@@ -77,7 +76,7 @@ export function UserNav() {
               </div>
             )}
             <div className="flex flex-col flex-1 text-left overflow-hidden transition-all duration-300 group-data-[state=collapsed]:w-0 group-data-[state=collapsed]:opacity-0">
-              <span className="text-xs font-semibold text-foreground whitespace-nowrap">
+              <span className="text-xs font-semibold text-foreground truncate whitespace-nowrap">
                 {user.name || 'User'}
               </span>
               <span className="text-xs text-muted-foreground truncate whitespace-nowrap">
@@ -87,7 +86,7 @@ export function UserNav() {
           </button>
         </DropdownMenuTrigger>
 
-        <DropdownMenuContent className="w-56" align="end" forceMount>
+        <DropdownMenuContent className="w-56 max-w-56" align="end" forceMount>
           <DropdownMenuLabel className="font-normal">
             <div className="flex flex-row gap-2">
               {user?.avatar_url ? (
@@ -103,11 +102,11 @@ export function UserNav() {
                   {initials}
                 </div>
               )}
-              <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">
+              <div className="flex min-w-0 flex-col space-y-1 overflow-hidden">
+                <p className="truncate text-sm font-medium leading-none">
                   {user.name || 'User'}
                 </p>
-                <p className="text-xs leading-none text-muted-foreground">
+                <p className="text-xs leading-normal text-muted-foreground wrap-break-word whitespace-normal">
                   {user.email || ''}
                 </p>
               </div>
