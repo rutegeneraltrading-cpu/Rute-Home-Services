@@ -3,6 +3,7 @@
 import { useState, useEffect, type ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, MapPin } from 'lucide-react';
+import PhoneInput from 'react-phone-input-2';
 import { useGetMe, useGetUserAddresses } from '@/lib/client/api';
 import {
   useCreateOrder,
@@ -20,6 +21,7 @@ import {
 } from '@/components/ui';
 import { Loading, AuthRequiredModal } from '@/components/common';
 import type { CreateOrderDTO } from '@/lib/types/orders';
+import { checkoutAddressSchema } from '@/lib/validations';
 
 interface ShippingAddress {
   recipient_name?: string | null;
@@ -56,6 +58,9 @@ const CheckoutPage = () => {
     postal_code: '',
     country: 'South Africa',
   });
+  const [addressErrors, setAddressErrors] = useState<
+    Partial<Record<keyof ShippingAddress, string>>
+  >({});
 
   const [additionalNotes, setAdditionalNotes] = useState('');
 
@@ -75,28 +80,69 @@ const CheckoutPage = () => {
 
   const handleAddressChange = (field: keyof ShippingAddress, value: string) => {
     setNewAddress((prev) => ({ ...prev, [field]: value }));
+    if (addressErrors[field]) {
+      setAddressErrors((prev) => ({ ...prev, [field]: undefined }));
+    }
   };
 
-  const validateForm = () => {
+  const validateForm = (): {
+    isValid: boolean;
+    parsedAddress?: Omit<
+      CreateOrderDTO,
+      | 'items'
+      | 'subtotal'
+      | 'tax'
+      | 'shipping'
+      | 'total'
+      | 'notes'
+      | 'address_id'
+    >['new_address'];
+  } => {
     if (effectiveAddressId === 'other') {
-      if (
-        !newAddress.line1 ||
-        !newAddress.city ||
-        !newAddress.state_province ||
-        !newAddress.postal_code
-      ) {
-        alert('Please fill in all address fields');
-        return false;
+      const validation = checkoutAddressSchema.safeParse(newAddress);
+
+      if (!validation.success) {
+        const fieldErrors = validation.error.flatten().fieldErrors;
+        setAddressErrors({
+          recipient_name: fieldErrors.recipient_name?.[0],
+          phone: fieldErrors.phone?.[0],
+          line1: fieldErrors.line1?.[0],
+          line2: fieldErrors.line2?.[0],
+          city: fieldErrors.city?.[0],
+          state_province: fieldErrors.state_province?.[0],
+          postal_code: fieldErrors.postal_code?.[0],
+          country: fieldErrors.country?.[0],
+        });
+        return { isValid: false };
       }
+
+      setAddressErrors({});
+
+      return {
+        isValid: true,
+        parsedAddress: {
+          label: 'other',
+          recipient_name: validation.data.recipient_name || null,
+          phone: validation.data.phone || null,
+          line1: validation.data.line1,
+          line2: validation.data.line2 || null,
+          city: validation.data.city,
+          state_province: validation.data.state_province,
+          postal_code: validation.data.postal_code,
+          country: validation.data.country,
+        },
+      };
     } else if (!effectiveAddressId) {
       alert('Please select a shipping address');
-      return false;
+      return { isValid: false };
     }
-    return true;
+
+    return { isValid: true };
   };
 
   const handleSubmitOrder = async () => {
-    if (!validateForm()) return;
+    const validationResult = validateForm();
+    if (!validationResult.isValid) return;
 
     setIsProcessing(true);
 
@@ -120,17 +166,7 @@ const CheckoutPage = () => {
       };
 
       if (effectiveAddressId === 'other') {
-        createOrderPayload.new_address = {
-          label: 'other',
-          recipient_name: newAddress.recipient_name || null,
-          phone: newAddress.phone || null,
-          line1: newAddress.line1,
-          line2: newAddress.line2 || null,
-          city: newAddress.city,
-          state_province: newAddress.state_province,
-          postal_code: newAddress.postal_code,
-          country: newAddress.country,
-        };
+        createOrderPayload.new_address = validationResult.parsedAddress;
       } else {
         createOrderPayload.address_id = effectiveAddressId;
       }
@@ -294,6 +330,11 @@ const CheckoutPage = () => {
                           placeholder="123 Main Street"
                           required
                         />
+                        {addressErrors.line1 && (
+                          <p className="mt-1 text-sm text-red-600">
+                            {addressErrors.line1}
+                          </p>
+                        )}
                       </div>
 
                       <div>
@@ -322,6 +363,11 @@ const CheckoutPage = () => {
                             placeholder="Johannesburg"
                             required
                           />
+                          {addressErrors.city && (
+                            <p className="mt-1 text-sm text-red-600">
+                              {addressErrors.city}
+                            </p>
+                          )}
                         </div>
                         <div>
                           <Label htmlFor="state_province">Province *</Label>
@@ -337,6 +383,11 @@ const CheckoutPage = () => {
                             placeholder="Gauteng"
                             required
                           />
+                          {addressErrors.state_province && (
+                            <p className="mt-1 text-sm text-red-600">
+                              {addressErrors.state_province}
+                            </p>
+                          )}
                         </div>
                       </div>
 
@@ -352,6 +403,11 @@ const CheckoutPage = () => {
                             placeholder="2000"
                             required
                           />
+                          {addressErrors.postal_code && (
+                            <p className="mt-1 text-sm text-red-600">
+                              {addressErrors.postal_code}
+                            </p>
+                          )}
                         </div>
                         <div>
                           <Label htmlFor="country">Country</Label>
@@ -360,6 +416,11 @@ const CheckoutPage = () => {
                             value={newAddress.country}
                             disabled
                           />
+                          {addressErrors.country && (
+                            <p className="mt-1 text-sm text-red-600">
+                              {addressErrors.country}
+                            </p>
+                          )}
                         </div>
                       </div>
 
@@ -377,17 +438,34 @@ const CheckoutPage = () => {
                             }
                             placeholder="Full name"
                           />
+                          {addressErrors.recipient_name && (
+                            <p className="mt-1 text-sm text-red-600">
+                              {addressErrors.recipient_name}
+                            </p>
+                          )}
                         </div>
                         <div>
-                          <Label htmlFor="phone">Phone</Label>
-                          <Input
-                            id="phone"
+                          <Label htmlFor="phone">Phone *</Label>
+                          <PhoneInput
+                            country={'za'}
+                            inputProps={{
+                              name: 'phone',
+                              className:
+                                'h-9 w-full border rounded-md shadow-xs px-2 pl-12',
+                            }}
                             value={newAddress.phone || ''}
-                            onChange={(e) =>
-                              handleAddressChange('phone', e.target.value)
+                            onChange={(value) =>
+                              handleAddressChange('phone', value)
                             }
                             placeholder="+27 81 234 5678"
+                            enableSearch
+                            containerClass="mb-2"
                           />
+                          {addressErrors.phone && (
+                            <p className="mt-1 text-sm text-red-600">
+                              {addressErrors.phone}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </div>

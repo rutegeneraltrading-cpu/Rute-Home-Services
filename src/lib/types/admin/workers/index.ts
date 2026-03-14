@@ -1,5 +1,5 @@
 import type { WorkerProfile } from '@/lib/client/api/workers';
-import { UserAddress } from '../../user';
+import { UserAddress, UserAddressFormValues } from '../../user';
 
 // Re-export Worker from API for convenience
 export type { WorkerProfile as Worker } from '@/lib/client/api/workers';
@@ -29,7 +29,7 @@ export interface WorkerFormValues {
   email: string;
   phone: string; // Required for registration
   service_ids: string[];
-  address: UserAddress;
+  address: UserAddressFormValues;
   documents: WorkerDocument[]; // Uploaded documents
   // Add more fields here for future extensibility
 }
@@ -39,7 +39,7 @@ export interface WorkerEditValues {
   phone: string;
   service_ids: string[];
   status: 'active' | 'inactive' | 'suspended';
-  address: UserAddress;
+  address: UserAddressFormValues;
   // Add more fields here for future extensibility
 }
 

@@ -5,6 +5,7 @@ import { Service } from '@/lib/types/admin/services';
 import { MultiSelect } from '@/components/common/MultiSelect';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import PhoneInput from 'react-phone-input-2';
 import {
   Dialog,
   DialogTitle,
@@ -102,6 +103,7 @@ export function WorkerEditModal({
       const valid = await trigger(
         [
           'address.label',
+          'address.phone',
           'address.line1',
           'address.city',
           'address.state_province',
@@ -324,14 +326,26 @@ export function WorkerEditModal({
                 />
               </div>
               <div>
-                <Label htmlFor="address.phone">Address Phone</Label>
-                <Input
-                  id="address.phone"
-                  type="tel"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  placeholder="e.g., 0111234567"
-                  {...register('address.phone')}
+                <Label htmlFor="address.phone">Address Phone *</Label>
+                <Controller
+                  name="address.phone"
+                  control={control}
+                  render={({ field }) => (
+                    <PhoneInput
+                      country={'za'}
+                      inputProps={{
+                        name: field.name,
+                        className:
+                          'h-9 w-full border rounded-md shadow-xs px-2 pl-12',
+                      }}
+                      value={field.value || ''}
+                      onChange={(value) => field.onChange(value)}
+                      onBlur={field.onBlur}
+                      placeholder="+27 81 234 5678"
+                      enableSearch
+                      containerClass="mb-2"
+                    />
+                  )}
                 />
                 {errors.address?.phone && (
                   <p className="text-sm text-red-500 mt-1">

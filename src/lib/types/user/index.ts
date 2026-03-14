@@ -37,7 +37,7 @@ export interface UpdateUserAddressDTO extends Partial<CreateUserAddressDTO> {
 export interface UserAddressFormValues {
   label: AddressLabel;
   recipient_name?: string;
-  phone?: string;
+  phone: string;
   line1: string;
   line2?: string;
   city: string;

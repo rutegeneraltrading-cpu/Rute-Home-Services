@@ -51,9 +51,7 @@ const ContactUsPage = () => {
     try {
       await createContactMutation.mutateAsync(data);
       reset();
-    } catch (error) {
-      // handled by mutation
-    }
+    } catch {}
   };
 
   return (

@@ -4,6 +4,16 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { sendEmail } from '@/lib/server/email/ses-mailer';
 import { workerWelcomeTemplate } from '@/lib/server/email';
 
+const E164_PHONE_REGEX = /^\+[1-9]\d{7,14}$/;
+
+const normalizeToE164 = (value: unknown): string | null => {
+  const raw = String(value ?? '').trim();
+  if (!raw) return null;
+  const digitsOnly = raw.replace(/\D/g, '');
+  if (!digitsOnly) return null;
+  return `+${digitsOnly}`;
+};
+
 export async function POST(request: NextRequest) {
   try {
     const supabaseAdmin = await createAdminClient();
@@ -58,7 +68,36 @@ export async function POST(request: NextRequest) {
     }
 
     const normalizedEmail = email.trim().toLowerCase();
-    const normalizedPhone = phone ? String(phone).trim() : null;
+    const normalizedPhone = normalizeToE164(phone);
+
+    if (
+      phone &&
+      (!normalizedPhone || !E164_PHONE_REGEX.test(normalizedPhone))
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'Invalid phone number format. Use international format (E.164), e.g. +27821234567',
+        },
+        { status: 400 },
+      );
+    }
+
+    const normalizedAddressPhone = normalizeToE164(address?.phone);
+
+    if (
+      address?.phone &&
+      (!normalizedAddressPhone ||
+        !E164_PHONE_REGEX.test(normalizedAddressPhone))
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'Invalid address phone format. Use international format (E.164), e.g. +27821234567',
+        },
+        { status: 400 },
+      );
+    }
 
     const { data: existingProfile, error: existingProfileError } =
       await supabaseAdmin
@@ -233,7 +272,7 @@ export async function POST(request: NextRequest) {
           profile_id: profileId,
           label: address.label || 'home',
           recipient_name: address.recipient_name || full_name || null,
-          phone: address.phone || normalizedPhone,
+          phone: normalizedAddressPhone || normalizedPhone,
           line1: address.line1,
           line2: address.line2 || null,
           city: address.city,
@@ -247,7 +286,7 @@ export async function POST(request: NextRequest) {
 
       await supabaseAdmin
         .from('profiles')
-        .update({ phone: address.phone || normalizedPhone })
+        .update({ phone: normalizedAddressPhone || normalizedPhone })
         .eq('id', profileId);
     }
 

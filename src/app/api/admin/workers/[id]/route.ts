@@ -3,6 +3,16 @@ import { createAdminClient } from '@/lib/supabase';
 import { sendEmail } from '@/lib/server/email/ses-mailer';
 import { workerVerificationTemplate } from '@/lib/server/email';
 
+const E164_PHONE_REGEX = /^\+[1-9]\d{7,14}$/;
+
+const normalizeToE164 = (value: unknown): string | null => {
+  const raw = String(value ?? '').trim();
+  if (!raw) return null;
+  const digitsOnly = raw.replace(/\D/g, '');
+  if (!digitsOnly) return null;
+  return `+${digitsOnly}`;
+};
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -117,6 +127,46 @@ export async function PUT(
     } = body;
     // Remove service_ids and worker_documents from workerFields
     const workerFields = { ...rest };
+
+    const normalizedWorkerPhone = body.phone
+      ? normalizeToE164(body.phone)
+      : undefined;
+
+    if (
+      body.phone &&
+      (!normalizedWorkerPhone || !E164_PHONE_REGEX.test(normalizedWorkerPhone))
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'Invalid phone number format. Use international format (E.164), e.g. +27821234567',
+        },
+        { status: 400 },
+      );
+    }
+
+    if (normalizedWorkerPhone) {
+      workerFields.phone = normalizedWorkerPhone;
+    }
+
+    const normalizedAddressPhone = address?.phone
+      ? normalizeToE164(address.phone)
+      : undefined;
+
+    if (
+      address?.phone &&
+      (!normalizedAddressPhone ||
+        !E164_PHONE_REGEX.test(normalizedAddressPhone))
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'Invalid address phone format. Use international format (E.164), e.g. +27821234567',
+        },
+        { status: 400 },
+      );
+    }
+
     let verificationOutcome: 'approved' | 'rejected' | null = null;
 
     if (Array.isArray(worker_documents) && worker_documents.length > 0) {
@@ -268,7 +318,9 @@ export async function PUT(
                   full_name ||
                   existingPrimary.recipient_name,
                 phone:
-                  address.phone || workerFields.phone || existingPrimary.phone,
+                  normalizedAddressPhone ||
+                  normalizedWorkerPhone ||
+                  existingPrimary.phone,
                 line1: address.line1,
                 line2: address.line2 || null,
                 city: address.city,
@@ -291,7 +343,7 @@ export async function PUT(
                 profile_id: profile.id,
                 label: address.label || 'home',
                 recipient_name: address.recipient_name || full_name || null,
-                phone: address.phone || workerFields.phone || null,
+                phone: normalizedAddressPhone || normalizedWorkerPhone || null,
                 line1: address.line1,
                 line2: address.line2 || null,
                 city: address.city,
@@ -309,7 +361,9 @@ export async function PUT(
 
         await supabase
           .from('profiles')
-          .update({ phone: address.phone || workerFields.phone || null })
+          .update({
+            phone: normalizedAddressPhone || normalizedWorkerPhone || null,
+          })
           .eq('id', worker.profile_id);
       }
     }

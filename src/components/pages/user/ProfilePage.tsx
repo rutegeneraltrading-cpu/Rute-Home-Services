@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
+import PhoneInput from 'react-phone-input-2';
 import {
   useCreateUserAddress,
   useDeleteUserAddress,
@@ -85,6 +86,7 @@ const ProfilePage = () => {
     register: registerAddress,
     handleSubmit: handleAddressSubmit,
     reset: resetAddressForm,
+    control: addressControl,
     setValue: setAddressValue,
     watch: watchAddress,
     formState: { errors: addressErrors },
@@ -443,14 +445,27 @@ const ProfilePage = () => {
 
               <div>
                 <Label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phone
+                  Phone *
                 </Label>
-                <Input
-                  type="tel"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  {...registerAddress('phone')}
-                  placeholder="Phone number"
+                <Controller
+                  name="phone"
+                  control={addressControl}
+                  render={({ field }) => (
+                    <PhoneInput
+                      country={'za'}
+                      inputProps={{
+                        name: field.name,
+                        className:
+                          'h-9 w-full border rounded-md shadow-xs px-2 pl-12',
+                      }}
+                      value={field.value || ''}
+                      onChange={(value) => field.onChange(value)}
+                      onBlur={field.onBlur}
+                      placeholder="+27 81 234 5678"
+                      enableSearch
+                      containerClass="mb-2"
+                    />
+                  )}
                 />
                 {addressErrors.phone && (
                   <p className="text-sm text-red-500 mt-1">

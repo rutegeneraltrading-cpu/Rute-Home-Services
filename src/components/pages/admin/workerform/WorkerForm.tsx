@@ -93,6 +93,7 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
       const valid = await trigger(
         [
           'address.label',
+          'address.phone',
           'address.line1',
           'address.city',
           'address.state_province',
@@ -416,7 +417,7 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
                 />
               </div>
               <div>
-                <Label htmlFor="address.phone">Address Phone</Label>
+                <Label htmlFor="address.phone">Address Phone *</Label>
                 <PhoneInput
                   country={'za'}
                   inputProps={{

@@ -38,7 +38,7 @@ const phoneSchema = z
   })
   .refine(
     (value) => /^\+[1-9]\d{7,14}$/.test(value),
-    'Enter a valid phone number in international format (E.164)',
+    'Enter a valid phone number with country code (e.g., +27821234567)',
   );
 
 export const loginSchema = z.object({
