@@ -8,7 +8,7 @@ import { TableColumn, TableAction } from '@/lib/types/table';
 import { useGetOrders } from '@/lib/client/api/orders/orders.query';
 import type { Order } from '@/lib/types/orders';
 import { Loading } from '@/components/common';
-import { OrderEditModal } from './OrderEditModal';
+import { OrderEditModal } from './modals/OrderEditModal';
 import { useDeleteOrder } from '@/lib/client/api/orders/orders.mutation';
 
 const OrdersPage = () => {

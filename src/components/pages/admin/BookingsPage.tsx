@@ -9,7 +9,7 @@ import { DataTable, CustomCalendar } from '@/components/common';
 import { useGetBookings } from '@/lib/client/api/bookings/bookings.query';
 import type { Booking } from '@/lib/types/bookings';
 import { Loading } from '@/components/common';
-import { BookingEditModal } from './BookingEditModal';
+import { BookingEditModal } from './modals/BookingEditModal';
 
 type AdminBookingStatus =
   | 'pending'

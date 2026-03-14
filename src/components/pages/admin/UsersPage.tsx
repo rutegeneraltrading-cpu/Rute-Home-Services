@@ -7,8 +7,7 @@ import { DataTable } from '@/components/common';
 import { DeleteConfirmationDialog, SectionHeader } from '@/components/common';
 import { DataTableConfig, TableColumn, TableAction } from '@/lib/types/table';
 import { useGetUsers, useDeleteUser } from '@/lib/client/api/users';
-import { UserEditModal } from './UserEditModal';
-import { UserCreateModal } from './UserCreateModal';
+import { UserEditModal, UserCreateModal } from './userForms';
 import { Button } from '@/components/ui/button';
 import { User } from '@/lib/types';
 

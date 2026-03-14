@@ -9,7 +9,7 @@ import {
   useDeleteContactMessage,
   useGetContactMessages,
 } from '@/lib/client/api';
-import { ContactEditModal } from './ContactEditModal';
+import { ContactEditModal } from './modals/ContactEditModal';
 
 const ContactsPage = () => {
   const { data, isLoading } = useGetContactMessages();
