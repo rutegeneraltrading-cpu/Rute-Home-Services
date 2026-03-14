@@ -56,14 +56,14 @@ export default function UserLayout({
     <ProtectedLayout>
       <SidebarProvider open={sidebarOpen} onOpenChange={setSidebarOpen}>
         <UserSidebar />
-        <SidebarInset>
-          <header className="fixed flex h-15.25 items-center gap-2 border-b w-full px-4 bg-white z-50">
+        <SidebarInset className="min-w-0 overflow-x-hidden">
+          <header className="sticky top-0 z-40 flex h-15.25 items-center gap-2 border-b bg-white/95 px-4 backdrop-blur">
             <SidebarTrigger className="mr-2" />
             <span className="text-base font-medium text-muted-foreground">
               {pageTitle}
             </span>
           </header>
-          <main className="flex-1 px-6 py-20">{children}</main>
+          <main className="flex-1 px-6 py-6 md:py-10">{children}</main>
         </SidebarInset>
       </SidebarProvider>
     </ProtectedLayout>

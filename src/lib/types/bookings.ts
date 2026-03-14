@@ -123,6 +123,14 @@ export interface UpdateBookingDTO {
   assignment_status?: BookingAssignmentStatus;
 }
 
+export interface UserUpdateBookingDTO {
+  notes?: string;
+  address?: string;
+  unit_or_flat?: string;
+  booking_date?: string;
+  booking_time?: string;
+}
+
 export interface AvailableWorker {
   worker_id: string;
   profile_id: string;

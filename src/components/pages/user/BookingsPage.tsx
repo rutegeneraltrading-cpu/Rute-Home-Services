@@ -1,13 +1,21 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { CreditCard, Eye } from 'lucide-react';
+import { CreditCard, Eye, Pencil } from 'lucide-react';
 import { DataTable, Loading } from '@/components/common';
 import { TableAction, TableColumn } from '@/lib/types/table';
 import type { Booking } from '@/lib/types/bookings';
 import { useGetBookings } from '@/lib/client/api/bookings/bookings.query';
 import { usePayFastPayment } from '@/lib/client/api/bookings/payments.mutation';
 import { useGetProfile } from '@/lib/client/api/profile/profile.query';
+import EditBookingModal from './Booking/EditBookingModal';
+
+const EDIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+
+const isWithinEditWindow = (createdAt: string) => {
+  return Date.now() - new Date(createdAt).getTime() < EDIT_WINDOW_MS;
+};
 
 const PayNowActionIcon = ({ className }: { className?: string }) => (
   <span className="inline-flex items-center gap-1 text-xs font-medium whitespace-nowrap bg-black rounded-full text-white px-2 py-1 hover:bg-black/80">
@@ -21,6 +29,8 @@ const BookingsPage = () => {
   const { data: bookings = [], isLoading } = useGetBookings();
   const { data: profile } = useGetProfile();
   const payFastPaymentMutation = usePayFastPayment();
+
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
 
   const getStatusColor = (status: Booking['status']) => {
     switch (status) {
@@ -190,6 +200,23 @@ const BookingsPage = () => {
       },
     },
     {
+      id: 'edit',
+      label: 'Edit Booking',
+      icon: Pencil,
+      variant: 'outline',
+      showWhen: (row) => {
+        const booking = row as Booking;
+        return (
+          isWithinEditWindow(booking.created_at) &&
+          booking.status !== 'completed' &&
+          booking.status !== 'cancelled'
+        );
+      },
+      onClick: (row) => {
+        setEditingBooking(row as Booking);
+      },
+    },
+    {
       id: 'view',
       label: 'View Details',
       icon: Eye,
@@ -226,10 +253,22 @@ const BookingsPage = () => {
             data: bookings,
             columns,
             actions,
+            minTableWidth: 1300,
             isLoading: payFastPaymentMutation.isPending,
             pageSize: 10,
             defaultSortBy: 'created_at',
             defaultSortOrder: 'desc',
+          }}
+        />
+      )}
+
+      {/* Edit Booking Modal */}
+      {editingBooking && (
+        <EditBookingModal
+          booking={editingBooking}
+          open={Boolean(editingBooking)}
+          onOpenChange={(open) => {
+            if (!open) setEditingBooking(null);
           }}
         />
       )}

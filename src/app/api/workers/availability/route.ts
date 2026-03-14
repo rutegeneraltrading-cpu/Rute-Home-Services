@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
     const serviceId = searchParams.get('service_id');
     const bookingDate = searchParams.get('date');
     const durationRaw = searchParams.get('duration_minutes');
+    const workerId = searchParams.get('worker_id'); // optional: filter by specific worker
 
     if (!serviceId || !bookingDate || !durationRaw) {
       return NextResponse.json(
@@ -32,7 +33,7 @@ export async function GET(request: NextRequest) {
 
     const supabase = await createAdminClient();
 
-    // Call Supabase function to get available slots
+    // Call Supabase function to get available slots (all workers)
     const { data, error } = await supabase.rpc(
       'get_available_slots_for_service',
       {
@@ -51,12 +52,43 @@ export async function GET(request: NextRequest) {
     }
 
     // Parse the JSON result from the function
-    const result = (data as AvailabilitySlotsResult) || {
-      available_slots: [],
-      available_workers_count: 0,
-      duration_minutes: durationMinutes,
-      message: 'No data returned',
-    };
+    const result: AvailabilitySlotsResult =
+      (data as AvailabilitySlotsResult) || {
+        available_slots: [],
+        available_workers_count: 0,
+        duration_minutes: durationMinutes,
+        message: 'No data returned',
+      };
+
+    // If a specific worker_id is provided, filter slots to only those where
+    // that worker is available
+    if (workerId && result.available_slots.length > 0) {
+      const slotChecks = await Promise.all(
+        result.available_slots.map(async (slot) => {
+          const { data: workers } = await supabase.rpc(
+            'get_available_workers_for_booking',
+            {
+              p_service_id: serviceId,
+              p_booking_date: bookingDate,
+              p_booking_time: slot,
+              p_duration_minutes: durationMinutes,
+            },
+          );
+          const availableWorkers =
+            (workers as Array<{ worker_id: string }>) || [];
+          const isAvailable = availableWorkers.some(
+            (w) => w.worker_id === workerId,
+          );
+          return { slot, isAvailable };
+        }),
+      );
+
+      result.available_slots = slotChecks
+        .filter((c) => c.isAvailable)
+        .map((c) => c.slot);
+      result.available_workers_count =
+        result.available_slots.length > 0 ? 1 : 0;
+    }
 
     return NextResponse.json(result);
   } catch (error) {

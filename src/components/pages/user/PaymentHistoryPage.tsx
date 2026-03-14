@@ -163,6 +163,7 @@ const PaymentHistoryPage = () => {
             data: paymentRows,
             columns,
             actions,
+            minTableWidth: 900,
             isLoading: false,
             pageSize: 10,
             defaultSortBy: 'created_at',

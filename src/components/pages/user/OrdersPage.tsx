@@ -193,6 +193,7 @@ const UserOrdersPage = () => {
             data: orders,
             columns,
             actions,
+            minTableWidth: 1200,
             isLoading: orderPayFastPaymentMutation.isPending,
             pageSize: 10,
             defaultSortBy: 'created_at',

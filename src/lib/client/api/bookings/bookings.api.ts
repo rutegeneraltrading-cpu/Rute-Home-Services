@@ -4,6 +4,7 @@ import type {
   Booking,
   BookingPaymentData,
   UpdateBookingDTO,
+  UserUpdateBookingDTO,
   AvailableWorker,
 } from '@/lib/types/bookings';
 
@@ -78,6 +79,20 @@ export const getAvailableWorkersForBookingApi = async (
  */
 export const cancelBookingApi = async (bookingId: string): Promise<void> => {
   return httpClient.delete(`/api/bookings/${bookingId}`);
+};
+
+/**
+ * Customer update booking (within 1-hour edit window)
+ */
+export const customerUpdateBookingApi = async (
+  bookingId: string,
+  data: UserUpdateBookingDTO,
+): Promise<Booking> => {
+  const { booking } = await httpClient.patch<{ booking: Booking }>(
+    `/api/bookings/${bookingId}/customer-update`,
+    data,
+  );
+  return booking;
 };
 
 // ============================================

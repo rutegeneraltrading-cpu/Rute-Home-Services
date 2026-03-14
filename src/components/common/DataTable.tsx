@@ -22,13 +22,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+// import {
+//   Select,
+//   SelectContent,
+//   SelectItem,
+//   SelectTrigger,
+//   SelectValue,
+// } from '@/components/ui/select';
 import { DataTableConfig } from '@/lib/types';
 
 interface DataTableProps<T extends Record<string, any>> {
@@ -54,7 +54,10 @@ export function DataTable<T extends Record<string, any>>({
   );
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
-  const [pageSize, setPageSize] = useState(config.pageSize || 10);
+  const [
+    pageSize,
+    // setPageSize
+  ] = useState(config.pageSize || 10);
 
   // Create column definitions from config
   const columns = useMemo(() => {
@@ -99,10 +102,11 @@ export function DataTable<T extends Record<string, any>>({
   const rows = table.getRowModel().rows;
   const pageCount = table.getPageCount();
   const currentPage = table.getState().pagination.pageIndex + 1;
-  const minTableWidth =
+  const computedMinTableWidth =
     (config.columns.length +
       (config.actions && config.actions.length > 0 ? 1 : 0)) *
     160;
+  const minTableWidth = config.minTableWidth || computedMinTableWidth;
 
   return (
     <div className="space-y-4">
@@ -221,7 +225,7 @@ export function DataTable<T extends Record<string, any>>({
                     </TableHead>
                   ))}
                   {config.actions && config.actions.length > 0 && (
-                    <TableHead className="w-20 min-w-24 text-right">
+                    <TableHead className="text-right whitespace-nowrap w-px">
                       Actions
                     </TableHead>
                   )}
@@ -292,8 +296,8 @@ export function DataTable<T extends Record<string, any>>({
 
                     {/* Actions column */}
                     {config.actions && config.actions.length > 0 && (
-                      <TableCell className="text-right min-w-24">
-                        <div className="flex gap-1 justify-end">
+                      <TableCell className="text-right w-px whitespace-nowrap">
+                        <div className="flex gap-1 justify-end flex-nowrap">
                           {config.actions
                             .filter(
                               (action) =>
@@ -347,7 +351,7 @@ export function DataTable<T extends Record<string, any>>({
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-2">
             {/* Page size selector */}
-            <div className="flex items-center gap-2">
+            {/* <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">
                 Rows per page:
               </span>
@@ -366,7 +370,7 @@ export function DataTable<T extends Record<string, any>>({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </div> */}
 
             {/* Pagination buttons */}
             <div className="flex items-center gap-2">

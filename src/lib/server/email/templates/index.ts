@@ -18,6 +18,7 @@ import { bookingStatusUpdateTemplate } from './bookingStatusUpdateTemplate';
 import { orderStatusUpdateTemplate } from './orderStatusUpdateTemplate';
 import { bookingCompletionTemplate } from './bookingCompletionTemplate';
 import { workerRatingReceivedTemplate } from './workerRatingReceivedTemplate';
+import { bookingUpdatedByCustomerTemplate } from './bookingUpdatedByCustomerTemplate';
 
 export {
   signinAlertTemplate,
@@ -40,4 +41,5 @@ export {
   orderStatusUpdateTemplate,
   bookingCompletionTemplate,
   workerRatingReceivedTemplate,
+  bookingUpdatedByCustomerTemplate,
 };

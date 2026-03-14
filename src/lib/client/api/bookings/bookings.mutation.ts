@@ -4,8 +4,13 @@ import {
   createBookingApi,
   cancelBookingApi,
   updateBookingApi,
+  customerUpdateBookingApi,
 } from './bookings.api';
-import type { CreateBookingDTO, UpdateBookingDTO } from '@/lib/types/bookings';
+import type {
+  CreateBookingDTO,
+  UpdateBookingDTO,
+  UserUpdateBookingDTO,
+} from '@/lib/types/bookings';
 import { bookingKeys } from './bookings.query';
 
 // ============================================
@@ -70,6 +75,29 @@ export const useCancelBooking = () => {
     onError: (error) => {
       console.error('Error cancelling booking:', error);
       toast.error(error?.message || 'Failed to cancel booking');
+    },
+  });
+};
+
+/**
+ * Customer update booking (within 1-hour edit window)
+ */
+export const useCustomerUpdateBooking = (bookingId: string) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: UserUpdateBookingDTO) =>
+      customerUpdateBookingApi(bookingId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: bookingKeys.lists() });
+      queryClient.invalidateQueries({
+        queryKey: bookingKeys.detail(bookingId),
+      });
+      toast.success('Booking updated successfully!');
+    },
+    onError: (error) => {
+      console.error('Error updating booking:', error);
+      toast.error(error?.message || 'Failed to update booking');
     },
   });
 };

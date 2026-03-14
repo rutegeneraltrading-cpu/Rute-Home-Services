@@ -178,3 +178,17 @@ export interface OrderStatusUpdateEmailData {
   updatedAt: string;
   detailsUrl: string;
 }
+
+export interface BookingUpdatedByCustomerEmailData {
+  recipientName: string;
+  customerName: string;
+  bookingId: string;
+  service: BookingServiceDetail;
+  address: string;
+  unitOrFlat?: string;
+  notes?: string;
+  bookingDate: string;
+  bookingTime: string;
+  audience: 'admin' | 'worker';
+  updatedAt: string;
+}

@@ -41,6 +41,7 @@ export interface DataTableConfig<T> {
   data: T[];
   columns: TableColumn<T>[];
   actions?: TableAction[];
+  minTableWidth?: number;
   filters?: TableFilter[];
   searchableColumns?: (keyof T)[];
   defaultSortBy?: keyof T;
