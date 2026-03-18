@@ -187,6 +187,14 @@ export default function ServicesPage() {
       sortable: true,
     },
     {
+      id: 'service_fee',
+      header: 'Service Fee',
+      accessorKey: 'service_fee',
+      sortable: true,
+      cell: (value) =>
+        `${parseFloat(value).toFixed(2)}%`,
+    },
+    {
       id: 'is_active',
       header: 'Status',
       accessorKey: 'is_active',

@@ -26,6 +26,7 @@ const REQUIREMENT_TYPE_OPTIONS = [
   { value: 'size', label: 'Size' },
   { value: 'property_size', label: 'Property Size' },
   { value: 'truck_size', label: 'Truck Size' },
+  { value: 'assistants', label: 'Assistants' },
   { value: 'type', label: 'Type' },
 ] as const;
 

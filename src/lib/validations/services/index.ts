@@ -4,6 +4,7 @@ export const categoryEditServiceSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   description: z.string().optional(),
   charge_type: z.enum(['hourly', 'day']),
+  service_fee: z.number().min(0, 'Service fee must be 0 or greater'),
 });
 
 export type CategoryEditServiceValues = z.infer<
@@ -15,6 +16,7 @@ export const categoryFormSchema = z.object({
   description: z.string().optional(),
   image_url: z.string().url('Must be a valid URL').optional().or(z.literal('')),
   charge_type: z.enum(['hourly', 'day']),
+  service_fee: z.number().min(0, 'Service fee must be 0 or greater'),
 });
 
 export type CategoryFormValues = z.infer<typeof categoryFormSchema>;

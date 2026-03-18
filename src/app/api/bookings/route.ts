@@ -2,22 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { CreateBookingDTO } from '@/lib/types/bookings';
-import { sendEmail } from '@/lib/server/email/ses-mailer';
-import { bookingCreatedTemplate } from '@/lib/server/email';
+// import { sendEmail } from '@/lib/server/email/ses-mailer';
+// import { bookingCreatedTemplate } from '@/lib/server/email';
 
-const MAX_TITLE_LENGTH = 70;
+// const MAX_TITLE_LENGTH = 70;
 
-function buildBookingServiceSubject(
-  serviceName: string,
-  serviceCategory?: string,
-): string {
-  const fullName = serviceCategory
-    ? `${serviceName} - ${serviceCategory}`
-    : serviceName;
-  return fullName.length > MAX_TITLE_LENGTH
-    ? fullName.substring(0, MAX_TITLE_LENGTH - 3) + '...'
-    : fullName;
-}
+// function buildBookingServiceSubject(
+//   serviceName: string,
+//   serviceCategory?: string,
+// ): string {
+//   const fullName = serviceCategory
+//     ? `${serviceName} - ${serviceCategory}`
+//     : serviceName;
+//   return fullName.length > MAX_TITLE_LENGTH
+//     ? fullName.substring(0, MAX_TITLE_LENGTH - 3) + '...'
+//     : fullName;
+// }
 
 // GET all bookings (user sees own, admin sees all)
 export async function GET() {
@@ -327,7 +327,20 @@ export async function POST(request: NextRequest) {
       .eq('id', service_id)
       .maybeSingle();
 
-    let serviceDetails: any = {
+    const serviceDetails: {
+      name: string;
+      category?: string;
+      options?: Array<{
+        name: string;
+        description: string | null;
+        price: number;
+      }>;
+      requirements?: Array<{
+        name: string;
+        type: string;
+        price: number;
+      }>;
+    } = {
       name: serviceData?.name || 'Service',
     };
 
@@ -368,34 +381,38 @@ export async function POST(request: NextRequest) {
       }));
     }
 
-    if (user.email) {
-      try {
-        const serviceSubject = buildBookingServiceSubject(
-          serviceDetails.name,
-          serviceDetails.category,
-        );
+    // Keeps derived details available for quick re-enable of email workflow.
+    void serviceDetails;
 
-        await sendEmail({
-          to: user.email,
-          subject: `Booking Created - ${serviceSubject}`,
-          html: bookingCreatedTemplate({
-            customerName: user.full_name || 'Customer',
-            bookingId: data.id,
-            service: serviceDetails,
-            address: String(address || ''),
-            unitOrFlat: unit_or_flat?.trim() || undefined,
-            notes: notes?.trim() || undefined,
-            bookingDate: String(booking_date),
-            bookingTime: String(booking_time),
-            total: Number(total_price),
-            paymentStatus: 'Pending',
-            detailsUrl: `${process.env.NEXT_PUBLIC_APP_URL}/user/bookings/${data.id}`,
-          }),
-        });
-      } catch (emailError) {
-        console.error('Booking created email send failed:', emailError);
-      }
-    }
+    // Email sending is temporarily disabled for booking creation.
+    // if (user.email) {
+    //   try {
+    //     const serviceSubject = buildBookingServiceSubject(
+    //       serviceDetails.name,
+    //       serviceDetails.category,
+    //     );
+
+    //     await sendEmail({
+    //       to: user.email,
+    //       subject: `Booking Created - ${serviceSubject}`,
+    //       html: bookingCreatedTemplate({
+    //         customerName: user.full_name || 'Customer',
+    //         bookingId: data.id,
+    //         service: serviceDetails,
+    //         address: String(address || ''),
+    //         unitOrFlat: unit_or_flat?.trim() || undefined,
+    //         notes: notes?.trim() || undefined,
+    //         bookingDate: String(booking_date),
+    //         bookingTime: String(booking_time),
+    //         total: Number(total_price),
+    //         paymentStatus: 'Pending',
+    //         detailsUrl: `${process.env.NEXT_PUBLIC_APP_URL}/user/bookings/${data.id}`,
+    //       }),
+    //     });
+    //   } catch (emailError) {
+    //     console.error('Booking created email send failed:', emailError);
+    //   }
+    // }
 
     return NextResponse.json({ booking: data }, { status: 201 });
   } catch (error) {

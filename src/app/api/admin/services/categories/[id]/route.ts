@@ -18,7 +18,7 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
 
-    const { name, description, image_url, charge_type } = body;
+    const { name, description, image_url, charge_type, service_fee } = body;
 
     if (!name) {
       return NextResponse.json(
@@ -34,6 +34,7 @@ export async function PUT(
         description: description ?? null,
         image_url: image_url ?? null,
         charge_type: charge_type ?? 'hourly',
+        ...(service_fee !== undefined && { service_fee }),
       })
       .eq('id', id)
       .select()

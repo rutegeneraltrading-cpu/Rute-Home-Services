@@ -236,79 +236,80 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (profile.email) {
-      try {
-        // Fetch product details for email
-        const productIds = items.map((item) => item.product_id);
-        const { data: productsData } = await supabase
-          .from('products')
-          .select(
-            'id, name, category_id, images:product_images(url, is_primary, sort_order)',
-          )
-          .in('id', productIds);
+    // Email sending is temporarily disabled for order creation.
+    // if (profile.email) {
+    //   try {
+    //     // Fetch product details for email
+    //     const productIds = items.map((item) => item.product_id);
+    //     const { data: productsData } = await supabase
+    //       .from('products')
+    //       .select(
+    //         'id, name, category_id, images:product_images(url, is_primary, sort_order)',
+    //       )
+    //       .in('id', productIds);
 
-        const categoryIds = Array.from(
-          new Set(
-            (productsData || []).map((p) => p.category_id).filter(Boolean),
-          ),
-        ) as string[];
+    //     const categoryIds = Array.from(
+    //       new Set(
+    //         (productsData || []).map((p) => p.category_id).filter(Boolean),
+    //       ),
+    //     ) as string[];
 
-        const { data: categoriesData } = await supabase
-          .from('product_categories')
-          .select('id, name')
-          .in('id', categoryIds);
+    //     const { data: categoriesData } = await supabase
+    //       .from('product_categories')
+    //       .select('id, name')
+    //       .in('id', categoryIds);
 
-        const productsMap = new Map((productsData || []).map((p) => [p.id, p]));
-        const categoriesMap = new Map(
-          (categoriesData || []).map((c) => [c.id, c.name]),
-        );
+    //     const productsMap = new Map((productsData || []).map((p) => [p.id, p]));
+    //     const categoriesMap = new Map(
+    //       (categoriesData || []).map((c) => [c.id, c.name]),
+    //     );
 
-        const orderItems = items.map((item) => {
-          const product = productsMap.get(item.product_id);
-          const images = Array.isArray((product as any)?.images)
-            ? [...(product as any).images]
-            : [];
-          const primaryImage = getPrimaryProductImageUrl(images);
-          const resolvedImageUrl = resolveProductImageUrl(primaryImage);
+    //     const orderItems = items.map((item) => {
+    //       const product = productsMap.get(item.product_id);
+    //       const images = Array.isArray((product as any)?.images)
+    //         ? [...(product as any).images]
+    //         : [];
+    //       const primaryImage = getPrimaryProductImageUrl(images);
+    //       const resolvedImageUrl = resolveProductImageUrl(primaryImage);
 
-          console.log('[Order Email][Point 8] image mapping:', {
-            orderId: order.id,
-            productId: item.product_id,
-            productName: product?.name || 'Product',
-            imageCount: images.length,
-            primaryImageRaw: primaryImage || null,
-            resolvedImageUrl: resolvedImageUrl || null,
-          });
+    //       console.log('[Order Email][Point 8] image mapping:', {
+    //         orderId: order.id,
+    //         productId: item.product_id,
+    //         productName: product?.name || 'Product',
+    //         imageCount: images.length,
+    //         primaryImageRaw: primaryImage || null,
+    //         resolvedImageUrl: resolvedImageUrl || null,
+    //       });
 
-          return {
-            productName: product?.name || 'Product',
-            quantity: item.quantity,
-            price: item.price,
-            category: product?.category_id
-              ? categoriesMap.get(product.category_id)
-              : undefined,
-            imageUrl: resolvedImageUrl,
-          };
-        });
+    //       return {
+    //         productName: product?.name || 'Product',
+    //         quantity: item.quantity,
+    //         price: item.price,
+    //         category: product?.category_id
+    //           ? categoriesMap.get(product.category_id)
+    //           : undefined,
+    //         imageUrl: resolvedImageUrl,
+    //       };
+    //     });
 
-        const productSummary = buildOrderProductsSubject(orderItems);
+    //     const productSummary = buildOrderProductsSubject(orderItems);
 
-        await sendEmail({
-          to: profile.email,
-          subject: `Order Created - ${productSummary}`,
-          html: orderCreatedTemplate({
-            customerName: profile.full_name || 'Customer',
-            orderId: order.id,
-            items: orderItems,
-            total,
-            paymentStatus: 'Pending',
-            dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL}/user/orders`,
-          }),
-        });
-      } catch (emailError) {
-        console.error('Order created email send failed:', emailError);
-      }
-    }
+    //     await sendEmail({
+    //       to: profile.email,
+    //       subject: `Order Created - ${productSummary}`,
+    //       html: orderCreatedTemplate({
+    //         customerName: profile.full_name || 'Customer',
+    //         orderId: order.id,
+    //         items: orderItems,
+    //         total,
+    //         paymentStatus: 'Pending',
+    //         dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL}/user/orders`,
+    //       }),
+    //     });
+    //   } catch (emailError) {
+    //     console.error('Order created email send failed:', emailError);
+    //   }
+    // }
 
     return NextResponse.json({ order });
   } catch (error) {

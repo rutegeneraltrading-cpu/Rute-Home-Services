@@ -4,6 +4,7 @@ export interface ServiceCategory {
   description?: string | null;
   image_url?: string | null;
   charge_type: 'hourly' | 'day';
+  service_fee: number;
 }
 
 export interface ServiceCategoryEditModalProps {
@@ -77,6 +78,7 @@ export interface ServiceCategory {
   image_url?: string | null;
   is_active: boolean;
   charge_type: 'hourly' | 'day';
+  service_fee: number;
   created_at: string;
 }
 
@@ -85,6 +87,7 @@ export interface CreateServiceCategoryDTO {
   description?: string;
   image_url?: string;
   charge_type: 'hourly' | 'day';
+  service_fee: number;
   is_active?: boolean;
 }
 
