@@ -8,6 +8,7 @@ import {
   bookingStatusUpdateTemplate,
   bookingCompletionTemplate,
 } from '@/lib/server/email';
+import type { BookingServiceDetail } from '@/lib/types/email';
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -94,6 +95,17 @@ const assignmentEventTime = (assignment: {
     .map((value) => new Date(String(value)).getTime());
 
   return ts.length ? Math.max(...ts) : 0;
+};
+
+const toNumber = (value: unknown, fallback = 0): number => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const clampPercent = (value: number): number => {
+  if (value < 0) return 0;
+  if (value > 100) return 100;
+  return value;
 };
 
 export async function GET(_request: NextRequest, { params }: Params) {
@@ -198,17 +210,29 @@ export async function GET(_request: NextRequest, { params }: Params) {
       name: string;
       slug: string | null;
       charge_type: string | null;
+      service_fee: number | null;
       is_active: boolean | null;
     } | null = null;
 
     if (service?.category_id) {
       const { data: category } = await supabaseAdmin
         .from('service_categories')
-        .select('id, name, slug, charge_type, is_active')
+        .select('id, name, slug, charge_type, service_fee, is_active')
         .eq('id', service.category_id)
         .single();
       serviceCategory = category || null;
     }
+
+    const totalPrice = toNumber(booking.total_price, 0);
+    const serviceFeePercentage = clampPercent(
+      toNumber(serviceCategory?.service_fee, 0),
+    );
+    const serviceFeeAmount = Number(
+      ((totalPrice * serviceFeePercentage) / 100).toFixed(2),
+    );
+    const workerPayoutAmount = Number(
+      (totalPrice - serviceFeeAmount).toFixed(2),
+    );
 
     type AssignmentRow = {
       booking_id: string;
@@ -335,6 +359,9 @@ export async function GET(_request: NextRequest, { params }: Params) {
     return NextResponse.json({
       booking: {
         ...booking,
+        service_fee_percentage: serviceFeePercentage,
+        service_fee_amount: serviceFeeAmount,
+        worker_payout_amount: workerPayoutAmount,
         customer_name: customer?.full_name || null,
         customer_email: customer?.email || null,
         customer_phone: customer?.phone || null,
@@ -759,8 +786,12 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       return workerProfile || null;
     };
 
-    const getServiceDetails = async (): Promise<any> => {
-      const details: any = { name: serviceName };
+    const getServiceDetails = async (): Promise<
+      BookingServiceDetail & { categoryFeePercent?: number }
+    > => {
+      const details: BookingServiceDetail & { categoryFeePercent?: number } = {
+        name: serviceName,
+      };
 
       if (booking.service_id) {
         const { data: svcData } = await supabaseAdmin
@@ -772,10 +803,13 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         if (svcData?.category_id) {
           const { data: catData } = await supabaseAdmin
             .from('service_categories')
-            .select('name')
+            .select('name, service_fee')
             .eq('id', svcData.category_id)
             .maybeSingle();
           details.category = catData?.name;
+          details.categoryFeePercent = clampPercent(
+            toNumber(catData?.service_fee, 0),
+          );
         }
 
         if (updatedBooking.selected_options?.length > 0) {
@@ -785,8 +819,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
             .in('id', updatedBooking.selected_options);
           details.options = (optData || []).map((opt: any) => ({
             name: opt.name,
-            description: opt.description,
-            price: opt.price,
+            description: opt.description || undefined,
+            price: opt.price ?? undefined,
           }));
         }
 
@@ -797,8 +831,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
             .in('id', updatedBooking.selected_variants);
           details.requirements = (varData || []).map((v: any) => ({
             name: v.name,
-            type: v.type,
-            price: v.price,
+            type: v.type || undefined,
+            price: v.price ?? undefined,
           }));
         }
       }
@@ -819,6 +853,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     const serviceSubject = buildServiceSubject(
       serviceDetailsForEmails.name || serviceName,
       serviceDetailsForEmails.category,
+    );
+    const bookingTotalForPayout = toNumber(updatedBooking.total_price, 0);
+    const serviceFeePercentForPayout = clampPercent(
+      toNumber(serviceDetailsForEmails.categoryFeePercent, 0),
     );
 
     if (shouldSendAssignmentAcceptedEmail && assignmentStatusWorkerId) {
@@ -894,6 +932,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
               bookingDate,
               bookingTime,
               customerName,
+              totalAmount: bookingTotalForPayout,
+              serviceFeePercent: serviceFeePercentForPayout,
             }),
           });
         } catch (emailError) {
@@ -919,6 +959,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
               notes: notesForEmails,
               bookingDate,
               bookingTime,
+              totalAmount: bookingTotalForPayout,
+              serviceFeePercent: serviceFeePercentForPayout,
             }),
           });
         } catch (emailError) {
@@ -983,7 +1025,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
             userName: customerName,
             bookingId: id,
             serviceName: serviceDetailsForEmails.name,
-            serviceCategory: serviceDetailsForEmails.category,
+            serviceCategory: serviceDetailsForEmails.category || 'General',
             bookingDate,
             bookingTime,
             workerName: workerNameForEmail,

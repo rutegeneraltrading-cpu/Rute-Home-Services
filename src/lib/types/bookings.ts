@@ -30,6 +30,7 @@ export interface BookingServiceCategoryDetail {
   name: string;
   slug?: string | null;
   charge_type?: string | null;
+  service_fee?: number | null;
   is_active?: boolean | null;
 }
 
@@ -88,6 +89,9 @@ export interface Booking {
   booking_time: string;
   status: BookingStatus;
   total_price: number;
+  service_fee_percentage?: number | null;
+  service_fee_amount?: number | null;
+  worker_payout_amount?: number | null;
   total_duration: number;
   payment_status: BookingPaymentStatus;
   payfast_transaction_id?: string;

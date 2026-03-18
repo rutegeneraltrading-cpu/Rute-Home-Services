@@ -96,6 +96,30 @@ const BookingDetails = () => {
   }
 
   const serviceDetails = booking.service_details;
+  const serviceFeePercentage = Number(
+    booking.service_fee_percentage ??
+      serviceDetails?.category?.service_fee ??
+      0,
+  );
+  const safeServiceFeePercentage = Math.max(
+    0,
+    Math.min(100, serviceFeePercentage),
+  );
+  const serviceFeeAmount = Number(
+    (
+      (Number(booking.total_price || 0) * safeServiceFeePercentage) /
+      100
+    ).toFixed(2),
+  );
+  const damageDeductionPercent = 40;
+  const maxDamageDeductionAmount = Number(
+    ((Number(booking.total_price || 0) * damageDeductionPercent) / 100).toFixed(
+      2,
+    ),
+  );
+  const workerPayoutAmount = Number(
+    (Number(booking.total_price || 0) - serviceFeeAmount).toFixed(2),
+  );
   const ratingValue = Number(booking.rating_value || 0);
   const safeRatingValue = Math.max(0, Math.min(5, Math.round(ratingValue)));
   const ratingStars = safeRatingValue
@@ -200,6 +224,12 @@ const BookingDetails = () => {
                     Charge Type:{' '}
                     <span className="font-semibold capitalize">
                       {serviceDetails?.category?.charge_type || 'N/A'}
+                    </span>
+                  </p>
+                  <p className="text-slate-700">
+                    Service Fee:{' '}
+                    <span className="font-semibold">
+                      {safeServiceFeePercentage.toFixed(2)}%
                     </span>
                   </p>
                   <p className="text-slate-700">
@@ -376,6 +406,26 @@ const BookingDetails = () => {
               <div className="flex justify-between pt-2 border-t text-base font-bold">
                 <span>Total Price</span>
                 <span>R{Number(booking.total_price || 0).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-slate-600">Damage Deduction</span>
+                <span>Only if damage occurs</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-slate-600">
+                  Max Deduction ({damageDeductionPercent}%)
+                </span>
+                <span>R{maxDamageDeductionAmount.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-slate-600">
+                  Platform Fee ({safeServiceFeePercentage.toFixed(2)}%)
+                </span>
+                <span>R{serviceFeeAmount.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm font-semibold">
+                <span className="text-slate-700">Expected Payout</span>
+                <span>R{workerPayoutAmount.toFixed(2)}</span>
               </div>
               {booking.payfast_transaction_id && (
                 <div className="pt-2 border-t text-xs text-slate-600 flex items-start gap-2">

@@ -11,6 +11,8 @@ interface BookingAssignedToWorkerEmailData {
   bookingDate: string;
   bookingTime: string;
   customerName: string;
+  totalAmount?: number;
+  serviceFeePercent?: number;
 }
 
 function formatRequirementType(type?: string): string {
@@ -32,6 +34,22 @@ function formatRequirementType(type?: string): string {
 export function bookingAssignedToWorkerTemplate(
   data: BookingAssignedToWorkerEmailData,
 ) {
+  const totalAmount = Number(data.totalAmount || 0);
+  const damageDeductionPercent = 40;
+  const maxDamageDeductionAmount = Number(
+    ((totalAmount * damageDeductionPercent) / 100).toFixed(2),
+  );
+  const serviceFeePercent = Math.max(
+    0,
+    Math.min(100, Number(data.serviceFeePercent || 0)),
+  );
+  const serviceFeeAmount = Number(
+    ((totalAmount * serviceFeePercent) / 100).toFixed(2),
+  );
+  const workerPayoutAmount = Number(
+    (totalAmount - serviceFeeAmount).toFixed(2),
+  );
+
   let serviceDetailsHtml = `
     <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:20px;margin:24px 0;">
       <p style="margin:0 0 12px;font-size:13px;font-weight:700;color:#111827;text-transform:uppercase;letter-spacing:0.05em;">Service Details</p>
@@ -74,6 +92,15 @@ export function bookingAssignedToWorkerTemplate(
     if (data.notes) {
       serviceDetailsHtml += `<p style="margin:0 0 4px;font-size:13px;color:#374151;">Notes: ${data.notes}</p>`;
     }
+  }
+
+  if (totalAmount > 0) {
+    serviceDetailsHtml += `<p style="margin:12px 0 6px;font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:0.05em;">Payment Breakdown</p>`;
+    serviceDetailsHtml += `<p style="margin:0 0 4px;font-size:13px;color:#374151;">Total Booking: R${totalAmount.toFixed(2)}</p>`;
+    serviceDetailsHtml += `<p style="margin:0 0 4px;font-size:13px;color:#374151;">Damage Deduction: Only if damage occurs</p>`;
+    serviceDetailsHtml += `<p style="margin:0 0 4px;font-size:13px;color:#374151;">Max Deduction: R${maxDamageDeductionAmount.toFixed(2)} (${damageDeductionPercent}%)</p>`;
+    serviceDetailsHtml += `<p style="margin:0 0 4px;font-size:13px;color:#374151;">Service Fee (${serviceFeePercent.toFixed(2)}%): R${serviceFeeAmount.toFixed(2)}</p>`;
+    serviceDetailsHtml += `<p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#111827;">Expected Payout: R${workerPayoutAmount.toFixed(2)}</p>`;
   }
 
   serviceDetailsHtml += `</div>`;
