@@ -40,7 +40,6 @@ export function ServiceCategoryForm() {
       description: '',
       image_url: '',
       charge_type: 'hourly',
-      service_fee: 0,
     },
   });
 
@@ -88,7 +87,6 @@ export function ServiceCategoryForm() {
         description: data.description,
         image_url: imageUrl,
         charge_type: data.charge_type,
-        service_fee: data.service_fee,
       });
 
       // Clear form after success
@@ -174,29 +172,6 @@ export function ServiceCategoryForm() {
               Select how this category is charged (per hour or per day)
             </p>
           </div>
-
-          <div>
-            <Label htmlFor="service_fee">Service Fee (ZAR) *</Label>
-            <Input
-              id="service_fee"
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="0.00"
-              {...register('service_fee', { valueAsNumber: true })}
-              className="mt-2"
-              disabled={isSubmitting}
-            />
-            {formErrors.service_fee && (
-              <p className="text-sm text-red-500 mt-1">
-                {formErrors.service_fee.message}
-              </p>
-            )}
-            <p className="text-xs text-muted-foreground mt-1">
-              Enter the fixed service fee for this category.
-            </p>
-          </div>
-
           {/* Category Image */}
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 bg-gray-50">
             <Label htmlFor="image">Category Image</Label>

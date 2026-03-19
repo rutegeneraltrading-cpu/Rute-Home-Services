@@ -81,6 +81,7 @@ export interface ServiceOptionDetail {
   name: string;
   description?: string;
   price?: number;
+  platform_fee?: number;
 }
 
 export interface ServiceVariantDetail {
@@ -102,6 +103,7 @@ export interface BookingServiceDetail {
   requirements?: ServiceRequirementDetail[];
   // Backward-compatible alias
   variants?: ServiceVariantDetail[];
+  platform_fee?: number;
 }
 
 export interface BookingCreatedEmailData {

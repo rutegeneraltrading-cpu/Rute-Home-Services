@@ -28,6 +28,7 @@ export async function PUT(
       display_order,
       is_active,
       type,
+      platform_fee,
     } = body;
 
     if (!name || price === undefined) {
@@ -48,6 +49,7 @@ export async function PUT(
         is_required: !!is_required,
         display_order: display_order ?? 0,
         is_active: is_active !== false,
+        platform_fee: platform_fee !== undefined ? parseFloat(platform_fee) : 0,
         type,
       })
       .eq('id', id)

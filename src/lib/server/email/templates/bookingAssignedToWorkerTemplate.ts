@@ -39,15 +39,33 @@ export function bookingAssignedToWorkerTemplate(
   const maxDamageDeductionAmount = Number(
     ((totalAmount * damageDeductionPercent) / 100).toFixed(2),
   );
-  const serviceFeePercent = Math.max(
+
+  // Calculate platform_fee for service
+  const servicePlatformFeePercent = Math.max(
     0,
-    Math.min(100, Number(data.serviceFeePercent || 0)),
+    Math.min(100, Number(data.service?.platform_fee || 0)),
   );
-  const serviceFeeAmount = Number(
-    ((totalAmount * serviceFeePercent) / 100).toFixed(2),
+  const servicePlatformFeeAmount = Number(
+    ((totalAmount * servicePlatformFeePercent) / 100).toFixed(2),
+  );
+
+  // Calculate platform_fee for options
+  const options = Array.isArray(data.service.options)
+    ? data.service.options
+    : [];
+  const optionsPlatformFeePercent = options.reduce(
+    (sum, opt) => sum + Number(opt.platform_fee || 0),
+    0,
+  );
+  const optionsPlatformFeeAmount = Number(
+    ((totalAmount * optionsPlatformFeePercent) / 100).toFixed(2),
+  );
+
+  const totalPlatformFeeAmount = Number(
+    (servicePlatformFeeAmount + optionsPlatformFeeAmount).toFixed(2),
   );
   const workerPayoutAmount = Number(
-    (totalAmount - serviceFeeAmount).toFixed(2),
+    (totalAmount - totalPlatformFeeAmount).toFixed(2),
   );
 
   let serviceDetailsHtml = `
@@ -99,7 +117,9 @@ export function bookingAssignedToWorkerTemplate(
     serviceDetailsHtml += `<p style="margin:0 0 4px;font-size:13px;color:#374151;">Total Booking: R${totalAmount.toFixed(2)}</p>`;
     serviceDetailsHtml += `<p style="margin:0 0 4px;font-size:13px;color:#374151;">Damage Deduction: Only if damage occurs</p>`;
     serviceDetailsHtml += `<p style="margin:0 0 4px;font-size:13px;color:#374151;">Max Deduction: R${maxDamageDeductionAmount.toFixed(2)} (${damageDeductionPercent}%)</p>`;
-    serviceDetailsHtml += `<p style="margin:0 0 4px;font-size:13px;color:#374151;">Service Fee (${serviceFeePercent.toFixed(2)}%): R${serviceFeeAmount.toFixed(2)}</p>`;
+    serviceDetailsHtml += `<p style="margin:0 0 4px;font-size:13px;color:#374151;">Service Platform Fee (${servicePlatformFeePercent.toFixed(2)}%): R${servicePlatformFeeAmount.toFixed(2)}</p>`;
+    serviceDetailsHtml += `<p style="margin:0 0 4px;font-size:13px;color:#374151;">Options Platform Fee (${optionsPlatformFeePercent.toFixed(2)}%): R${optionsPlatformFeeAmount.toFixed(2)}</p>`;
+    serviceDetailsHtml += `<p style="margin:0 0 4px;font-size:13px;color:#374151;font-weight:700;">Total Platform Fee: R${totalPlatformFeeAmount.toFixed(2)}</p>`;
     serviceDetailsHtml += `<p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#111827;">Expected Payout: R${workerPayoutAmount.toFixed(2)}</p>`;
   }
 

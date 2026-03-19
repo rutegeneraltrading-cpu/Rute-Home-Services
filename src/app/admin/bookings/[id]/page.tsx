@@ -96,30 +96,26 @@ const BookingDetails = () => {
   }
 
   const serviceDetails = booking.service_details;
-  const serviceFeePercentage = Number(
-    booking.service_fee_percentage ??
-      serviceDetails?.category?.service_fee ??
-      0,
+  const servicePlatformFeePercent = Number(
+    booking.service_platform_fee_percentage || 0,
   );
-  const safeServiceFeePercentage = Math.max(
-    0,
-    Math.min(100, serviceFeePercentage),
+  const servicePlatformFeeAmount = Number(
+    booking.service_platform_fee_amount || 0,
   );
-  const serviceFeeAmount = Number(
-    (
-      (Number(booking.total_price || 0) * safeServiceFeePercentage) /
-      100
-    ).toFixed(2),
+  const optionsPlatformFeePercent = Number(
+    booking.options_platform_fee_percentage || 0,
   );
+  const optionsPlatformFeeAmount = Number(
+    booking.options_platform_fee_amount || 0,
+  );
+  const totalPlatformFeeAmount = Number(booking.total_platform_fee_amount || 0);
   const damageDeductionPercent = 40;
   const maxDamageDeductionAmount = Number(
     ((Number(booking.total_price || 0) * damageDeductionPercent) / 100).toFixed(
       2,
     ),
   );
-  const workerPayoutAmount = Number(
-    (Number(booking.total_price || 0) - serviceFeeAmount).toFixed(2),
-  );
+  const workerPayoutAmount = Number(booking.worker_payout_amount || 0);
   const ratingValue = Number(booking.rating_value || 0);
   const safeRatingValue = Math.max(0, Math.min(5, Math.round(ratingValue)));
   const ratingStars = safeRatingValue
@@ -227,9 +223,27 @@ const BookingDetails = () => {
                     </span>
                   </p>
                   <p className="text-slate-700">
-                    Service Fee:{' '}
+                    Service Platform Fee:{' '}
                     <span className="font-semibold">
-                      {safeServiceFeePercentage.toFixed(2)}%
+                      {servicePlatformFeePercent.toFixed(2)}% (R
+                      {servicePlatformFeeAmount.toFixed(2)})
+                    </span>
+                  </p>
+                  <p className="text-slate-700">
+                    Options Platform Fee:{' '}
+                    <span className="font-semibold">
+                      {optionsPlatformFeePercent.toFixed(2)}% (R
+                      {optionsPlatformFeeAmount.toFixed(2)})
+                    </span>
+                  </p>
+                  <p className="text-slate-700">
+                    <span className="font-semibold">
+                      Total Platform Fee: R{totalPlatformFeeAmount.toFixed(2)}
+                    </span>
+                  </p>
+                  <p className="text-slate-700">
+                    <span className="font-semibold">
+                      Expected Payout: R{workerPayoutAmount.toFixed(2)}
                     </span>
                   </p>
                   <p className="text-slate-700">
@@ -419,9 +433,19 @@ const BookingDetails = () => {
               </div>
               <div className="flex justify-between items-center text-sm">
                 <span className="text-slate-600">
-                  Platform Fee ({safeServiceFeePercentage.toFixed(2)}%)
+                  Service Platform Fee ({servicePlatformFeePercent.toFixed(2)}%)
                 </span>
-                <span>R{serviceFeeAmount.toFixed(2)}</span>
+                <span>R{servicePlatformFeeAmount.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-slate-600">
+                  Options Platform Fee ({optionsPlatformFeePercent.toFixed(2)}%)
+                </span>
+                <span>R{optionsPlatformFeeAmount.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm font-semibold">
+                <span className="text-slate-700">Total Platform Fee</span>
+                <span>R{totalPlatformFeeAmount.toFixed(2)}</span>
               </div>
               <div className="flex justify-between items-center text-sm font-semibold">
                 <span className="text-slate-700">Expected Payout</span>
@@ -447,9 +471,6 @@ const BookingDetails = () => {
                 {booking.customer_name || 'N/A'}
               </p>
               <p className="text-slate-600">
-                {booking.customer_email || 'N/A'}
-              </p>
-              <p className="text-xs text-slate-500 font-mono">
                 {booking.customer_phone || 'N/A'}
               </p>
             </CardContent>

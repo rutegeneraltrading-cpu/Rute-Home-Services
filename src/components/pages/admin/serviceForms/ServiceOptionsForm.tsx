@@ -79,6 +79,7 @@ export function ServiceOptionsForm({
       is_required: false,
       display_order: '0',
       type: '',
+      platform_fee: 0,
     },
   });
 
@@ -91,6 +92,10 @@ export function ServiceOptionsForm({
       is_required: data.is_required,
       display_order: parseInt(data.display_order || '0'),
       type: data.type,
+      platform_fee:
+        typeof data.platform_fee === 'string'
+          ? parseFloat(data.platform_fee)
+          : data.platform_fee,
     };
 
     createMutation.mutate(payload, {
@@ -314,7 +319,28 @@ export function ServiceOptionsForm({
                       How much to add to the base price
                     </p>
                   </div>
-
+                  {/* Platform Fee */}
+                  <div>
+                    <Label htmlFor="platform_fee">Platform Fee (ZAR) *</Label>
+                    <Input
+                      id="platform_fee"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      {...register('platform_fee', { valueAsNumber: true })}
+                      className="mt-2"
+                    />
+                    {errors.platform_fee && (
+                      <p className="text-sm text-red-500 mt-1">
+                        {errors.platform_fee.message}
+                      </p>
+                    )}
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Enter the platform commission percentage for this service
+                      (e.g. 10 for 10%).
+                    </p>
+                  </div>
                   {/* Duration */}
                   <div>
                     <Label htmlFor="duration_minutes">

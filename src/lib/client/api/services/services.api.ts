@@ -70,6 +70,7 @@ export interface Service {
     name: string;
     slug: string;
   };
+  platform_fee: number;
 }
 
 export interface CreateServiceDTO {
@@ -79,6 +80,7 @@ export interface CreateServiceDTO {
   base_price: number;
   category_id: string;
   duration_minutes?: number;
+  platform_fee: number;
 }
 
 export interface UpdateServiceDTO {
@@ -89,6 +91,7 @@ export interface UpdateServiceDTO {
   category_id?: string;
   duration_minutes?: number;
   is_active?: boolean;
+  platform_fee?: number;
 }
 
 export interface ServiceOption {
@@ -103,6 +106,7 @@ export interface ServiceOption {
   is_active: boolean;
   created_at: string;
   type: string;
+  platform_fee: number;
 }
 
 export interface CreateServiceOptionDTO {
@@ -113,6 +117,7 @@ export interface CreateServiceOptionDTO {
   is_required?: boolean;
   display_order?: number;
   type: string;
+  platform_fee: number;
 }
 
 export interface UpdateServiceOptionDTO {
@@ -124,6 +129,7 @@ export interface UpdateServiceOptionDTO {
   display_order?: number;
   is_active?: boolean;
   type?: string;
+  platform_fee?: number;
 }
 
 // ============================================

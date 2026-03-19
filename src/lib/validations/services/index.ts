@@ -4,7 +4,6 @@ export const categoryEditServiceSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   description: z.string().optional(),
   charge_type: z.enum(['hourly', 'day']),
-  service_fee: z.number().min(0, 'Service fee must be 0 or greater'),
 });
 
 export type CategoryEditServiceValues = z.infer<
@@ -16,7 +15,6 @@ export const categoryFormSchema = z.object({
   description: z.string().optional(),
   image_url: z.string().url('Must be a valid URL').optional().or(z.literal('')),
   charge_type: z.enum(['hourly', 'day']),
-  service_fee: z.number().min(0, 'Service fee must be 0 or greater'),
 });
 
 export type CategoryFormValues = z.infer<typeof categoryFormSchema>;
@@ -29,6 +27,7 @@ export const serviceEditSchema = z.object({
   base_price: z.string().min(1, 'Price is required'),
   duration_minutes: z.string().min(1, 'Duration is required'),
   is_active: z.boolean(),
+  platform_fee: z.number().min(0, 'Platform fee must be 0 or greater'),
 });
 
 export type ServiceEditValues = z.infer<typeof serviceEditSchema>;
@@ -44,6 +43,7 @@ export const serviceSchema = z.object({
   duration_minutes: z.string().refine((val) => parseInt(val) > 0, {
     message: 'Duration must be greater than 0',
   }),
+  platform_fee: z.number().min(0, 'Platform fee must be 0 or greater'),
 });
 
 export const optionEditSchema = z.object({
@@ -57,6 +57,7 @@ export const optionEditSchema = z.object({
   is_active: z.boolean(),
   display_order: z.string().optional(),
   type: z.string().min(1, 'Type is required'),
+  platform_fee: z.number().min(0, 'Platform fee must be 0 or greater'),
 });
 
 export type OptionEditValues = z.infer<typeof optionEditSchema>;
@@ -76,6 +77,7 @@ export const serviceOptionSchema = z.object({
   is_required: z.boolean().default(false),
   display_order: z.string().default('0'),
   type: z.string().min(1, 'Type is required'),
+  platform_fee: z.number().min(0, 'Platform fee must be 0 or greater'),
 });
 
 export type ServiceOptionFormValues = z.infer<typeof serviceOptionSchema>;

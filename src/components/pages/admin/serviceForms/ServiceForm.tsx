@@ -39,6 +39,7 @@ export function ServiceForm({ onServiceCreated }: ServiceFormProps) {
       description: '',
       base_price: '0',
       duration_minutes: '60',
+      platform_fee: 0,
     },
   });
 
@@ -50,6 +51,7 @@ export function ServiceForm({ onServiceCreated }: ServiceFormProps) {
       base_price: parseFloat(data.base_price),
       category_id: data.category_id,
       duration_minutes: parseInt(data.duration_minutes || '60'),
+      platform_fee: data.platform_fee,
     };
 
     createMutation.mutate(payload, {
@@ -191,6 +193,29 @@ export function ServiceForm({ onServiceCreated }: ServiceFormProps) {
           )}
           <p className="text-xs text-muted-foreground mt-1">
             Starting price. Options can add to this.
+          </p>
+        </div>
+
+        {/* Platform Fee */}
+        <div>
+          <Label htmlFor="platform_fee">Platform Fee (ZAR) *</Label>
+          <Input
+            id="platform_fee"
+            type="number"
+            step="0.01"
+            min="0"
+            placeholder="0.00"
+            {...register('platform_fee', { valueAsNumber: true })}
+            className="mt-2"
+          />
+          {errors.platform_fee && (
+            <p className="text-sm text-red-500 mt-1">
+              {errors.platform_fee.message}
+            </p>
+          )}
+          <p className="text-xs text-muted-foreground mt-1">
+            Enter the platform commission percentage for this service (e.g. 10
+            for 10%).
           </p>
         </div>
 

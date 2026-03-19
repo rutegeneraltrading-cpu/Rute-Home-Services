@@ -171,7 +171,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
       supabaseAdmin
         .from('services')
         .select(
-          'id, name, slug, description, base_price, duration_minutes, is_active, category_id',
+          'id, name, slug, description, base_price, duration_minutes, is_active, category_id, platform_fee',
         )
         .eq('id', booking.service_id)
         .single(),
@@ -186,7 +186,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
         ? supabaseAdmin
             .from('service_options')
             .select(
-              'id, service_id, name, description, type, price, duration_minutes, is_required, display_order, is_active',
+              'id, service_id, name, description, type, price, duration_minutes, is_required, display_order, is_active, platform_fee',
             )
             .in('id', optionIds)
         : Promise.resolve({ data: [], error: null }),
@@ -205,33 +205,31 @@ export async function GET(_request: NextRequest, { params }: Params) {
         .maybeSingle(),
     ]);
 
-    let serviceCategory: {
-      id: string;
-      name: string;
-      slug: string | null;
-      charge_type: string | null;
-      service_fee: number | null;
-      is_active: boolean | null;
-    } | null = null;
+    // Get platform_fee for main service
+    const servicePlatformFee = toNumber(service?.platform_fee, 0);
 
-    if (service?.category_id) {
-      const { data: category } = await supabaseAdmin
-        .from('service_categories')
-        .select('id, name, slug, charge_type, service_fee, is_active')
-        .eq('id', service.category_id)
-        .single();
-      serviceCategory = category || null;
-    }
+    // Get platform_fee for each selected option
+    const optionPlatformFees = (optionsData || []).map((opt: any) =>
+      toNumber(opt.platform_fee, 0),
+    );
+    const totalOptionsPlatformFee = optionPlatformFees.reduce(
+      (sum, fee) => sum + fee,
+      0,
+    );
 
     const totalPrice = toNumber(booking.total_price, 0);
-    const serviceFeePercentage = clampPercent(
-      toNumber(serviceCategory?.service_fee, 0),
+    // Calculate platform fee amounts
+    const servicePlatformFeeAmount = Number(
+      ((totalPrice * servicePlatformFee) / 100).toFixed(2),
     );
-    const serviceFeeAmount = Number(
-      ((totalPrice * serviceFeePercentage) / 100).toFixed(2),
+    const optionsPlatformFeeAmount = Number(
+      ((totalPrice * totalOptionsPlatformFee) / 100).toFixed(2),
+    );
+    const totalPlatformFeeAmount = Number(
+      (servicePlatformFeeAmount + optionsPlatformFeeAmount).toFixed(2),
     );
     const workerPayoutAmount = Number(
-      (totalPrice - serviceFeeAmount).toFixed(2),
+      (totalPrice - totalPlatformFeeAmount).toFixed(2),
     );
 
     type AssignmentRow = {
@@ -352,21 +350,24 @@ export async function GET(_request: NextRequest, { params }: Params) {
           base_price: service.base_price,
           duration_minutes: service.duration_minutes,
           is_active: service.is_active,
-          category: serviceCategory,
+          platform_fee: servicePlatformFee,
+          category: service.category_id ? { id: service.category_id } : null,
         }
       : null;
 
     return NextResponse.json({
       booking: {
         ...booking,
-        service_fee_percentage: serviceFeePercentage,
-        service_fee_amount: serviceFeeAmount,
+        service_platform_fee_percentage: servicePlatformFee,
+        service_platform_fee_amount: servicePlatformFeeAmount,
+        options_platform_fee_percentage: totalOptionsPlatformFee,
+        options_platform_fee_amount: optionsPlatformFeeAmount,
+        total_platform_fee_amount: totalPlatformFeeAmount,
         worker_payout_amount: workerPayoutAmount,
         customer_name: customer?.full_name || null,
         customer_email: customer?.email || null,
         customer_phone: customer?.phone || null,
         service_name: service?.name || null,
-        service_category: serviceCategory?.name || null,
         service_details: serviceDetails,
         assigned_worker_id: latestAssignment?.worker_id || null,
         assigned_worker_name: assignedWorkerName,

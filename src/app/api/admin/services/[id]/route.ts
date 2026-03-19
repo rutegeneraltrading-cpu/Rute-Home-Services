@@ -26,6 +26,7 @@ export async function PUT(
       category_id,
       duration_minutes,
       is_active,
+      platform_fee,
     } = body;
 
     if (!name || !slug || !category_id || base_price === undefined) {
@@ -34,7 +35,6 @@ export async function PUT(
         { status: 400 },
       );
     }
-
     const { data, error } = await supabase
       .from('services')
       .update({
@@ -43,6 +43,7 @@ export async function PUT(
         description: description ?? null,
         base_price: parseFloat(base_price),
         category_id,
+        platform_fee: platform_fee,
         duration_minutes: parseInt(duration_minutes) || 60,
         is_active: is_active !== false,
       })

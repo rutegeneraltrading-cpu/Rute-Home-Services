@@ -4,7 +4,6 @@ export interface ServiceCategory {
   description?: string | null;
   image_url?: string | null;
   charge_type: 'hourly' | 'day';
-  service_fee: number;
 }
 
 export interface ServiceCategoryEditModalProps {
@@ -23,6 +22,7 @@ export interface ServiceItem {
   base_price: number;
   duration_minutes: number;
   is_active: boolean;
+  platform_fee?: number;
 }
 
 export interface ServiceEditModalProps {
@@ -43,6 +43,7 @@ export type ServiceFormValues = {
   description: string;
   base_price: string;
   duration_minutes: string;
+  platform_fee: number;
 };
 
 export interface ServiceOptionItem {
@@ -56,6 +57,7 @@ export interface ServiceOptionItem {
   is_active?: boolean;
   display_order?: number;
   type: string;
+  platform_fee: number;
 }
 
 export interface ServiceOptionEditModalProps {
@@ -78,7 +80,6 @@ export interface ServiceCategory {
   image_url?: string | null;
   is_active: boolean;
   charge_type: 'hourly' | 'day';
-  service_fee: number;
   created_at: string;
 }
 
@@ -87,7 +88,6 @@ export interface CreateServiceCategoryDTO {
   description?: string;
   image_url?: string;
   charge_type: 'hourly' | 'day';
-  service_fee: number;
   is_active?: boolean;
 }
 

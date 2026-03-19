@@ -47,6 +47,8 @@ export function ServiceEditModal({
         ? String(service.duration_minutes)
         : '',
       is_active: service?.is_active ?? true,
+      platform_fee:
+        service?.platform_fee !== undefined ? service.platform_fee : 0,
     }),
     [service],
   );
@@ -80,6 +82,7 @@ export function ServiceEditModal({
         base_price: parseFloat(data.base_price),
         duration_minutes: parseInt(data.duration_minutes, 10),
         is_active: data.is_active,
+        platform_fee: data.platform_fee,
       },
       {
         onSuccess: () => {
@@ -160,7 +163,24 @@ export function ServiceEditModal({
               <p className="text-sm text-red-500 mt-1">{errors.slug.message}</p>
             )}
           </div>
-
+          {/* Platform Fee */}
+          <div>
+            <Label htmlFor="platform_fee">Platform Fee (ZAR) *</Label>
+            <Input
+              id="platform_fee"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="0.00"
+              {...register('platform_fee', { valueAsNumber: true })}
+              className="mt-2"
+            />
+            {errors.platform_fee && (
+              <p className="text-sm text-red-500 mt-1">
+                {errors.platform_fee.message}
+              </p>
+            )}
+          </div>
           <div>
             <Label htmlFor="description">Description</Label>
             <textarea
@@ -187,7 +207,6 @@ export function ServiceEditModal({
                 </p>
               )}
             </div>
-
             <div>
               <Label htmlFor="duration_minutes">Duration (Minutes) *</Label>
               <Input

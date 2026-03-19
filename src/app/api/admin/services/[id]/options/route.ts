@@ -45,6 +45,7 @@ export async function POST(
       duration_minutes,
       is_required,
       display_order,
+      platform_fee,
     } = body;
 
     // Validate required fields
@@ -68,6 +69,7 @@ export async function POST(
           is_required: is_required || false,
           display_order: display_order || 0,
           is_active: true,
+          platform_fee: platform_fee,
         },
       ])
       .select()

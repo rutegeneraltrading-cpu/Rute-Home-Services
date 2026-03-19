@@ -30,7 +30,6 @@ export interface BookingServiceCategoryDetail {
   name: string;
   slug?: string | null;
   charge_type?: string | null;
-  service_fee?: number | null;
   is_active?: boolean | null;
 }
 
@@ -67,6 +66,11 @@ export interface BookingVariantDetail extends BookingSelectionDetail {
 }
 
 export interface Booking {
+  service_platform_fee_percentage?: number;
+  service_platform_fee_amount?: number;
+  options_platform_fee_percentage?: number;
+  options_platform_fee_amount?: number;
+  total_platform_fee_amount?: number;
   id: string;
   user_id: string;
   service_id: string;

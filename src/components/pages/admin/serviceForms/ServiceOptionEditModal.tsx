@@ -82,6 +82,8 @@ export function ServiceOptionEditModal({
           : '0',
       is_active: option?.is_active ?? true,
       type: option?.type || '',
+      platform_fee:
+        option?.platform_fee !== undefined ? option.platform_fee : 0,
     }),
     [option, selectedCategoryId],
   );
@@ -121,6 +123,7 @@ export function ServiceOptionEditModal({
           : 0,
         is_active: data.is_active,
         type: data.type,
+        platform_fee: data.platform_fee,
       },
       {
         onSuccess: () => {
@@ -241,6 +244,23 @@ export function ServiceOptionEditModal({
             <Input id="option-name" {...register('name')} className="mt-2" />
             {errors.name && (
               <p className="text-sm text-red-500 mt-1">{errors.name.message}</p>
+            )}
+          </div>
+          <div>
+            <Label htmlFor="platform_fee">Platform Fee (ZAR) *</Label>
+            <Input
+              id="platform_fee"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="0.00"
+              {...register('platform_fee', { valueAsNumber: true })}
+              className="mt-2"
+            />
+            {errors.platform_fee && (
+              <p className="text-sm text-red-500 mt-1">
+                {errors.platform_fee.message}
+              </p>
             )}
           </div>
 

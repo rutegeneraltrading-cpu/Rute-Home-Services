@@ -49,7 +49,6 @@ export function ServiceCategoryEditModal({
       description: category?.description || '',
       image_url: category?.image_url || '',
       charge_type: category?.charge_type || 'hourly',
-      service_fee: category?.service_fee ?? 0,
     }),
     [category],
   );
@@ -133,7 +132,6 @@ export function ServiceCategoryEditModal({
         description: data.description || undefined,
         image_url: imageUrl || undefined,
         charge_type: data.charge_type,
-        service_fee: data.service_fee,
       },
       {
         onSuccess: () => {
@@ -211,28 +209,6 @@ export function ServiceCategoryEditModal({
             )}
             <p className="text-xs text-muted-foreground mt-1">
               Select how this category is charged (per hour or per day)
-            </p>
-          </div>
-
-          <div>
-            <Label htmlFor="service_fee">Service Fee (ZAR) *</Label>
-            <Input
-              id="service_fee"
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="0.00"
-              {...register('service_fee', { valueAsNumber: true })}
-              className="mt-2"
-              disabled={isSubmitting}
-            />
-            {formErrors.service_fee && (
-              <p className="text-sm text-red-500 mt-1">
-                {formErrors.service_fee.message}
-              </p>
-            )}
-            <p className="text-xs text-muted-foreground mt-1">
-              Enter the fixed service fee for this category.
             </p>
           </div>
 
