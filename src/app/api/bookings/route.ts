@@ -158,12 +158,9 @@ export async function GET() {
       }
     });
 
+    // Collect all unique worker_ids from all assignments, not just latest
     const workerIds = Array.from(
-      new Set(
-        Array.from(latestAssignmentByBooking.values())
-          .map((a) => a.worker_id)
-          .filter(Boolean),
-      ),
+      new Set((assignmentsData || []).map((a) => a.worker_id).filter(Boolean)),
     );
 
     const { data: workersData, error: workersError } = await supabaseAdmin
@@ -213,6 +210,30 @@ export async function GET() {
       (workerProfilesData || []).map((p) => [p.id, p]),
     );
 
+    // Build a map of all assignments per booking
+    const assignmentsByBooking: Record<string, any[]> = {};
+    (assignmentsData || []).forEach((a) => {
+      if (!assignmentsByBooking[a.booking_id])
+        assignmentsByBooking[a.booking_id] = [];
+      // Find worker profile info
+      const workerProfileId = workerMap.get(a.worker_id);
+      const workerProfile = workerProfileId
+        ? workerProfileMap.get(workerProfileId)
+        : null;
+      assignmentsByBooking[a.booking_id].push({
+        worker_id: a.worker_id,
+        worker_name: workerProfile?.full_name || null,
+        worker_email: workerProfile?.email || null,
+        status: a.status,
+        assigned_at: a.assigned_at,
+        accepted_at: a.accepted_at,
+        declined_at: a.declined_at,
+        completed_at: a.completed_at,
+        cancelled_at: a.cancelled_at,
+        created_at: a.created_at,
+      });
+    });
+
     const enrichedBookings = bookings.map((booking) => {
       const customer = profilesMap.get(booking.user_id);
       const service = servicesMap.get(booking.service_id);
@@ -234,6 +255,7 @@ export async function GET() {
         assigned_worker_name: assignedWorker?.full_name || null,
         assigned_worker_email: assignedWorker?.email || null,
         assignment_status: assignment?.status || null,
+        assignments: assignmentsByBooking[booking.id] || [],
       };
     });
 

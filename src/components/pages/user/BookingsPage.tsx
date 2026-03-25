@@ -158,15 +158,21 @@ const BookingsPage = () => {
     {
       id: 'assignment_status',
       header: 'Assignment',
-      accessorKey: 'assignment_status',
       sortable: true,
-      cell: (value) => {
-        if (!value) return <span className="text-gray-400">-</span>;
+      cell: (_value, row) => {
+        // Multi-worker: show first active assignment status or fallback
+        const activeAssignment = Array.isArray(row.assignments)
+          ? row.assignments.find(
+              (a) => a.status === 'pending' || a.status === 'accepted',
+            )
+          : undefined;
+        const status = activeAssignment?.status || '';
+        if (!status) return <span className="text-gray-400">-</span>;
         return (
           <span
-            className={`${getAssignmentStatusColor(String(value))} px-2 py-1 rounded-full text-xs font-semibold capitalize`}
+            className={`${getAssignmentStatusColor(status)} px-2 py-1 rounded-full text-xs font-semibold capitalize`}
           >
-            {String(value)}
+            {status}
           </span>
         );
       },

@@ -39,6 +39,7 @@ const assignmentStatusColor: Record<string, string> = {
   pending: 'bg-amber-100 text-amber-700',
   accepted: 'bg-blue-100 text-blue-700',
   declined: 'bg-red-100 text-red-700',
+  in_progress: 'bg-purple-100 text-purple-700',
   completed: 'bg-green-100 text-green-700',
   cancelled: 'bg-gray-100 text-gray-700',
 };
@@ -411,11 +412,47 @@ const BookingDetails = () => {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-600">Assignment Status</span>
-                <span
-                  className={`px-2 py-1 rounded-full text-xs font-semibold capitalize ${assignmentStatusColor[booking.assignment_status || ''] || 'bg-gray-100 text-gray-700'}`}
-                >
-                  {booking.assignment_status || 'N/A'}
-                </span>
+                {Array.isArray(booking.assignments) &&
+                booking.assignments.length > 0 ? (
+                  (() => {
+                    const assignments = booking.assignments;
+                    const statuses = assignments.map((a) => a.status);
+                    let mainStatus = 'N/A';
+                    if ((statuses as string[]).includes('pending')) {
+                      mainStatus = 'pending';
+                    } else if ((statuses as string[]).includes('in_progress')) {
+                      mainStatus = 'in_progress';
+                    } else if (statuses.every((s) => s === 'accepted')) {
+                      mainStatus = 'accepted';
+                    } else if (statuses.every((s) => s === 'declined')) {
+                      mainStatus = 'declined';
+                    } else if (statuses.every((s) => s === 'completed')) {
+                      mainStatus = 'completed';
+                    } else if ((statuses as string[]).includes('accepted')) {
+                      mainStatus = 'accepted';
+                    } else if ((statuses as string[]).includes('declined')) {
+                      mainStatus = 'declined';
+                    } else if ((statuses as string[]).includes('completed')) {
+                      mainStatus = 'completed';
+                    } else if ((statuses as string[]).includes('cancelled')) {
+                      mainStatus = 'cancelled';
+                    }
+                    const topColor =
+                      assignmentStatusColor[mainStatus] ||
+                      'bg-gray-100 text-gray-700';
+                    return (
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-semibold capitalize ${topColor}`}
+                      >
+                        {mainStatus}
+                      </span>
+                    );
+                  })()
+                ) : (
+                  <span className="px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">
+                    N/A
+                  </span>
+                )}
               </div>
               <div className="flex justify-between pt-2 border-t text-base font-bold">
                 <span>Total Price</span>
@@ -479,19 +516,46 @@ const BookingDetails = () => {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <User className="h-4 w-4" /> Assigned Worker
+                <User className="h-4 w-4" /> Assigned Workers
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
-              <p className="font-semibold text-slate-900">
-                {booking.assigned_worker_name || 'N/A'}
-              </p>
-              <p className="text-slate-600">
-                {booking.assigned_worker_email || 'No email'}
-              </p>
-              <p className="text-xs text-slate-500 font-mono">
-                {booking.assigned_worker_phone || 'No worker assigned'}
-              </p>
+              {Array.isArray(booking.assignments) &&
+              booking.assignments.length > 0 ? (
+                <ol className="text-xs list-decimal list-inside space-y-1">
+                  {booking.assignments.map((a, idx) => (
+                    <li className="flex flex-col" key={a.worker_id + idx}>
+                      <div className="flex justify-between font-medium text-slate-900">
+                        <span>{a.worker_name || a.worker_id}</span>
+                        <span
+                          className={`ml-2 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                            a.status === 'pending'
+                              ? 'bg-amber-100 text-amber-700'
+                              : a.status === 'accepted'
+                                ? 'bg-blue-100 text-blue-700'
+                                : a.status === 'declined'
+                                  ? 'bg-red-100 text-red-700'
+                                  : a.status === 'completed'
+                                    ? 'bg-green-100 text-green-700'
+                                    : a.status === 'cancelled'
+                                      ? 'bg-gray-100 text-gray-700'
+                                      : 'bg-gray-100 text-gray-700'
+                          }`}
+                        >
+                          {a.status}
+                        </span>
+                      </div>
+                      {a.worker_email && (
+                        <span className="ml-1 text-gray-500">
+                          {a.worker_email}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <span className="text-slate-500">No workers assigned</span>
+              )}
             </CardContent>
           </Card>
         </div>

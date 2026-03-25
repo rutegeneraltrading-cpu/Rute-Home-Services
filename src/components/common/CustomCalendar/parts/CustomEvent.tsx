@@ -12,7 +12,9 @@ import {
 import type { CalendarEvent } from '../types';
 
 interface CustomEventProps {
-  event: CalendarEvent;
+  event: CalendarEvent & {
+    workers?: { name: string; email?: string; status: string }[];
+  };
 }
 
 const getStatusColor = (status?: string) => {
@@ -73,23 +75,38 @@ const CustomEvent = ({ event }: CustomEventProps) => {
             )}
           </div>
 
-          {event.workerName && (
+          {event.workers && event.workers.length > 0 && (
             <div className="border-t border-slate-600 pt-2 space-y-1">
-              <div className="text-xs font-semibold">Assigned Worker</div>
-              <div className="text-sm text-slate-100">{event.workerName}</div>
-              {event.workerEmail && (
-                <div className="text-xs text-slate-300">
-                  {event.workerEmail}
-                </div>
-              )}
-              {event.assignmentStatus && (
-                <div className="text-xs font-semibold capitalize pt-1">
-                  <span className="text-slate-400">Status: </span>
-                  <span className="text-yellow-300">
-                    {event.assignmentStatus}
-                  </span>
-                </div>
-              )}
+              <div className="text-xs font-semibold">Assigned Workers</div>
+              <ol className="text-xs list-decimal list-inside">
+                {event.workers.map((w, idx) => (
+                  <li key={w.name + idx} className="mb-1 flex flex-col">
+                    <div className="font-medium flex justify-between">
+                      <span>{w.name}</span>{' '}
+                      <span
+                        className={`ml-2 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                          w.status === 'pending'
+                            ? 'bg-amber-100 text-amber-700'
+                            : w.status === 'accepted'
+                              ? 'bg-blue-100 text-blue-700'
+                              : w.status === 'declined'
+                                ? 'bg-red-100 text-red-700'
+                                : w.status === 'completed'
+                                  ? 'bg-green-100 text-green-700'
+                                  : w.status === 'cancelled'
+                                    ? 'bg-gray-100 text-gray-700'
+                                    : 'bg-gray-100 text-gray-700'
+                        }`}
+                      >
+                        {w.status}
+                      </span>
+                    </div>
+                    {w.email && (
+                      <span className="ml-1 text-gray-300">{w.email}</span>
+                    )}
+                  </li>
+                ))}
+              </ol>
             </div>
           )}
 

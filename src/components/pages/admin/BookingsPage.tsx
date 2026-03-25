@@ -1,6 +1,11 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from '@/components/ui/tooltip';
 import { useRouter } from 'next/navigation';
 import { Edit2, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -119,9 +124,13 @@ const BookingsPage = () => {
         start: toDateRange(booking).start,
         end: toDateRange(booking).end,
         status: booking.status,
-        workerName: booking.assigned_worker_name,
-        workerEmail: booking.assigned_worker_email,
-        assignmentStatus: booking.assignment_status,
+        workers: Array.isArray(booking.assignments)
+          ? booking.assignments.map((a) => ({
+              name: a.worker_name || a.worker_id,
+              email: a.worker_email,
+              status: a.status,
+            }))
+          : [],
         onEdit: (eventId: string) => {
           const booking = bookings.find((b) => b.id === eventId);
           if (booking) setEditingBooking(booking);
@@ -177,31 +186,136 @@ const BookingsPage = () => {
     },
     {
       id: 'assigned_worker_name',
-      header: 'Assigned Worker',
-      accessorKey: 'assigned_worker_name',
+      header: 'Assigned Workers',
       sortable: true,
-      cell: (value, row) => (
-        <div>
-          <div className="text-gray-900">{String(value || '-')}</div>
-          <div className="text-sm text-gray-500">
-            {String(row.assigned_worker_email || '-')}
-          </div>
-        </div>
-      ),
+      cell: (_value, row) => {
+        const assignments = Array.isArray(row.assignments)
+          ? row.assignments
+          : [];
+        if (!assignments.length) {
+          return <span className="text-gray-400">-</span>;
+        }
+        return (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="cursor-pointer underline decoration-dotted">
+                {assignments
+                  .map((a) => a.worker_name || a.worker_id)
+                  .join(', ')}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent
+              className="bg-white border text-black-700"
+              align="start"
+            >
+              <div className="max-w-xs">
+                <div className="font-semibold mb-1">Assigned Workers:</div>
+                <ol className="text-xs list-decimal list-inside">
+                  {assignments.map((a) => (
+                    <li key={a.worker_id} className="mb-1 flex flex-col">
+                      <div className="font-medium flex justify-between">
+                        <span>{a.worker_name || a.worker_id}</span>
+                        <span
+                          className={`ml-2 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                            a.status === 'pending'
+                              ? 'bg-amber-100 text-amber-700'
+                              : a.status === 'accepted'
+                                ? 'bg-blue-100 text-blue-700'
+                                : a.status === 'declined'
+                                  ? 'bg-red-100 text-red-700'
+                                  : a.status === 'completed'
+                                    ? 'bg-green-100 text-green-700'
+                                    : a.status === 'cancelled'
+                                      ? 'bg-gray-100 text-gray-700'
+                                      : 'bg-gray-100 text-gray-700'
+                          }`}
+                        >
+                          {a.status}
+                        </span>
+                      </div>
+                      {a.worker_email && (
+                        <span className="ml-1 text-gray-500">
+                          {a.worker_email}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        );
+      },
     },
     {
       id: 'assignment_status',
       header: 'Assign Status',
-      accessorKey: 'assignment_status',
       sortable: true,
-      cell: (value) => {
-        if (!value) return <span className="text-gray-400">-</span>;
+      cell: (_value, row) => {
+        const assignments = Array.isArray(row.assignments)
+          ? row.assignments
+          : [];
+        if (!assignments.length)
+          return <span className="text-gray-400">-</span>;
+        // Improved logic: pending > in_progress > all accepted > all declined > all completed > accepted > declined > completed > cancelled
+        const statuses = assignments.map((a) => a.status);
+        let mainStatus = 'N/A';
+        if ((statuses as string[]).includes('pending')) {
+          mainStatus = 'pending';
+        } else if ((statuses as string[]).includes('in_progress')) {
+          mainStatus = 'in_progress';
+        } else if (statuses.every((s) => s === 'accepted')) {
+          mainStatus = 'accepted';
+        } else if (statuses.every((s) => s === 'declined')) {
+          mainStatus = 'declined';
+        } else if (statuses.every((s) => s === 'completed')) {
+          mainStatus = 'completed';
+        } else if ((statuses as string[]).includes('accepted')) {
+          mainStatus = 'accepted';
+        } else if ((statuses as string[]).includes('declined')) {
+          mainStatus = 'declined';
+        } else if ((statuses as string[]).includes('completed')) {
+          mainStatus = 'completed';
+        } else if ((statuses as string[]).includes('cancelled')) {
+          mainStatus = 'cancelled';
+        }
         return (
-          <span
-            className={`${getAssignmentStatusColor(value as AssignmentStatus)} px-2 py-1 rounded-full text-xs font-semibold capitalize`}
-          >
-            {String(value)}
-          </span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span
+                className={`${getAssignmentStatusColor(mainStatus as AssignmentStatus)} px-2 py-1 rounded-full text-xs font-semibold capitalize cursor-pointer`}
+              >
+                {mainStatus}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent
+              className="bg-white border text-black-700"
+              align="start"
+            >
+              <div className="max-w-xs">
+                <div className="font-semibold mb-1">Worker Statuses:</div>
+                <ol className="text-xs list-decimal list-inside">
+                  {assignments.map((a) => (
+                    <li key={a.worker_id} className="mb-1 flex flex-col">
+                      <div className="font-medium flex justify-between">
+                        <span>{a.worker_name || a.worker_id}</span>
+                        <span
+                          className={`ml-2 px-2 py-0.5 rounded-full text-xs font-semibold ${getAssignmentStatusColor(a.status as AssignmentStatus)}`}
+                        >
+                          {a.status}
+                        </span>
+                      </div>
+                      {a.worker_email && (
+                        <span className="ml-1 text-gray-500">
+                          {a.worker_email}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            </TooltipContent>
+          </Tooltip>
         );
       },
     },

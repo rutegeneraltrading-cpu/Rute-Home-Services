@@ -37,6 +37,7 @@ interface UpdateBookingPayload {
   worker_id?: string | null;
   auto_assign?: boolean;
   assignment_status?: AssignmentStatus;
+  assignments?: { worker_id: string; status: AssignmentStatus }[];
 }
 
 const BOOKING_STATUS_VALUES: BookingStatus[] = [
@@ -245,39 +246,58 @@ export async function GET(_request: NextRequest, { params }: Params) {
     };
 
     const assignments = (assignmentsData || []) as AssignmentRow[];
-    const latestAssignment = assignments.reduce<AssignmentRow | null>(
-      (latest, current) => {
-        if (!latest) return current;
-        return assignmentEventTime(current) > assignmentEventTime(latest)
-          ? current
-          : latest;
-      },
-      null,
+    // Calculate payout per active assignment (not cancelled/declined)
+    const activeAssignments = assignments.filter(
+      (a) => a.status !== 'cancelled' && a.status !== 'declined',
     );
+    const perWorkerPayout =
+      activeAssignments.length > 0
+        ? Number((workerPayoutAmount / activeAssignments.length).toFixed(2))
+        : 0;
 
-    let assignedWorkerName: string | null = null;
-    let assignedWorkerEmail: string | null = null;
-    let assignedWorkerPhone: string | null = null;
-
-    if (latestAssignment?.worker_id) {
-      const { data: worker } = await supabaseAdmin
-        .from('workers')
-        .select('id, profile_id')
-        .eq('id', latestAssignment.worker_id)
-        .single();
-
-      if (worker?.profile_id) {
-        const { data: workerProfile } = await supabaseAdmin
-          .from('profiles')
-          .select('id, full_name, email, phone')
-          .eq('id', worker.profile_id)
+    const assignmentsWithWorker = await Promise.all(
+      assignments.map(async (a) => {
+        let worker_name = null;
+        let worker_email = null;
+        let worker_phone = null;
+        const { data: worker } = await supabaseAdmin
+          .from('workers')
+          .select('id, profile_id')
+          .eq('id', a.worker_id)
           .single();
-
-        assignedWorkerName = workerProfile?.full_name || null;
-        assignedWorkerEmail = workerProfile?.email || null;
-        assignedWorkerPhone = workerProfile?.phone || null;
-      }
-    }
+        if (worker?.profile_id) {
+          const { data: workerProfile } = await supabaseAdmin
+            .from('profiles')
+            .select('id, full_name, email, phone')
+            .eq('id', worker.profile_id)
+            .single();
+          worker_name = workerProfile?.full_name || null;
+          worker_email = workerProfile?.email || null;
+          worker_phone = workerProfile?.phone || null;
+        }
+        // payout_amount: only for active assignments
+        const payout_amount =
+          a.status !== 'cancelled' && a.status !== 'declined'
+            ? perWorkerPayout
+            : 0;
+        return {
+          id: `${a.booking_id}_${a.worker_id}`,
+          booking_id: a.booking_id,
+          worker_id: a.worker_id,
+          worker_name,
+          worker_email,
+          worker_phone,
+          status: a.status,
+          assigned_at: a.assigned_at,
+          accepted_at: a.accepted_at,
+          declined_at: a.declined_at,
+          completed_at: a.completed_at,
+          cancelled_at: a.cancelled_at,
+          created_at: a.created_at,
+          payout_amount,
+        };
+      }),
+    );
 
     const optionsMap = new Map(
       (
@@ -369,11 +389,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
         customer_phone: customer?.phone || null,
         service_name: service?.name || null,
         service_details: serviceDetails,
-        assigned_worker_id: latestAssignment?.worker_id || null,
-        assigned_worker_name: assignedWorkerName,
-        assigned_worker_email: assignedWorkerEmail,
-        assigned_worker_phone: assignedWorkerPhone,
-        assignment_status: latestAssignment?.status || null,
+        assignments: assignmentsWithWorker,
         rating_value: bookingRating?.rating ?? null,
         rating_review: bookingRating?.review ?? null,
         rating_submitted_at:
@@ -424,17 +440,103 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    // Support multi-worker assignment: assignments: {worker_id, status}[]
+    const hasAssignmentsArray = Array.isArray(body.assignments);
     if (
       typeof body.status === 'undefined' &&
       typeof body.payment_status === 'undefined' &&
       typeof body.worker_id === 'undefined' &&
       typeof body.assignment_status === 'undefined' &&
-      !body.auto_assign
+      !body.auto_assign &&
+      !hasAssignmentsArray
     ) {
       return NextResponse.json(
         { error: 'No update fields provided' },
         { status: 400 },
       );
+    }
+    // Multi-worker assignment logic
+    if (hasAssignmentsArray) {
+      // Fetch current assignments
+      const { data: currentAssignments } = await supabaseAdmin
+        .from('booking_assignments')
+        .select('worker_id, status')
+        .eq('booking_id', id);
+
+      const currentMap = new Map(
+        (currentAssignments || []).map((a: any) => [a.worker_id, a.status]),
+      );
+      const incomingMap = new Map(
+        (body.assignments ?? []).map(
+          (a: { worker_id: string; status: AssignmentStatus }) => [
+            a.worker_id,
+            a.status,
+          ],
+        ),
+      );
+
+      // Cancel assignments not in new list
+      for (const [worker_id, status] of currentMap.entries()) {
+        if (!incomingMap.has(worker_id) && status !== 'cancelled') {
+          await supabaseAdmin
+            .from('booking_assignments')
+            .update({
+              status: 'cancelled',
+              cancelled_at: new Date().toISOString(),
+            })
+            .eq('booking_id', id)
+            .eq('worker_id', worker_id);
+        }
+      }
+
+      // Upsert or update assignments
+      for (const { worker_id, status } of body.assignments ?? []) {
+        const nowIso = new Date().toISOString();
+        const assignmentUpdate: Record<string, unknown> = { status };
+        if (status === 'pending') {
+          assignmentUpdate.assigned_at = nowIso;
+          assignmentUpdate.accepted_at = null;
+          assignmentUpdate.declined_at = null;
+          assignmentUpdate.completed_at = null;
+          assignmentUpdate.cancelled_at = null;
+        }
+        if (status === 'accepted') {
+          assignmentUpdate.assigned_at = nowIso;
+          assignmentUpdate.accepted_at = nowIso;
+          assignmentUpdate.declined_at = null;
+          assignmentUpdate.completed_at = null;
+          assignmentUpdate.cancelled_at = null;
+        }
+        if (status === 'declined') {
+          assignmentUpdate.assigned_at = nowIso;
+          assignmentUpdate.accepted_at = null;
+          assignmentUpdate.declined_at = nowIso;
+          assignmentUpdate.completed_at = null;
+          assignmentUpdate.cancelled_at = null;
+        }
+        if (status === 'completed') {
+          assignmentUpdate.assigned_at = nowIso;
+          assignmentUpdate.accepted_at = null;
+          assignmentUpdate.declined_at = null;
+          assignmentUpdate.completed_at = nowIso;
+          assignmentUpdate.cancelled_at = null;
+        }
+        if (status === 'cancelled') {
+          assignmentUpdate.assigned_at = nowIso;
+          assignmentUpdate.accepted_at = null;
+          assignmentUpdate.declined_at = null;
+          assignmentUpdate.completed_at = null;
+          assignmentUpdate.cancelled_at = nowIso;
+        }
+        await supabaseAdmin.from('booking_assignments').upsert(
+          {
+            booking_id: id,
+            worker_id,
+            ...assignmentUpdate,
+          },
+          { onConflict: 'booking_id,worker_id' },
+        );
+      }
     }
 
     if (body.status && !BOOKING_STATUS_VALUES.includes(body.status)) {

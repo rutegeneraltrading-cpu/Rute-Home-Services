@@ -49,7 +49,7 @@ const WorkersPage = () => {
     },
     {
       id: 'service_category_names',
-      header: 'Service Category',
+      header: 'Service Categories',
       accessorKey: 'service_category_names',
       sortable: false,
       cell: (value, row) => {

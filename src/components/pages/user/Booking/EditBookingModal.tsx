@@ -147,11 +147,13 @@ const EditBookingForm = ({
 
   const minDate = new Date().toISOString().split('T')[0];
 
-  // Active worker check (pending or accepted assignment)
-  const hasActiveWorker =
-    Boolean(booking.assigned_worker_id) &&
-    (booking.assignment_status === 'pending' ||
-      booking.assignment_status === 'accepted');
+  // Multi-worker: Find the first active assignment (pending or accepted)
+  const activeAssignment = Array.isArray(booking.assignments)
+    ? booking.assignments.find(
+        (a) => a.status === 'pending' || a.status === 'accepted',
+      )
+    : undefined;
+  const hasActiveWorker = Boolean(activeAssignment);
 
   // Availability query
   const {
@@ -164,7 +166,7 @@ const EditBookingForm = ({
       booking.service_id,
       date,
       booking.total_duration,
-      hasActiveWorker ? booking.assigned_worker_id : null,
+      hasActiveWorker ? activeAssignment?.worker_id : null,
     ],
     queryFn: async (): Promise<{ available_slots: string[] }> => {
       const params = new URLSearchParams({
@@ -172,8 +174,8 @@ const EditBookingForm = ({
         date,
         duration_minutes: String(booking.total_duration),
       });
-      if (hasActiveWorker && booking.assigned_worker_id) {
-        params.set('worker_id', booking.assigned_worker_id);
+      if (hasActiveWorker && activeAssignment?.worker_id) {
+        params.set('worker_id', activeAssignment.worker_id);
       }
       const res = await fetch(`/api/workers/availability?${params.toString()}`);
       if (!res.ok) throw new Error('Failed to fetch slots');

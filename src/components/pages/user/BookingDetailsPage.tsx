@@ -410,11 +410,23 @@ const BookingDetailsPage = () => {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-600">Assignment Status</span>
-                <span
-                  className={`px-2 py-1 rounded-full text-xs font-semibold capitalize ${assignmentStatusColor[booking.assignment_status || ''] || 'bg-gray-100 text-gray-700'}`}
-                >
-                  {booking.assignment_status || 'N/A'}
-                </span>
+                {(() => {
+                  // Multi-worker: show first active assignment status or fallback
+                  const activeAssignment = Array.isArray(booking.assignments)
+                    ? booking.assignments.find(
+                        (a) =>
+                          a.status === 'pending' || a.status === 'accepted',
+                      )
+                    : undefined;
+                  const status = activeAssignment?.status || '';
+                  return (
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-semibold capitalize ${assignmentStatusColor[status] || 'bg-gray-100 text-gray-700'}`}
+                    >
+                      {status || 'N/A'}
+                    </span>
+                  );
+                })()}
               </div>
               <div className="flex justify-between pt-2 border-t text-base font-bold">
                 <span>Total Price</span>
@@ -436,12 +448,29 @@ const BookingDetailsPage = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
-              <p className="font-semibold text-slate-900">
-                {booking.assigned_worker_name || 'Pending Assignment'}
-              </p>
-              <p className="text-slate-600">
-                {booking.assigned_worker_email || 'No worker email'}
-              </p>
+              {(() => {
+                // Multi-worker: show first assigned worker (pending/accepted/completed)
+                const assigned = Array.isArray(booking.assignments)
+                  ? booking.assignments.find(
+                      (a) =>
+                        a.status === 'pending' ||
+                        a.status === 'accepted' ||
+                        a.status === 'completed',
+                    )
+                  : undefined;
+                return (
+                  <>
+                    <p className="font-semibold text-slate-900">
+                      {assigned?.worker_name ||
+                        assigned?.worker_id ||
+                        'Pending Assignment'}
+                    </p>
+                    <p className="text-slate-600">
+                      {assigned?.worker_email || 'No worker email'}
+                    </p>
+                  </>
+                );
+              })()}
             </CardContent>
           </Card>
         </div>

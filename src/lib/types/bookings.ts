@@ -1,3 +1,10 @@
+// Assignment for a worker on a booking
+export interface BookingAssignment {
+  worker_id: string;
+  status: BookingAssignmentStatus;
+  worker_name?: string;
+  worker_email?: string;
+}
 export type BookingStatus =
   | 'pending'
   | 'confirmed'
@@ -79,11 +86,7 @@ export interface Booking {
   customer_phone?: string;
   service_name?: string;
   service_category?: string;
-  assigned_worker_id?: string;
-  assigned_worker_name?: string;
-  assigned_worker_email?: string;
-  assigned_worker_phone?: string;
-  assignment_status?: BookingAssignmentStatus;
+  assignments?: BookingAssignment[];
   rating_value?: number | null;
   rating_review?: string | null;
   rating_submitted_at?: string | null;
@@ -129,6 +132,7 @@ export interface UpdateBookingDTO {
   worker_id?: string | null;
   auto_assign?: boolean;
   assignment_status?: BookingAssignmentStatus;
+  assignments?: { worker_id: string; status: BookingAssignmentStatus }[];
 }
 
 export interface UserUpdateBookingDTO {

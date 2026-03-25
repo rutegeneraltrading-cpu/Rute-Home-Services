@@ -1,164 +1,112 @@
-'use client';
-
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { useForm, Controller } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
-import { Controller, useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
+import {
+  Booking,
+  BookingAssignmentStatus,
+  BookingStatus,
+  BookingPaymentStatus,
+  AvailableWorker,
+} from '@/lib/types/bookings';
+// Inline BookingAssignment type for use in this file
+type BookingAssignment = {
+  worker_id: string;
+  status: BookingAssignmentStatus;
+  worker_name?: string;
+  worker_email?: string;
+};
+import { MultiSelect } from '@/components/common/MultiSelect';
 import {
   Dialog,
-  DialogTitle,
-  DialogHeader,
   DialogContent,
+  DialogHeader,
+  DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
 import {
   Select,
-  SelectContent,
-  SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui';
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
 import { useUpdateBooking } from '@/lib/client/api/bookings/bookings.mutation';
 import { getAvailableWorkersForBookingApi } from '@/lib/client/api/bookings/bookings.api';
-import type {
-  Booking,
-  BookingAssignmentStatus,
-  BookingPaymentStatus,
-  BookingStatus,
-  AvailableWorker,
-} from '@/lib/types/bookings';
 
-interface BookingEditModalProps {
-  open: boolean;
-  booking: Booking | null;
-  onOpenChange: (open: boolean) => void;
-  onSuccess?: () => void;
-}
-
-const bookingEditSchema = z.object({
-  status: z.enum([
-    'pending',
-    'confirmed',
-    'assigned',
-    'in_progress',
-    'completed',
-    'cancelled',
-  ]),
-  payment_status: z.enum([
-    'pending',
-    'paid',
-    'failed',
-    'refunded',
-    'cancelled',
-  ]),
-  assignment_status: z.enum([
-    'pending',
-    'accepted',
-    'declined',
-    'completed',
-    'cancelled',
-  ]),
-  worker_id: z.string().optional(),
-});
-
-type BookingEditValues = z.infer<typeof bookingEditSchema>;
-
+// BookingEditModal function
 export function BookingEditModal({
   open,
   booking,
   onOpenChange,
   onSuccess,
-}: BookingEditModalProps) {
+}: {
+  open: boolean;
+  booking: Booking | null;
+  onOpenChange: (open: boolean) => void;
+  onSuccess?: () => void;
+}) {
+  // Use real mutation for backend update
   const updateBookingMutation = useUpdateBooking(booking?.id || '');
-
-  const {
-    data: workerData,
-    isLoading: isWorkersLoading,
-    refetch,
-  } = useQuery({
+  // Fetch available workers for this booking
+  const { data: workerData, isLoading: isWorkersLoading } = useQuery({
     queryKey: ['booking-available-workers', booking?.id],
     queryFn: () => getAvailableWorkersForBookingApi(String(booking?.id || '')),
     enabled: open && !!booking?.id,
     staleTime: 30 * 1000,
   });
-
+  // Only store selected worker IDs for new assignments (not yet saved)
+  const [selectedWorkerIds, setSelectedWorkerIds] = useState<string[]>([]);
+  // Only store assignments that are already saved in DB
+  const [assignments, setAssignments] = useState<BookingAssignment[]>([]);
+  // Track last saved assignments for change detection
+  const [lastSavedAssignments, setLastSavedAssignments] = useState<
+    BookingAssignment[]
+  >([]);
+  // Form values type for booking status/payment status
+  type BookingStatusFormValues = {
+    status: BookingStatus;
+    payment_status: BookingPaymentStatus;
+  };
+  // Separate form state for booking status and payment status only
   const {
     control,
     handleSubmit,
     reset,
     formState: { isDirty },
-  } = useForm<BookingEditValues>({
-    resolver: zodResolver(bookingEditSchema),
+    // setValue, // unused
+    // watch, // unused
+  } = useForm<BookingStatusFormValues>({
     defaultValues: {
-      status: booking?.status || 'pending',
-      payment_status: booking?.payment_status || 'pending',
-      assignment_status: booking?.assignment_status || 'pending',
-      worker_id: undefined,
+      status: booking ? booking.status : 'pending',
+      payment_status: booking ? booking.payment_status : 'pending',
     },
   });
-
   useEffect(() => {
     if (booking) {
-      const workerId = workerData?.assigned_worker_id || undefined;
-      reset({
-        status: booking.status,
-        payment_status: booking.payment_status,
-        assignment_status:
-          (workerData?.assignment_status as BookingAssignmentStatus | null) ||
-          booking.assignment_status ||
-          'pending',
-        worker_id: workerId,
+      const assigned = booking.assignments || [];
+      setAssignments(assigned as BookingAssignment[]);
+      setLastSavedAssignments(assigned as BookingAssignment[]);
+      setSelectedWorkerIds([]); // Clear selection on open/change
+      Promise.resolve().then(() => {
+        reset({
+          status: booking ? booking.status : 'pending',
+          payment_status: booking ? booking.payment_status : 'pending',
+        });
       });
     }
-  }, [
-    booking,
-    reset,
-    workerData?.assigned_worker_id,
-    workerData?.assignment_status,
-  ]);
-
-  const onSubmit = async (data: BookingEditValues) => {
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [booking]);
+  // On submit, send booking status, payment status, and assignments (worker assignments with their statuses)
+  // Save booking status/payment status only
+  // Replace 'any' with BookingStatusFormValues or a more specific type if available
+  const onSaveStatus = async (data: BookingStatusFormValues) => {
     if (!booking) return;
-
-    const currentAssignedWorkerId =
-      workerData?.assigned_worker_id || booking.assigned_worker_id || null;
-    const currentAssignmentStatus =
-      (workerData?.assignment_status as BookingAssignmentStatus | null) ||
-      booking.assignment_status ||
-      'pending';
-    const nextWorkerId = data.worker_id || null;
-
-    const payload: {
-      status?: BookingStatus;
-      payment_status?: BookingPaymentStatus;
-      assignment_status?: BookingAssignmentStatus;
-      worker_id?: string | null;
-    } = {};
-
-    if (data.status !== booking.status) {
-      payload.status = data.status;
-    }
-
-    if (data.payment_status !== booking.payment_status) {
-      payload.payment_status = data.payment_status;
-    }
-
-    if (data.assignment_status !== currentAssignmentStatus) {
-      payload.assignment_status = data.assignment_status;
-    }
-
-    if (nextWorkerId !== currentAssignedWorkerId) {
-      payload.worker_id = nextWorkerId;
-    }
-
-    if (Object.keys(payload).length === 0) {
-      onOpenChange(false);
-      return;
-    }
-
+    const payload = {
+      status: data.status,
+      payment_status: data.payment_status,
+    };
     updateBookingMutation.mutate(payload, {
       onSuccess: () => {
         onSuccess?.();
@@ -167,175 +115,220 @@ export function BookingEditModal({
     });
   };
 
-  const handleAutoAssign = () => {
-    if (!booking) return;
-
-    updateBookingMutation.mutate(
-      {
-        auto_assign: true,
-      },
-      {
-        onSuccess: async () => {
-          await refetch();
-          onSuccess?.();
-        },
-      },
-    );
-  };
-
   if (!booking) return null;
-
   const workers: AvailableWorker[] = workerData?.workers || [];
+  // Helper: compare assignments for changes
+
+  // MultiSelect should only show workers who are NOT assigned yet
+  const multiSelectOptions = (workerData?.workers || [])
+    .filter(
+      (w: AvailableWorker) =>
+        !assignments.some(
+          (a: BookingAssignment) => a.worker_id === w.worker_id,
+        ),
+    )
+    .map((worker: AvailableWorker) => ({
+      label: `${worker.full_name} • Rating: ${Number(worker.rating_avg || 0).toFixed(1)}`,
+      value: worker.worker_id,
+      disabled: false,
+    }));
+  // MultiSelect value is just selectedWorkerIds (not assigned yet)
+  const multiSelectValue = selectedWorkerIds;
+
+  // Helper: check if any assignment status has changed
+  function assignmentsStatusChanged() {
+    if (assignments.length !== lastSavedAssignments.length) return true;
+    const sortById = (arr: BookingAssignment[]) =>
+      [...arr].sort((a, b) => a.worker_id.localeCompare(b.worker_id));
+    const a1 = sortById(assignments);
+    const a2 = sortById(lastSavedAssignments);
+    for (let i = 0; i < a1.length; i++) {
+      if (a1[i].worker_id !== a2[i].worker_id || a1[i].status !== a2[i].status)
+        return true;
+    }
+    return false;
+  }
+
+  const canSaveAssignments =
+    selectedWorkerIds.length > 0 || assignmentsStatusChanged();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Update Booking</DialogTitle>
           <DialogDescription>
-            Update booking status, payment and worker assignment
+            Update booking status, payment and worker assignments
           </DialogDescription>
         </DialogHeader>
-
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          <div>
-            <Label htmlFor="booking-status">Booking Status</Label>
-            <Controller
-              name="status"
-              control={control}
-              render={({ field }) => (
-                <Select
-                  value={field.value}
-                  onValueChange={(value) =>
-                    field.onChange(value as BookingStatus)
-                  }
-                  disabled={updateBookingMutation.isPending}
-                >
-                  <SelectTrigger id="booking-status" className="mt-2">
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="confirmed">Confirmed</SelectItem>
-                    <SelectItem value="assigned">Assigned</SelectItem>
-                    <SelectItem value="in_progress">In Progress</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="payment-status">Payment Status</Label>
-            <Controller
-              name="payment_status"
-              control={control}
-              render={({ field }) => (
-                <Select
-                  value={field.value}
-                  onValueChange={(value) =>
-                    field.onChange(value as BookingPaymentStatus)
-                  }
-                  disabled={updateBookingMutation.isPending}
-                >
-                  <SelectTrigger id="payment-status" className="mt-2">
-                    <SelectValue placeholder="Select payment status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="paid">Paid</SelectItem>
-                    <SelectItem value="failed">Failed</SelectItem>
-                    <SelectItem value="refunded">Refunded</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="assignment-status">Assignment Status</Label>
-            <Controller
-              name="assignment_status"
-              control={control}
-              render={({ field }) => (
-                <Select
-                  value={field.value}
-                  onValueChange={(value) =>
-                    field.onChange(value as BookingAssignmentStatus)
-                  }
-                  disabled={updateBookingMutation.isPending}
-                >
-                  <SelectTrigger id="assignment-status" className="mt-2">
-                    <SelectValue placeholder="Select assignment status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="accepted">Accepted</SelectItem>
-                    <SelectItem value="declined">Declined</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-            />
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="worker-id">Assign Worker</Label>
+        <div className="space-y-6">
+          {/* Booking Status & Payment Status (admin only) */}
+          <div className="flex flex-col gap-4 border p-3 rounded mb-4">
+            <div>
+              <Label htmlFor="booking-status">Booking Status</Label>
+              <Controller
+                name="status"
+                control={control}
+                render={({ field }) => (
+                  <Select
+                    value={field.value}
+                    onValueChange={(value) =>
+                      field.onChange(value as BookingStatus)
+                    }
+                    disabled={updateBookingMutation.isPending}
+                  >
+                    <SelectTrigger id="booking-status" className="mt-2">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="confirmed">Confirmed</SelectItem>
+                      <SelectItem value="assigned">Assigned</SelectItem>
+                      <SelectItem value="in_progress">In Progress</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+            <div>
+              <Label htmlFor="payment-status">Payment Status</Label>
+              <Controller
+                name="payment_status"
+                control={control}
+                render={({ field }) => (
+                  <Select
+                    value={field.value}
+                    onValueChange={(value) =>
+                      field.onChange(value as BookingPaymentStatus)
+                    }
+                    disabled={updateBookingMutation.isPending}
+                  >
+                    <SelectTrigger id="payment-status" className="mt-2">
+                      <SelectValue placeholder="Select payment status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="paid">Paid</SelectItem>
+                      <SelectItem value="failed">Failed</SelectItem>
+                      <SelectItem value="refunded">Refunded</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+            <div className="flex justify-end mt-2">
               <Button
                 type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleAutoAssign}
-                disabled={updateBookingMutation.isPending || isWorkersLoading}
+                onClick={() => handleSubmit(onSaveStatus)()}
+                disabled={updateBookingMutation.isPending || !isDirty}
               >
-                Auto Assign Best
+                Save Status
               </Button>
             </div>
-
-            <Controller
-              name="worker_id"
-              control={control}
-              render={({ field }) => (
-                <Select
-                  value={field.value || 'none'}
-                  onValueChange={(value) =>
-                    field.onChange(value === 'none' ? undefined : value)
-                  }
-                  disabled={updateBookingMutation.isPending || isWorkersLoading}
-                >
-                  <SelectTrigger id="worker-id" className="mt-2">
-                    <SelectValue
-                      placeholder={
-                        isWorkersLoading
-                          ? 'Loading available workers...'
-                          : workers.length > 0
-                            ? 'Select available worker'
-                            : 'No available workers'
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No assignment</SelectItem>
-                    {workers.map((worker) => (
-                      <SelectItem
-                        key={worker.worker_id}
-                        value={worker.worker_id}
-                      >
-                        {worker.full_name} • Rating:{' '}
-                        {Number(worker.rating_avg || 0).toFixed(1)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
           </div>
-
+          {/* Assign Workers and their statuses */}
+          <div className="flex flex-col gap-2 border p-3 rounded mb-4">
+            <Label>Assign Workers</Label>
+            <div className="flex flex-col gap-2 mt-2">
+              <MultiSelect
+                options={multiSelectOptions}
+                value={multiSelectValue}
+                onChange={setSelectedWorkerIds}
+                placeholder="Select workers"
+                disabled={updateBookingMutation.isPending || isWorkersLoading}
+              />
+            </div>
+            {/* Show only already assigned workers (from DB) */}
+            {assignments.length > 0 && (
+              <div className="mt-2 space-y-2">
+                {assignments.map((a, idx) => {
+                  const worker = workers.find(
+                    (w) => w.worker_id === a.worker_id,
+                  );
+                  const displayName =
+                    a.worker_name || worker?.full_name || a.worker_id;
+                  const displayEmail = a.worker_email || '';
+                  return (
+                    <div
+                      key={a.worker_id}
+                      className="flex items-center justify-between gap-2"
+                    >
+                      <div className="flex flex-col">
+                        <span>{displayName}</span>
+                        {displayEmail && (
+                          <span className="ml-1 text-xs text-gray-500">
+                            {displayEmail}
+                          </span>
+                        )}
+                      </div>
+                      <select
+                        className="border rounded p-1 text-xs"
+                        value={a.status}
+                        onChange={(e) => {
+                          const updated = assignments.map((as, i) =>
+                            i === idx
+                              ? {
+                                  ...as,
+                                  status: e.target
+                                    .value as BookingAssignmentStatus,
+                                }
+                              : as,
+                          );
+                          setAssignments(updated as BookingAssignment[]);
+                        }}
+                        disabled={updateBookingMutation.isPending}
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="accepted">Accepted</option>
+                        <option value="declined">Declined</option>
+                        <option value="completed">Completed</option>
+                        <option value="cancelled">Cancelled</option>
+                      </select>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            <div className="flex justify-end mt-2">
+              <Button
+                type="button"
+                onClick={async () => {
+                  if (!booking) return;
+                  // Add new assignments for selectedWorkerIds
+                  const newAssignments = [
+                    ...assignments,
+                    ...selectedWorkerIds.map((wid) => ({
+                      worker_id: wid,
+                      status: 'pending' as BookingAssignmentStatus,
+                    })),
+                  ];
+                  const payload = {
+                    assignments: newAssignments.map((a) => ({
+                      worker_id: a.worker_id,
+                      status: a.status,
+                    })),
+                  };
+                  updateBookingMutation.mutate(payload, {
+                    onSuccess: () => {
+                      setLastSavedAssignments(
+                        newAssignments as BookingAssignment[],
+                      );
+                      onSuccess?.();
+                      onOpenChange(false);
+                    },
+                  });
+                }}
+                disabled={
+                  updateBookingMutation.isPending || !canSaveAssignments
+                }
+              >
+                Save Worker Assignments
+              </Button>
+            </div>
+          </div>
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button
               type="button"
@@ -343,18 +336,10 @@ export function BookingEditModal({
               onClick={() => onOpenChange(false)}
               disabled={updateBookingMutation.isPending}
             >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={updateBookingMutation.isPending || !isDirty}
-            >
-              {updateBookingMutation.isPending
-                ? 'Updating...'
-                : 'Update Booking'}
+              Close
             </Button>
           </div>
-        </form>
+        </div>
       </DialogContent>
     </Dialog>
   );
