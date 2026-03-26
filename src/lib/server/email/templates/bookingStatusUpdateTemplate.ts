@@ -46,7 +46,7 @@ export function bookingStatusUpdateTemplate(
     </div>
   `;
 
-   const selectedRequirements =
+  const selectedRequirements =
     data.service.requirements || data.service.variants || [];
 
   if (selectedRequirements.length > 0) {
@@ -86,12 +86,15 @@ export function bookingStatusUpdateTemplate(
     `;
   }
 
-  const customHtml = `
+  let customHtml = `
     <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-top: 12px;">
       <div style="font-weight: 600; color: #0f172a; margin-bottom: 12px; font-size: 14px;">Service Details</div>
       ${serviceDetailsHtml}
     </div>
   `;
+  if (data.customHtml) {
+    customHtml += data.customHtml;
+  }
 
   return renderNotificationTemplate({
     title: `Booking status update - ${serviceTitle}`,

@@ -3,8 +3,6 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { sendEmail } from '@/lib/server/email/ses-mailer';
 import {
   bookingAssignedToWorkerTemplate,
-  bookingAssignmentAcceptedTemplate,
-  bookingAssignmentCancelledTemplate,
   bookingStatusUpdateTemplate,
   bookingCompletionTemplate,
 } from '@/lib/server/email';
@@ -76,27 +74,7 @@ const buildServiceSubject = (serviceName: string, serviceCategory?: string) => {
     : title;
 };
 
-const assignmentEventTime = (assignment: {
-  assigned_at: string | null;
-  accepted_at: string | null;
-  declined_at: string | null;
-  completed_at: string | null;
-  cancelled_at: string | null;
-  created_at: string | null;
-}) => {
-  const ts = [
-    assignment.cancelled_at,
-    assignment.completed_at,
-    assignment.declined_at,
-    assignment.accepted_at,
-    assignment.assigned_at,
-    assignment.created_at,
-  ]
-    .filter(Boolean)
-    .map((value) => new Date(String(value)).getTime());
-
-  return ts.length ? Math.max(...ts) : 0;
-};
+// Removed unused assignmentEventTime function
 
 const toNumber = (value: unknown, fallback = 0): number => {
   const parsed = Number(value);
@@ -210,8 +188,8 @@ export async function GET(_request: NextRequest, { params }: Params) {
     const servicePlatformFee = toNumber(service?.platform_fee, 0);
 
     // Get platform_fee for each selected option
-    const optionPlatformFees = (optionsData || []).map((opt: any) =>
-      toNumber(opt.platform_fee, 0),
+    const optionPlatformFees = (optionsData || []).map((opt: unknown) =>
+      toNumber((opt as { platform_fee?: number }).platform_fee, 0),
     );
     const totalOptionsPlatformFee = optionPlatformFees.reduce(
       (sum, fee) => sum + fee,
@@ -464,7 +442,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         .eq('booking_id', id);
 
       const currentMap = new Map(
-        (currentAssignments || []).map((a: any) => [a.worker_id, a.status]),
+        (currentAssignments || []).map((a: unknown) => {
+          const assignment = a as { worker_id: string; status: string };
+          return [assignment.worker_id, assignment.status];
+        }),
       );
       const incomingMap = new Map(
         (body.assignments ?? []).map(
@@ -612,8 +593,6 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     let assignedWorkerId: string | null | undefined = hasWorkerField
       ? body.worker_id || null
       : undefined;
-    let assignmentStatusWorkerId: string | null = null;
-    let shouldSendAssignmentAcceptedEmail = false;
     const isWorkerReassignment =
       hasWorkerField && assignedWorkerId !== currentAssignedWorkerId;
     let didAssignWorker = false;
@@ -735,7 +714,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     if (typeof body.assignment_status !== 'undefined') {
       const targetWorkerId =
         assignedWorkerId || latestAssignment?.worker_id || null;
-      assignmentStatusWorkerId = targetWorkerId;
+      // removed assignmentStatusWorkerId assignment (no longer used)
       if (!targetWorkerId) {
         return NextResponse.json(
           { error: 'No worker assignment found to update assignment status' },
@@ -743,15 +722,14 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         );
       }
 
-      const { data: existingTargetAssignment } = await supabaseAdmin
+      await supabaseAdmin
         .from('booking_assignments')
         .select('status')
         .eq('booking_id', id)
         .eq('worker_id', targetWorkerId)
         .maybeSingle();
 
-      const previousTargetAssignmentStatus =
-        String(existingTargetAssignment?.status || '').toLowerCase() || null;
+      // removed unused previousTargetAssignmentStatus
 
       const nowIso = new Date().toISOString();
       const assignmentUpdate: Record<string, unknown> = {
@@ -825,9 +803,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         );
       }
 
-      shouldSendAssignmentAcceptedEmail =
-        body.assignment_status === 'accepted' &&
-        previousTargetAssignmentStatus !== 'accepted';
+      // removed shouldSendAssignmentAcceptedEmail assignment (no longer used)
     }
 
     const updatePayload: Record<string, unknown> = {};
@@ -869,6 +845,29 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         { error: 'Failed to fetch updated booking' },
         { status: 500 },
       );
+    }
+
+    // If booking status is being set to completed, update all relevant worker assignments to completed
+    if (typeof body.status !== 'undefined' && body.status === 'completed') {
+      // Fetch all assignments for this booking
+      const { data: allAssignmentsForCompletion } = await supabaseAdmin
+        .from('booking_assignments')
+        .select('worker_id, status')
+        .eq('booking_id', id);
+
+      // Find workers with status 'accepted' or 'in_progress' (not already completed/cancelled/declined)
+      const toComplete = (allAssignmentsForCompletion || []).filter(
+        (a) => a.status === 'accepted' || a.status === 'in_progress',
+      );
+
+      // Update their status to 'completed'
+      for (const assignment of toComplete) {
+        await supabaseAdmin
+          .from('booking_assignments')
+          .update({ status: 'completed' })
+          .eq('booking_id', id)
+          .eq('worker_id', assignment.worker_id);
+      }
     }
 
     const getWorkerProfile = async (workerId: string) => {
@@ -920,11 +919,18 @@ export async function PATCH(request: NextRequest, { params }: Params) {
             .from('service_options')
             .select('id, name, description, price')
             .in('id', updatedBooking.selected_options);
-          details.options = (optData || []).map((opt: any) => ({
-            name: opt.name,
-            description: opt.description || undefined,
-            price: opt.price ?? undefined,
-          }));
+          details.options = (optData || []).map((opt: unknown) => {
+            const o = opt as {
+              name: string;
+              description?: string;
+              price?: number;
+            };
+            return {
+              name: o.name,
+              description: o.description || undefined,
+              price: o.price ?? undefined,
+            };
+          });
         }
 
         if (updatedBooking.selected_variants?.length > 0) {
@@ -932,11 +938,18 @@ export async function PATCH(request: NextRequest, { params }: Params) {
             .from('service_requirements')
             .select('id, name, type, price')
             .in('id', updatedBooking.selected_variants);
-          details.requirements = (varData || []).map((v: any) => ({
-            name: v.name,
-            type: v.type || undefined,
-            price: v.price ?? undefined,
-          }));
+          details.requirements = (varData || []).map((v: unknown) => {
+            const variable = v as {
+              name: string;
+              type?: string;
+              price?: number;
+            };
+            return {
+              name: variable.name,
+              type: variable.type || undefined,
+              price: variable.price ?? undefined,
+            };
+          });
         }
       }
 
@@ -962,113 +975,211 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       toNumber(serviceDetailsForEmails.categoryFeePercent, 0),
     );
 
-    if (shouldSendAssignmentAcceptedEmail && assignmentStatusWorkerId) {
-      const acceptedWorkerProfile = await getWorkerProfile(
-        assignmentStatusWorkerId,
+    // (Removed: No email to admin/user on assignment status accepted/declined/cancelled)
+
+    // Send updated assignment emails to all active (pending/accepted) workers
+    const isPaidBooking =
+      String(updatedBooking.payment_status || '') === 'paid';
+    if (isPaidBooking) {
+      // ...existing code for worker emails...
+      const { data: allAssignments } = await supabaseAdmin
+        .from('booking_assignments')
+        .select('worker_id, status')
+        .eq('booking_id', id);
+
+      // Calculate per-worker payout (already divided in booking logic)
+      const activeAssignments = (allAssignments || []).filter(
+        (a) => a.status === 'pending' || a.status === 'accepted',
       );
+      const perWorkerPayout =
+        activeAssignments.length > 0
+          ? Number(
+              (bookingTotalForPayout / activeAssignments.length).toFixed(2),
+            )
+          : 0;
 
-      if (customerProfile?.email) {
-        try {
-          // Fetch worker image from profiles table
-          let workerImage: string | undefined = undefined;
-          const { data: workerFullProfile } = await supabaseAdmin
-            .from('workers')
-            .select('profile_id')
-            .eq('id', assignmentStatusWorkerId)
-            .maybeSingle();
-
-          if (workerFullProfile?.profile_id) {
-            const { data: profileData } = await supabaseAdmin
-              .from('profiles')
-              .select('avatar_url')
-              .eq('id', workerFullProfile.profile_id)
-              .maybeSingle();
-
-            if (profileData?.avatar_url) {
-              workerImage = profileData.avatar_url;
-            }
+      // Deduplicate by worker_id
+      const uniqueWorkerMap = new Map();
+      for (const assignment of activeAssignments) {
+        if (!uniqueWorkerMap.has(assignment.worker_id)) {
+          uniqueWorkerMap.set(assignment.worker_id, assignment);
+        }
+      }
+      for (const assignment of uniqueWorkerMap.values()) {
+        const workerProfile = await getWorkerProfile(assignment.worker_id);
+        if (workerProfile?.email) {
+          try {
+            await sendEmail({
+              to: workerProfile.email,
+              subject: `New Booking Assigned - ${serviceSubject}`,
+              html: bookingAssignedToWorkerTemplate({
+                workerName: workerProfile.full_name || 'Worker',
+                bookingId: id,
+                service: serviceDetailsForEmails,
+                address: bookingAddressForEmails,
+                unitOrFlat: unitOrFlatForEmails,
+                notes: notesForEmails,
+                bookingDate,
+                bookingTime,
+                customerName,
+                totalAmount: perWorkerPayout,
+                serviceFeePercent: serviceFeePercentForPayout,
+              }),
+            });
+          } catch (emailError) {
+            console.error('Booking assigned worker email failed:', emailError);
           }
-
-          let workerDetails: any = {
-            name: acceptedWorkerProfile?.full_name || 'Assigned Professional',
-            image: workerImage,
-          };
-
-          await sendEmail({
-            to: customerProfile.email,
-            subject: `Professional Assigned - ${serviceSubject}`,
-            html: bookingAssignmentAcceptedTemplate({
-              customerName,
-              bookingId: id,
-              service: serviceDetailsForEmails,
-              address: bookingAddressForEmails,
-              unitOrFlat: unitOrFlatForEmails,
-              notes: notesForEmails,
-              bookingDate,
-              bookingTime,
-              worker: workerDetails,
-            }),
-          });
-        } catch (emailError) {
-          console.error('Booking accepted user email failed:', emailError);
         }
       }
     }
 
-    if (didAssignWorker && assignedWorkerId) {
-      const isPaidBooking =
-        String(updatedBooking.payment_status || '') === 'paid';
-      const assignedWorkerProfile = await getWorkerProfile(assignedWorkerId);
+    // Send email to user when booking status is set to 'assigned'
+    if (
+      typeof body.status !== 'undefined' &&
+      body.status === 'assigned' &&
+      previousBookingStatus !== 'assigned' &&
+      customerProfile?.email
+    ) {
+      // Fetch all current assignments for this booking
+      const { data: allAssignments } = await supabaseAdmin
+        .from('booking_assignments')
+        .select('worker_id, status')
+        .eq('booking_id', id);
 
-      if (isPaidBooking && assignedWorkerProfile?.email) {
-        try {
-          await sendEmail({
-            to: assignedWorkerProfile.email,
-            subject: `New Booking Assigned - ${serviceSubject}`,
-            html: bookingAssignedToWorkerTemplate({
-              workerName: assignedWorkerProfile.full_name || 'Worker',
-              bookingId: id,
-              service: serviceDetailsForEmails,
-              address: bookingAddressForEmails,
-              unitOrFlat: unitOrFlatForEmails,
-              notes: notesForEmails,
-              bookingDate,
-              bookingTime,
-              customerName,
-              totalAmount: bookingTotalForPayout,
-              serviceFeePercent: serviceFeePercentForPayout,
-            }),
-          });
-        } catch (emailError) {
-          console.error('Booking assigned worker email failed:', emailError);
+      // Only include workers whose status is not declined, cancelled, or completed
+      const assignedWorkerIds = (allAssignments || [])
+        .filter(
+          (a) =>
+            a.status !== 'declined' &&
+            a.status !== 'cancelled' &&
+            a.status !== 'completed',
+        )
+        .map((a) => a.worker_id);
+
+      // Get worker details
+      const assignedWorkers = [];
+      for (const workerId of assignedWorkerIds) {
+        const { data: workerRow } = await supabaseAdmin
+          .from('workers')
+          .select('profile_id')
+          .eq('id', workerId)
+          .maybeSingle();
+        if (workerRow?.profile_id) {
+          const { data: workerProfile } = await supabaseAdmin
+            .from('profiles')
+            .select('full_name, email, phone')
+            .eq('id', workerRow.profile_id)
+            .maybeSingle();
+          if (workerProfile) {
+            assignedWorkers.push({
+              name: workerProfile.full_name || 'Worker',
+              email: workerProfile.email || '',
+              phone: workerProfile.phone || '',
+            });
+          }
         }
+      }
+
+      // Compose worker details HTML
+      let workersHtml = '';
+      if (assignedWorkers.length > 0) {
+        workersHtml =
+          '<div style="margin-top:16px;">' +
+          '<div style="font-weight:600;margin-bottom:8px;">Assigned Professionals:</div>' +
+          assignedWorkers
+            .map(
+              (w) =>
+                `<div style="margin-bottom:6px;">
+                  <span style="font-weight:500;">${w.name}</span>
+                  ${w.email ? `<span style=\"color:#6b7280;\"> &lt;${w.email}&gt;</span>` : ''}
+                  ${w.phone ? `<span style=\"color:#6b7280;\"> (${w.phone})</span>` : ''}
+                </div>`,
+            )
+            .join('') +
+          '</div>';
+      }
+
+      // Use bookingStatusUpdateTemplate for now, with customHtml for workers
+      try {
+        await sendEmail({
+          to: customerProfile.email,
+          subject: `Booking Assigned - ${serviceSubject}`,
+          html: bookingStatusUpdateTemplate({
+            customerName,
+            bookingId: id,
+            service: serviceDetailsForEmails,
+            address: bookingAddressForEmails,
+            unitOrFlat: unitOrFlatForEmails,
+            notes: notesForEmails,
+            bookingDate,
+            bookingTime,
+            previousStatus: previousBookingStatus,
+            newStatus: 'assigned',
+            updatedAt: new Date().toLocaleString('en-ZA', {
+              dateStyle: 'medium',
+              timeStyle: 'short',
+            }),
+            detailsUrl: `${process.env.NEXT_PUBLIC_APP_URL}/user/bookings/${id}`,
+            customHtml: workersHtml,
+          }),
+        });
+      } catch (emailError) {
+        console.error('Booking assigned user email failed:', emailError);
       }
     }
 
-    for (const cancelledWorkerId of cancelledWorkerIds) {
-      const cancelledWorkerProfile = await getWorkerProfile(cancelledWorkerId);
+    // (Removed: No email to admin/user on assignment status cancelled)
+    // Send email to all workers with assignment status 'completed' (on status change to completed)
+    // Re-fetch all assignments with status accepted or completed (after possible status updates above)
+    const { data: completedAssignments } = await supabaseAdmin
+      .from('booking_assignments')
+      .select('worker_id, status')
+      .eq('booking_id', id)
+      .in('status', ['accepted', 'completed']);
 
-      if (cancelledWorkerProfile?.email) {
+    // Only count accepted/completed workers for payout calculation
+    const payoutWorkerCount = (completedAssignments || []).length;
+    const payoutAmount =
+      payoutWorkerCount > 0
+        ? Number(
+            (
+              toNumber(updatedBooking.total_price, 0) / payoutWorkerCount
+            ).toFixed(2),
+          )
+        : 0;
+
+    for (const assignment of completedAssignments || []) {
+      // If not already completed, update to completed (should be handled above, but double-check)
+      if (assignment.status !== 'completed') {
+        await supabaseAdmin
+          .from('booking_assignments')
+          .update({ status: 'completed' })
+          .eq('booking_id', id)
+          .eq('worker_id', assignment.worker_id);
+      }
+      const workerProfile = await getWorkerProfile(assignment.worker_id);
+      if (workerProfile?.email) {
         try {
           await sendEmail({
-            to: cancelledWorkerProfile.email,
-            subject: `Booking Assignment Cancelled - ${serviceSubject}`,
-            html: bookingAssignmentCancelledTemplate({
-              workerName: cancelledWorkerProfile.full_name || 'Worker',
+            to: workerProfile.email,
+            subject: `Booking Assignment Completed - ${serviceSubject}`,
+            html: await bookingCompletionTemplate({
+              userEmail: workerProfile.email,
+              userName: workerProfile.full_name || 'Worker',
               bookingId: id,
-              service: serviceDetailsForEmails,
-              address: bookingAddressForEmails,
-              unitOrFlat: unitOrFlatForEmails,
-              notes: notesForEmails,
+              serviceName: serviceDetailsForEmails.name,
+              serviceCategory: serviceDetailsForEmails.category || 'General',
               bookingDate,
               bookingTime,
-              totalAmount: bookingTotalForPayout,
-              serviceFeePercent: serviceFeePercentForPayout,
+              workerName: workerProfile.full_name || 'Worker',
+              workerImage: '',
+              ratingLink: '',
+              payoutAmount,
             }),
           });
         } catch (emailError) {
           console.error(
-            'Booking assignment cancelled email failed:',
+            'Booking assignment completed worker email failed:',
             emailError,
           );
         }
@@ -1077,65 +1188,61 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
     const updatedStatus = String(updatedBooking.status || 'pending');
 
-    // Handle booking completion - send rating email instead of status update
+    // Handle booking completion - send rating email for each completed worker
     if (
       updatedStatus === 'completed' &&
       previousBookingStatus !== 'completed' &&
       customerProfile?.email
     ) {
       try {
-        let workerNameForEmail = 'Assigned Professional';
-        let workerImageForEmail: string | undefined;
-
-        // Best-effort: prefer accepted assignment, fallback to latest assignment worker
-        const { data: acceptedAssignment } = await supabaseAdmin
+        // Get all completed assignments for this booking
+        const { data: completedAssignments } = await supabaseAdmin
           .from('booking_assignments')
-          .select('worker_id, assigned_at')
+          .select('worker_id')
           .eq('booking_id', id)
-          .eq('status', 'accepted')
-          .order('assigned_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+          .eq('status', 'completed');
 
-        const workerIdForEmail =
-          acceptedAssignment?.worker_id || latestAssignment?.worker_id || null;
-
-        if (workerIdForEmail) {
-          const { data: workerData } = await supabaseAdmin
+        for (const assignment of completedAssignments || []) {
+          // Get worker profile and avatar
+          const { data: workerRow } = await supabaseAdmin
             .from('workers')
-            .select('profile_id, profiles(full_name, avatar_url)')
-            .eq('id', workerIdForEmail)
+            .select('profile_id')
+            .eq('id', assignment.worker_id)
             .maybeSingle();
-
-          const workerProfile = workerData?.profiles?.[0];
-
-          if (workerProfile?.full_name) {
-            workerNameForEmail = workerProfile.full_name;
+          let workerNameForEmail = 'Assigned Professional';
+          let workerImageForEmail: string | undefined;
+          if (workerRow?.profile_id) {
+            const { data: workerProfile } = await supabaseAdmin
+              .from('profiles')
+              .select('full_name, avatar_url')
+              .eq('id', workerRow.profile_id)
+              .maybeSingle();
+            if (workerProfile?.full_name) {
+              workerNameForEmail = workerProfile.full_name;
+            }
+            if (workerProfile?.avatar_url) {
+              workerImageForEmail = workerProfile.avatar_url;
+            }
           }
-
-          if (workerProfile?.avatar_url) {
-            workerImageForEmail = workerProfile.avatar_url;
-          }
+          // Unique rating link per worker
+          const ratingLink = `${process.env.NEXT_PUBLIC_APP_URL}/user/bookings/${id}?rate=true&worker=${assignment.worker_id}`;
+          await sendEmail({
+            to: customerProfile.email,
+            subject: `Booking Complete - Rate ${workerNameForEmail}`,
+            html: await bookingCompletionTemplate({
+              userEmail: customerProfile.email,
+              userName: customerName,
+              bookingId: id,
+              serviceName: serviceDetailsForEmails.name,
+              serviceCategory: serviceDetailsForEmails.category || 'General',
+              bookingDate,
+              bookingTime,
+              workerName: workerNameForEmail,
+              workerImage: workerImageForEmail,
+              ratingLink,
+            }),
+          });
         }
-
-        const ratingLink = `${process.env.NEXT_PUBLIC_APP_URL}/user/bookings/${id}?rate=true`;
-
-        await sendEmail({
-          to: customerProfile.email,
-          subject: 'Booking Complete - Rate Your Professional',
-          html: await bookingCompletionTemplate({
-            userEmail: customerProfile.email,
-            userName: customerName,
-            bookingId: id,
-            serviceName: serviceDetailsForEmails.name,
-            serviceCategory: serviceDetailsForEmails.category || 'General',
-            bookingDate,
-            bookingTime,
-            workerName: workerNameForEmail,
-            workerImage: workerImageForEmail,
-            ratingLink,
-          }),
-        });
       } catch (emailError) {
         console.error('Booking completion email failed:', emailError);
       }

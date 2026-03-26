@@ -169,6 +169,7 @@ export interface BookingStatusUpdateEmailData {
   newStatus: string;
   updatedAt: string;
   detailsUrl: string;
+  customHtml?: string;
 }
 
 export interface OrderStatusUpdateEmailData {

@@ -441,38 +441,50 @@ const BookingDetailsPage = () => {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="h-4 w-4" /> Assigned Worker
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              {(() => {
-                // Multi-worker: show first assigned worker (pending/accepted/completed)
-                const assigned = Array.isArray(booking.assignments)
-                  ? booking.assignments.find(
-                      (a) =>
-                        a.status === 'pending' ||
-                        a.status === 'accepted' ||
-                        a.status === 'completed',
-                    )
-                  : undefined;
-                return (
-                  <>
-                    <p className="font-semibold text-slate-900">
-                      {assigned?.worker_name ||
-                        assigned?.worker_id ||
-                        'Pending Assignment'}
-                    </p>
-                    <p className="text-slate-600">
-                      {assigned?.worker_email || 'No worker email'}
-                    </p>
-                  </>
-                );
-              })()}
-            </CardContent>
-          </Card>
+          {/* Assigned Worker(s) card: only show if booking.status === 'assigned', 'in_progress', or 'completed' */}
+          {(booking.status === 'assigned' ||
+            booking.status === 'in_progress' ||
+            booking.status === 'completed') && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="h-4 w-4" /> Assigned Worker(s)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                {(() => {
+                  const assignments = Array.isArray(booking.assignments)
+                    ? booking.assignments
+                    : [];
+                  // Show all workers with assignment status 'accepted' or 'completed'
+                  const assignedWorkers = assignments.filter(
+                    (a) => a.status === 'accepted' || a.status === 'completed',
+                  );
+                  if (assignedWorkers.length === 0) {
+                    return (
+                      <p className="text-slate-600">No assigned workers yet.</p>
+                    );
+                  }
+                  return assignedWorkers.map((worker) => (
+                    <div key={worker.worker_id} className="mb-2">
+                      <p className="font-semibold text-slate-900">
+                        {worker.worker_name &&
+                        typeof worker.worker_name === 'string'
+                          ? worker.worker_name
+                          : worker.worker_id}
+                      </p>
+                      <p className="text-slate-600">
+                        {worker.worker_email &&
+                        typeof worker.worker_email === 'string'
+                          ? worker.worker_email
+                          : 'No worker email'}
+                      </p>
+                    </div>
+                  ));
+                })()}
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
 

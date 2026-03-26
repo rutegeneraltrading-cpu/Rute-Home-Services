@@ -11,6 +11,7 @@ export interface BookingCompletionEmailData {
   workerName: string;
   workerImage?: string;
   ratingLink: string;
+  payoutAmount?: number;
 }
 
 export async function bookingCompletionTemplate(
@@ -48,22 +49,29 @@ export async function bookingCompletionTemplate(
     `<p style="margin: 20px 0; padding: 15px; background: #e8f5e9; border-left: 4px solid #4caf50; color: #2e7d32; font-size: 14px; border-radius: 4px;">` +
     `Your feedback helps us maintain quality and recognize our best professionals</p>`;
 
+  const detailsArr = [
+    { label: 'Professional', value: data.workerName },
+    {
+      label: 'Service',
+      value: `${data.serviceName} (${data.serviceCategory})`,
+    },
+    {
+      label: 'Date & Time',
+      value: `${data.bookingDate} at ${data.bookingTime}`,
+    },
+  ];
+  if (typeof data.payoutAmount === 'number') {
+    detailsArr.push({
+      label: 'Your Payout',
+      value: `Rs. ${data.payoutAmount}`,
+    });
+  }
   return renderNotificationTemplate({
     title: 'Booking Complete - Rate Your Professional',
     preheader: `Thank you! Tell us about your experience with ${data.workerName}`,
     notificationMessage: `Your booking for ${data.serviceName} has been completed successfully. We'd love to know how it went!`,
     sectionTitle: 'Service Details',
-    details: [
-      { label: 'Professional', value: data.workerName },
-      {
-        label: 'Service',
-        value: `${data.serviceName} (${data.serviceCategory})`,
-      },
-      {
-        label: 'Date & Time',
-        value: `${data.bookingDate} at ${data.bookingTime}`,
-      },
-    ],
+    details: detailsArr,
     customHtml: customHTML,
     ctaText: 'Rate Your Experience',
     ctaLink: data.ratingLink,
