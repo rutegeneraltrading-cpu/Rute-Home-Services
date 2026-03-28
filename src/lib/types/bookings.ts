@@ -110,6 +110,8 @@ export interface Booking {
   notes?: string;
   created_at: string;
   updated_at: string;
+  priority_status?: boolean; // true if instant booking
+  priority_fee?: number; // fee for instant booking
 }
 
 export interface CreateBookingDTO {
@@ -124,6 +126,8 @@ export interface CreateBookingDTO {
   selected_options?: string[]; // option IDs
   selected_variants?: string[]; // variant IDs
   notes?: string;
+  priority_status?: boolean;
+  priority_fee?: number;
 }
 
 export interface UpdateBookingDTO {

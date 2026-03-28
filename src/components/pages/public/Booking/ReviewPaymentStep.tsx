@@ -29,6 +29,8 @@ interface ReviewPaymentStepProps {
     date: string;
     time: string;
   };
+  isPriorityBooking: boolean;
+  priorityFee: number;
   onBack: () => void;
 }
 
@@ -41,6 +43,8 @@ const ReviewPaymentStep = ({
   requirementsData,
   additionalDetails,
   addressDateData,
+  isPriorityBooking,
+  priorityFee,
   onBack,
 }: ReviewPaymentStepProps) => {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -83,13 +87,18 @@ const ReviewPaymentStep = ({
     .filter(Boolean) as ServiceRequirement[];
 
   // Calculate totals
-  const totalPrice =
+
+  const baseTotal =
     (serviceData?.base_price || 0) +
     selectedOptionsArray.reduce((sum, opt) => sum + opt.price, 0) +
     selectedRequirementsArray.reduce(
       (sum, requirement) => sum + requirement.price,
       0,
     );
+  const totalPrice = isPriorityBooking
+    ? baseTotal + (priorityFee || 0)
+    : baseTotal;
+  // Show priority fee in summary if instant booking
 
   const totalDuration =
     (serviceData?.duration_minutes || 0) +
@@ -132,6 +141,8 @@ const ReviewPaymentStep = ({
         ),
         selected_variants: Object.values(selectedRequirements),
         notes: additionalDetails.notes?.trim() || undefined,
+        priority_status: isPriorityBooking || undefined,
+        priority_fee: isPriorityBooking ? priorityFee : undefined,
       };
 
       const booking = await createBookingMutation.mutateAsync(bookingData);
@@ -199,6 +210,16 @@ const ReviewPaymentStep = ({
                 R{serviceData.base_price}
               </span>
             </div>
+            {isPriorityBooking && priorityFee > 0 && (
+              <div className="flex justify-between items-center gap-3 py-2">
+                <span className="text-sm text-amber-700 font-semibold shrink-0">
+                  Instant Booking Fee
+                </span>
+                <span className="text-sm font-semibold text-amber-700">
+                  +R{priorityFee}
+                </span>
+              </div>
+            )}
             <div className="flex justify-between items-center gap-3 py-2">
               <span className="text-sm text-slate-600 shrink-0">
                 Service Duration

@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
       category_id,
       duration_minutes,
       platform_fee,
+      priority_fee,
     } = body;
     console.log('Received data for new service:', body);
     // Validate required fields
@@ -65,6 +66,7 @@ export async function POST(request: NextRequest) {
           duration_minutes: parseInt(duration_minutes) || 60,
           is_active: true,
           platform_fee,
+          priority_fee,
         },
       ])
       .select()

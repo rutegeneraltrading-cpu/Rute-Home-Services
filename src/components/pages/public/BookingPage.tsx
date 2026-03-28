@@ -42,6 +42,8 @@ const BookingPage = () => {
     date: string;
     time: string;
   }>({ address: '', unit_or_flat: '', date: '', time: '' });
+  // Priority (instant) booking state
+  const [isPriorityBooking, setIsPriorityBooking] = useState(false);
 
   const {
     data: categoryServices = [],
@@ -577,6 +579,9 @@ const BookingPage = () => {
                   totalDurationMinutes={totalDurationMinutes}
                   addressDateData={addressDateData}
                   setAddressDateData={setAddressDateData}
+                  isPriorityBooking={isPriorityBooking}
+                  setIsPriorityBooking={setIsPriorityBooking}
+                  serviceData={serviceData}
                   onNext={() => setCurrentStep(stepMap.review)}
                   onBack={() =>
                     setCurrentStep(
@@ -600,6 +605,10 @@ const BookingPage = () => {
                   requirementsData={requirementsData}
                   additionalDetails={additionalDetails}
                   addressDateData={addressDateData}
+                  isPriorityBooking={isPriorityBooking}
+                  priorityFee={
+                    isPriorityBooking ? serviceData.priority_fee || 0 : 0
+                  }
                   onBack={() => {
                     // Go back to address step
                     setCurrentStep(stepMap.address);

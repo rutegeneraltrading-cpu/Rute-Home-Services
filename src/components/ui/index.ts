@@ -121,6 +121,7 @@ import {
   SelectScrollUpButton,
   SelectScrollDownButton,
 } from './select';
+import { Switch } from './switch';
 
 export {
   Button,
@@ -228,4 +229,5 @@ export {
   RadioGroupItem,
   Toaster,
   useToast,
+  Switch,
 };

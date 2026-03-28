@@ -1,5 +1,7 @@
 'use client';
 
+import type { Service } from '@/lib/client/api/services/services.api';
+
 import { useState, useMemo } from 'react';
 import { Edit2, Trash2 } from 'lucide-react';
 import Image from 'next/image';
@@ -53,11 +55,22 @@ export default function ServicesPage() {
   const { data: optionsData, isLoading: optionsLoading } =
     useGetAllServiceOptions();
 
-  const categories = useMemo(
-    () => categoriesData?.categories || [],
-    [categoriesData],
-  );
-  const services = useMemo(() => servicesData || [], [servicesData]);
+  const categories = useMemo(() => {
+    const arr = categoriesData?.categories || [];
+    return arr.slice().sort((a, b) => {
+      if (
+        typeof a.display_order === 'number' &&
+        typeof b.display_order === 'number'
+      ) {
+        return a.display_order - b.display_order;
+      }
+      if (typeof a.display_order === 'number') return -1;
+      if (typeof b.display_order === 'number') return 1;
+      return 0;
+    });
+  }, [categoriesData]);
+  // Ensure correct typing for services (with priority_fee)
+  const services: Service[] = useMemo(() => servicesData || [], [servicesData]);
 
   const [editingCategory, setEditingCategory] = useState<
     (typeof categories)[0] | null
@@ -187,6 +200,12 @@ export default function ServicesPage() {
       sortable: true,
     },
     {
+      id: 'display_order',
+      header: 'Order',
+      accessorKey: 'display_order',
+      sortable: true,
+    },
+    {
       id: 'is_active',
       header: 'Status',
       accessorKey: 'is_active',
@@ -209,7 +228,7 @@ export default function ServicesPage() {
     },
   ];
 
-  const serviceColumns: TableColumn<(typeof services)[number]>[] = [
+  const serviceColumns: TableColumn<Service>[] = [
     {
       id: 'name',
       header: 'Name',
@@ -245,6 +264,13 @@ export default function ServicesPage() {
       accessorKey: 'platform_fee',
       sortable: true,
       cell: (value) => `${parseFloat(value).toFixed(2)}%`,
+    },
+    {
+      id: 'priority_fee',
+      header: 'Priority Fee',
+      accessorKey: 'priority_fee',
+      sortable: true,
+      cell: (value) => `R${parseFloat(value).toFixed(2)}`,
     },
     {
       id: 'duration_minutes',

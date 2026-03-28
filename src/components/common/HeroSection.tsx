@@ -34,6 +34,15 @@ const HeroSection = () => {
     created_at?: string;
     charge_type?: string;
   }> = (categoriesData.categories || []).slice().sort((a, b) => {
+    // Prefer display_order, fallback to created_at
+    if (
+      typeof a.display_order === 'number' &&
+      typeof b.display_order === 'number'
+    ) {
+      return a.display_order - b.display_order;
+    }
+    if (typeof a.display_order === 'number') return -1;
+    if (typeof b.display_order === 'number') return 1;
     if (!a.created_at || !b.created_at) return 0;
     return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
   });

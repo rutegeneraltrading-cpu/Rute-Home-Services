@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
         image_url: body.image_url || null,
         is_active: body.is_active !== false,
         charge_type: body.charge_type ?? 'hourly',
+        display_order: body.display_order ?? 0,
       })
       .select()
       .single();

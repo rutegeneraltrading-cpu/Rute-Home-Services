@@ -49,6 +49,8 @@ export function ServiceEditModal({
       is_active: service?.is_active ?? true,
       platform_fee:
         service?.platform_fee !== undefined ? service.platform_fee : 0,
+      priority_fee:
+        service?.priority_fee !== undefined ? service.priority_fee : 0,
     }),
     [service],
   );
@@ -83,6 +85,7 @@ export function ServiceEditModal({
         duration_minutes: parseInt(data.duration_minutes, 10),
         is_active: data.is_active,
         platform_fee: data.platform_fee,
+        priority_fee: data.priority_fee,
       },
       {
         onSuccess: () => {
@@ -180,6 +183,25 @@ export function ServiceEditModal({
                 {errors.platform_fee.message}
               </p>
             )}
+          </div>
+          <div>
+            <Label htmlFor="priority_fee">Priority Fee</Label>
+            <Input
+              id="priority_fee"
+              type="number"
+              min={0}
+              {...register('priority_fee', { valueAsNumber: true })}
+              className="mt-2"
+            />
+            {errors.priority_fee && (
+              <p className="text-sm text-red-500 mt-1">
+                {errors.priority_fee.message}
+              </p>
+            )}
+            <p className="text-xs text-muted-foreground mt-1">
+              Determines the order in which this category appears (lower comes
+              first)
+            </p>
           </div>
           <div>
             <Label htmlFor="description">Description</Label>

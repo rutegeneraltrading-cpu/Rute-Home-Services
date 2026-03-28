@@ -49,6 +49,7 @@ export function ServiceCategoryEditModal({
       description: category?.description || '',
       image_url: category?.image_url || '',
       charge_type: category?.charge_type || 'hourly',
+      display_order: category?.display_order ?? 0,
     }),
     [category],
   );
@@ -132,6 +133,7 @@ export function ServiceCategoryEditModal({
         description: data.description || undefined,
         image_url: imageUrl || undefined,
         charge_type: data.charge_type,
+        display_order: data.display_order,
       },
       {
         onSuccess: () => {
@@ -166,7 +168,6 @@ export function ServiceCategoryEditModal({
               </p>
             )}
           </div>
-
           <div>
             <Label htmlFor="category-description">Description</Label>
             <textarea
@@ -209,6 +210,26 @@ export function ServiceCategoryEditModal({
             )}
             <p className="text-xs text-muted-foreground mt-1">
               Select how this category is charged (per hour or per day)
+            </p>
+          </div>
+
+          <div>
+            <Label htmlFor="display_order">Display Order</Label>
+            <Input
+              id="display_order"
+              type="number"
+              min={0}
+              {...register('display_order', { valueAsNumber: true })}
+              className="mt-2"
+            />
+            {formErrors.display_order && (
+              <p className="text-sm text-red-500 mt-1">
+                {formErrors.display_order.message}
+              </p>
+            )}
+            <p className="text-xs text-muted-foreground mt-1">
+              Determines the order in which this category appears (lower comes
+              first)
             </p>
           </div>
 

@@ -71,6 +71,7 @@ export interface Service {
     slug: string;
   };
   platform_fee: number;
+  priority_fee?: number;
 }
 
 export interface CreateServiceDTO {
@@ -81,6 +82,7 @@ export interface CreateServiceDTO {
   category_id: string;
   duration_minutes?: number;
   platform_fee: number;
+  priority_fee: number;
 }
 
 export interface UpdateServiceDTO {
@@ -92,6 +94,7 @@ export interface UpdateServiceDTO {
   duration_minutes?: number;
   is_active?: boolean;
   platform_fee?: number;
+  priority_fee?: number;
 }
 
 export interface ServiceOption {

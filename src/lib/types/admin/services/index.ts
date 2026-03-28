@@ -4,6 +4,7 @@ export interface ServiceCategory {
   description?: string | null;
   image_url?: string | null;
   charge_type: 'hourly' | 'day';
+  display_order: number;
 }
 
 export interface ServiceCategoryEditModalProps {
@@ -23,6 +24,7 @@ export interface ServiceItem {
   duration_minutes: number;
   is_active: boolean;
   platform_fee?: number;
+  priority_fee?: number;
 }
 
 export interface ServiceEditModalProps {
@@ -44,6 +46,7 @@ export type ServiceFormValues = {
   base_price: string;
   duration_minutes: string;
   platform_fee: number;
+  priority_fee: number;
 };
 
 export interface ServiceOptionItem {
@@ -89,6 +92,7 @@ export interface CreateServiceCategoryDTO {
   image_url?: string;
   charge_type: 'hourly' | 'day';
   is_active?: boolean;
+  display_order: number;
 }
 
 export interface Service {
@@ -102,6 +106,7 @@ export interface Service {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  priority_fee?: number; // Priority (instant booking) fee
   category?: {
     id: string;
     name: string;

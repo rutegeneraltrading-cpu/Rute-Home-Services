@@ -27,6 +27,7 @@ export async function PUT(
       duration_minutes,
       is_active,
       platform_fee,
+      priority_fee,
     } = body;
 
     if (!name || !slug || !category_id || base_price === undefined) {
@@ -46,6 +47,7 @@ export async function PUT(
         platform_fee: platform_fee,
         duration_minutes: parseInt(duration_minutes) || 60,
         is_active: is_active !== false,
+        priority_fee: priority_fee,
       })
       .eq('id', id)
       .select()

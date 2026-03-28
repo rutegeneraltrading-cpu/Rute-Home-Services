@@ -40,8 +40,30 @@ export function ServiceCategoryForm() {
       description: '',
       image_url: '',
       charge_type: 'hourly',
+      display_order: 0,
     },
   });
+  {
+    /* Display Order */
+  }
+  <div>
+    <Label htmlFor="display_order">Display Order</Label>
+    <Input
+      id="display_order"
+      type="number"
+      min={0}
+      {...register('display_order', { valueAsNumber: true })}
+      className="mt-2"
+    />
+    {formErrors.display_order && (
+      <p className="text-sm text-red-500 mt-1">
+        {formErrors.display_order.message}
+      </p>
+    )}
+    <p className="text-xs text-muted-foreground mt-1">
+      Determines the order in which this category appears (lower comes first)
+    </p>
+  </div>;
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -87,6 +109,7 @@ export function ServiceCategoryForm() {
         description: data.description,
         image_url: imageUrl,
         charge_type: data.charge_type,
+        display_order: data.display_order,
       });
 
       // Clear form after success
@@ -172,6 +195,28 @@ export function ServiceCategoryForm() {
               Select how this category is charged (per hour or per day)
             </p>
           </div>
+
+          {/* Display Order */}
+          <div>
+            <Label htmlFor="display_order">Display Order</Label>
+            <Input
+              id="display_order"
+              type="number"
+              min={0}
+              {...register('display_order', { valueAsNumber: true })}
+              className="mt-2"
+            />
+            {formErrors.display_order && (
+              <p className="text-sm text-red-500 mt-1">
+                {formErrors.display_order.message}
+              </p>
+            )}
+            <p className="text-xs text-muted-foreground mt-1">
+              Determines the order in which this category appears (lower comes
+              first)
+            </p>
+          </div>
+
           {/* Category Image */}
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 bg-gray-50">
             <Label htmlFor="image">Category Image</Label>

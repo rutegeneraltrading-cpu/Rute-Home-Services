@@ -40,6 +40,7 @@ export function ServiceForm({ onServiceCreated }: ServiceFormProps) {
       base_price: '0',
       duration_minutes: '60',
       platform_fee: 0,
+      priority_fee: 0,
     },
   });
 
@@ -52,6 +53,7 @@ export function ServiceForm({ onServiceCreated }: ServiceFormProps) {
       category_id: data.category_id,
       duration_minutes: parseInt(data.duration_minutes || '60'),
       platform_fee: data.platform_fee,
+      priority_fee: data.platform_fee,
     };
 
     createMutation.mutate(payload, {
@@ -216,6 +218,26 @@ export function ServiceForm({ onServiceCreated }: ServiceFormProps) {
           <p className="text-xs text-muted-foreground mt-1">
             Enter the platform commission percentage for this service (e.g. 10
             for 10%).
+          </p>
+        </div>
+
+        <div>
+          <Label htmlFor="priority_fee">Priority Fee</Label>
+          <Input
+            id="priority_fee"
+            type="number"
+            min={0}
+            {...register('priority_fee', { valueAsNumber: true })}
+            className="mt-2"
+          />
+          {errors.priority_fee && (
+            <p className="text-sm text-red-500 mt-1">
+              {errors.priority_fee.message}
+            </p>
+          )}
+          <p className="text-xs text-muted-foreground mt-1">
+            Determines the order in which this category appears (lower comes
+            first)
           </p>
         </div>
 
