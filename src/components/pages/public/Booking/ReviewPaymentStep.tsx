@@ -238,12 +238,43 @@ const ReviewPaymentStep = ({
                 </span>
               </div>
             )}
-            <div className="flex justify-between items-start gap-3 py-2">
-              <span className="text-sm text-slate-600 shrink-0">Address</span>
-              <span className="text-sm font-semibold text-slate-900 text-right">
-                {addressDateData.address}
-              </span>
-            </div>
+            {/* Address display: handle to=...&from=... format */}
+            {addressDateData.address &&
+            addressDateData.address.includes('to=') &&
+            addressDateData.address.includes('from=') ? (
+              (() => {
+                const params = new URLSearchParams(addressDateData.address);
+                const to = decodeURIComponent(params.get('to') || '');
+                const from = decodeURIComponent(params.get('from') || '');
+                return (
+                  <>
+                    <div className="flex justify-between items-start gap-3 py-2">
+                      <span className="text-sm text-slate-600 shrink-0">
+                        From
+                      </span>
+                      <span className="text-sm font-semibold text-slate-900 text-right">
+                        {from}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-start gap-3 py-2">
+                      <span className="text-sm text-slate-600 shrink-0">
+                        To
+                      </span>
+                      <span className="text-sm font-semibold text-slate-900 text-right">
+                        {to}
+                      </span>
+                    </div>
+                  </>
+                );
+              })()
+            ) : (
+              <div className="flex justify-between items-start gap-3 py-2">
+                <span className="text-sm text-slate-600 shrink-0">Address</span>
+                <span className="text-sm font-semibold text-slate-900 text-right">
+                  {addressDateData.address}
+                </span>
+              </div>
+            )}
             <div className="flex justify-between items-center gap-3 py-2">
               <span className="text-sm text-slate-600 shrink-0">
                 Booking Date

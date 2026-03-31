@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import Link from 'next/link';
-import { Menu, X, ShoppingCart } from 'lucide-react';
+import { Menu, X, ShoppingCart, Briefcase } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useGetMe, useSignOut } from '@/lib/client/api';
 import { useCart } from '@/lib/contexts';
@@ -119,8 +119,18 @@ const PublicNavbar = () => {
               <Button asChild variant="outline">
                 <Link href="/login">Login</Link>
               </Button>
-              <Button asChild>
+              {/* <Button asChild>
                 <Link href="/signup">Sign up</Link>
+              </Button> */}
+              <Button
+                asChild
+                className="ml-2 bg-green-600 hover:bg-green-700 text-white rounded-full px-4 py-2 flex items-center gap-2 shadow-md transition-colors"
+                aria-label="Become a Worker"
+                title="Become a Worker"
+              >
+                <Link href="/worker/register">
+                  <Briefcase className="h-4 w-4 mr-1" /> Become a Worker
+                </Link>
               </Button>
             </>
           ) : (
@@ -262,6 +272,19 @@ const PublicNavbar = () => {
                   <Button asChild className="w-full">
                     <Link href="/signup" onClick={() => setOpen(false)}>
                       Sign up
+                    </Link>
+                  </Button>
+                  <Button
+                    asChild
+                    className="w-full bg-green-600 hover:bg-green-700 text-white rounded-full px-4 py-2 flex items-center gap-2 shadow-md transition-colors"
+                    aria-label="Become a Worker"
+                    title="Become a Worker"
+                  >
+                    <Link
+                      href="/worker/register"
+                      onClick={() => setOpen(false)}
+                    >
+                      <Briefcase className="h-4 w-4 mr-1" /> Become a Worker
                     </Link>
                   </Button>
                 </>

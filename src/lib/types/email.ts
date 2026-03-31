@@ -104,6 +104,7 @@ export interface BookingServiceDetail {
   // Backward-compatible alias
   variants?: ServiceVariantDetail[];
   platform_fee?: number;
+  priority_fee?: number;
 }
 
 export interface BookingCreatedEmailData {
@@ -119,6 +120,7 @@ export interface BookingCreatedEmailData {
   paymentStatus: string;
   detailsUrl?: string;
   dashboardUrl?: string;
+  priority_status?: boolean;
 }
 
 export interface BookingPaymentSuccessEmailData {
@@ -135,6 +137,7 @@ export interface BookingPaymentSuccessEmailData {
   transactionId?: string;
   detailsUrl?: string;
   dashboardUrl?: string;
+  priority_status?: boolean;
 }
 
 export interface WorkerProfileDetail {
@@ -154,6 +157,8 @@ export interface BookingAssignmentAcceptedEmailData {
   bookingDate: string;
   bookingTime: string;
   worker: WorkerProfileDetail;
+  priority_status?: boolean;
+  priority_fee?: number;
 }
 
 export interface BookingStatusUpdateEmailData {
@@ -170,6 +175,7 @@ export interface BookingStatusUpdateEmailData {
   updatedAt: string;
   detailsUrl: string;
   customHtml?: string;
+  priority_status?: boolean;
 }
 
 export interface OrderStatusUpdateEmailData {

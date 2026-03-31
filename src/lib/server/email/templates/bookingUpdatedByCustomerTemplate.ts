@@ -49,7 +49,20 @@ export function bookingUpdatedByCustomerTemplate(
         </tr>
         <tr>
           <td style="padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:600;color:#64748b;vertical-align:top;">Address</td>
-          <td style="padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:14px;font-weight:500;color:#0f172a;vertical-align:top;">${data.address}${data.unitOrFlat ? `, ${data.unitOrFlat}` : ''}</td>
+          <td style="padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:14px;font-weight:500;color:#0f172a;vertical-align:top;">
+            ${
+              data.address &&
+              data.address.includes('to=') &&
+              data.address.includes('from=')
+                ? (() => {
+                    const params = new URLSearchParams(data.address);
+                    const to = decodeURIComponent(params.get('to') || '');
+                    const from = decodeURIComponent(params.get('from') || '');
+                    return `<div><strong>From:</strong> ${from}</div><div><strong>To:</strong> ${to}</div>`;
+                  })()
+                : `${data.address || ''}${data.unitOrFlat ? `, ${data.unitOrFlat}` : ''}`
+            }
+          </td>
         </tr>
         ${
           data.notes

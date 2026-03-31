@@ -117,10 +117,33 @@ export function bookingAssignmentAcceptedTemplate(
       { label: 'Booking ID', value: data.bookingId },
       { label: 'Customer', value: data.customerName },
       { label: 'Service', value: data.service.name },
-      { label: 'Address', value: data.address || 'N/A' },
+      ...(() => {
+        if (
+          data.address &&
+          data.address.includes('to=') &&
+          data.address.includes('from=')
+        ) {
+          const params = new URLSearchParams(data.address);
+          const to = decodeURIComponent(params.get('to') || '');
+          const from = decodeURIComponent(params.get('from') || '');
+          return [
+            { label: 'From', value: from || 'N/A' },
+            { label: 'To', value: to || 'N/A' },
+          ];
+        }
+        return [{ label: 'Address', value: data.address || 'N/A' }];
+      })(),
       { label: 'Unit / Flat', value: data.unitOrFlat || 'N/A' },
       { label: 'Date', value: data.bookingDate },
       { label: 'Time', value: data.bookingTime },
+      ...(data.priority_status && data.service?.priority_fee
+        ? [
+            {
+              label: 'Priority Fee',
+              value: `R${Number(data.service.priority_fee).toFixed(2)}`,
+            },
+          ]
+        : []),
       { label: 'Notes', value: data.notes || 'N/A' },
     ],
     customHtml,

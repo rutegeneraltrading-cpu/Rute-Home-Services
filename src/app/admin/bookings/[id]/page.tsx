@@ -164,10 +164,33 @@ const BookingDetails = () => {
               </div>
               <div className="rounded-lg border p-3 bg-slate-50">
                 <p className="text-xs text-slate-500 mb-1">Address</p>
-                <p className="font-medium text-slate-900 flex items-start gap-2">
-                  <MapPin className="h-4 w-4 mt-0.5" />
-                  <span>{booking.address || 'N/A'}</span>
-                </p>
+                {/* Address display: handle to=...&from=... format */}
+                {booking.address &&
+                booking.address.includes('to=') &&
+                booking.address.includes('from=') ? (
+                  (() => {
+                    const params = new URLSearchParams(booking.address);
+                    const to = decodeURIComponent(params.get('to') || '');
+                    const from = decodeURIComponent(params.get('from') || '');
+                    return (
+                      <>
+                        <p className="font-medium text-slate-900 flex items-start gap-2">
+                          <MapPin className="h-4 w-4 mt-0.5" />
+                          <span>From: {from}</span>
+                        </p>
+                        <p className="font-medium text-slate-900 flex items-start gap-2 mt-1">
+                          <MapPin className="h-4 w-4 mt-0.5" />
+                          <span>To: {to}</span>
+                        </p>
+                      </>
+                    );
+                  })()
+                ) : (
+                  <p className="font-medium text-slate-900 flex items-start gap-2">
+                    <MapPin className="h-4 w-4 mt-0.5" />
+                    <span>{booking.address || 'N/A'}</span>
+                  </p>
+                )}
                 {booking.unit_or_flat && (
                   <p className="text-xs text-slate-500 mt-1 ml-6">
                     Unit / Flat:{' '}

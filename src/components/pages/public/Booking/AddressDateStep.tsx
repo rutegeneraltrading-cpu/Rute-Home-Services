@@ -66,6 +66,19 @@ const AddressDateStep = ({
   onNext,
   onBack,
 }: AddressDateStepProps) => {
+  // Detect if category is moving-removals
+  const isMovingRemovals = serviceData?.category?.slug === 'moving-removals';
+  // Separate state for from/to fields if moving-removals
+  const [fromAddress, setFromAddress] = useState('');
+  const [toAddress, setToAddress] = useState('');
+  const [fromLocationError, setFromLocationError] = useState('');
+  const [toLocationError, setToLocationError] = useState('');
+  const [isFromGoogleLocationSelected, setIsFromGoogleLocationSelected] =
+    useState(false);
+  const [isToGoogleLocationSelected, setIsToGoogleLocationSelected] =
+    useState(false);
+  const fromInputRef = useRef<HTMLInputElement>(null);
+  const toInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const addressDateDataRef = useRef(addressDateData);
   const isApplyingGoogleSelectionRef = useRef(false);
@@ -93,8 +106,23 @@ const AddressDateStep = ({
       });
     }
 
-    if (addressDateData.address) {
-      setIsGoogleLocationSelected(true);
+    if (isMovingRemovals) {
+      // If address field already has to/from, split and set
+      if (
+        addressDateData.address &&
+        addressDateData.address.includes('to=') &&
+        addressDateData.address.includes('from=')
+      ) {
+        const params = new URLSearchParams(addressDateData.address);
+        setToAddress(params.get('to') || '');
+        setFromAddress(params.get('from') || '');
+        setIsToGoogleLocationSelected(!!params.get('to'));
+        setIsFromGoogleLocationSelected(!!params.get('from'));
+      }
+    } else {
+      if (addressDateData.address) {
+        setIsGoogleLocationSelected(true);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -103,8 +131,9 @@ const AddressDateStep = ({
     addressDateDataRef.current = addressDateData;
   }, [addressDateData]);
 
+  // Google Autocomplete for normal address
   useEffect(() => {
-    if (!isLoaded || !inputRef.current) return;
+    if (!isLoaded || !inputRef.current || isMovingRemovals) return;
     const autocomplete = new window.google.maps.places.Autocomplete(
       inputRef.current,
       {
@@ -139,7 +168,65 @@ const AddressDateStep = ({
     return () => {
       window.google.maps.event.clearInstanceListeners(autocomplete);
     };
-  }, [isLoaded, setAddressDateData]);
+  }, [isLoaded, setAddressDateData, isMovingRemovals]);
+
+  // Google Autocomplete for moving-removals: FROM
+  useEffect(() => {
+    if (!isLoaded || !fromInputRef.current || !isMovingRemovals) return;
+    const autocomplete = new window.google.maps.places.Autocomplete(
+      fromInputRef.current,
+      {
+        types: ['geocode'],
+        componentRestrictions: { country: 'za' },
+      },
+    );
+    autocomplete.addListener('place_changed', () => {
+      const place = autocomplete.getPlace();
+      if (place && (place.formatted_address || place.name)) {
+        const selectedAddress = place.formatted_address || place.name || '';
+        const isAllowedArea = isSupportedServiceArea(place);
+        setFromAddress(selectedAddress);
+        setIsFromGoogleLocationSelected(isAllowedArea);
+        setFromLocationError(
+          isAllowedArea
+            ? ''
+            : 'We currently provide services only in Johannesburg and Pretoria (South Africa).',
+        );
+      }
+    });
+    return () => {
+      window.google.maps.event.clearInstanceListeners(autocomplete);
+    };
+  }, [isLoaded, isMovingRemovals]);
+
+  // Google Autocomplete for moving-removals: TO
+  useEffect(() => {
+    if (!isLoaded || !toInputRef.current || !isMovingRemovals) return;
+    const autocomplete = new window.google.maps.places.Autocomplete(
+      toInputRef.current,
+      {
+        types: ['geocode'],
+        componentRestrictions: { country: 'za' },
+      },
+    );
+    autocomplete.addListener('place_changed', () => {
+      const place = autocomplete.getPlace();
+      if (place && (place.formatted_address || place.name)) {
+        const selectedAddress = place.formatted_address || place.name || '';
+        const isAllowedArea = isSupportedServiceArea(place);
+        setToAddress(selectedAddress);
+        setIsToGoogleLocationSelected(isAllowedArea);
+        setToLocationError(
+          isAllowedArea
+            ? ''
+            : 'We currently provide services only in Johannesburg and Pretoria (South Africa).',
+        );
+      }
+    });
+    return () => {
+      window.google.maps.event.clearInstanceListeners(autocomplete);
+    };
+  }, [isLoaded, isMovingRemovals]);
 
   // Prevent selecting previous dates
   const today = new Date();
@@ -184,9 +271,9 @@ const AddressDateStep = ({
   });
 
   // Filter time slots based on instant booking or normal
-  const timeSlotsRaw = availabilityData?.available_slots || [];
   const todayStr = new Date().toISOString().split('T')[0];
   const filteredTimeSlots = useMemo(() => {
+    const timeSlotsRaw = availabilityData?.available_slots || [];
     // Only filter if selected date is today
     if (addressDateData.date !== todayStr) return timeSlotsRaw;
     const now = new Date();
@@ -198,9 +285,9 @@ const AddressDateStep = ({
       // Try to parse slot as today with slot time
       const [time, meridian] = slot.match(/\d{1,2}:\d{2}(AM|PM)?/i) || [];
       if (!time) return false;
-      let [h, m] = time.split(':');
+      const [h, m] = time.split(':');
       let hour = parseInt(h, 10);
-      let minute = parseInt(m, 10);
+      const minute = parseInt(m, 10);
       if (meridian) {
         if (meridian.toUpperCase() === 'PM' && hour < 12) hour += 12;
         if (meridian.toUpperCase() === 'AM' && hour === 12) hour = 0;
@@ -209,7 +296,7 @@ const AddressDateStep = ({
       slotDate.setHours(hour, minute, 0, 0);
       return slotDate.getTime() >= minTime.getTime();
     });
-  }, [addressDateData.date, isPriorityBooking, timeSlotsRaw, todayStr]);
+  }, [addressDateData.date, isPriorityBooking, availabilityData, todayStr]);
 
   // Auto-select 9:00AM slot if available (only once)
   useEffect(() => {
@@ -243,67 +330,171 @@ const AddressDateStep = ({
   }, [addressDateData.time, filteredTimeSlots]);
 
   const handleNext = () => {
+    if (isMovingRemovals) {
+      let hasError = false;
+      if (!isToGoogleLocationSelected) {
+        setToLocationError(
+          'Please select your "To" address from Google suggestions.',
+        );
+        hasError = true;
+      }
+      if (!isFromGoogleLocationSelected) {
+        setFromLocationError(
+          'Please select your "From" address from Google suggestions.',
+        );
+        hasError = true;
+      }
+      if (toLocationError || fromLocationError) {
+        hasError = true;
+      }
+      if (!addressDateData.date) {
+        setAvailabilityError('Please select a date first.');
+        hasError = true;
+      }
+      if (!selectedTime) {
+        setAvailabilityError(
+          'No worker available for selected slot. Please choose another date/time.',
+        );
+        hasError = true;
+      }
+      if (hasError) return;
+      // Save as to=...&from=... in address
+      setAddressDateData({
+        ...addressDateData,
+        address: `to=${encodeURIComponent(toAddress)}&from=${encodeURIComponent(fromAddress)}`,
+      });
+      if (availabilityError) setAvailabilityError('');
+      onNext();
+      return;
+    }
+    // ...existing code for normal address...
     if (!isGoogleLocationSelected) {
       if (!serviceAreaError) {
         setLocationError('Please select your address from Google suggestions.');
       }
       return;
     }
-
     if (serviceAreaError) {
       return;
     }
-
     if (!addressDateData.date) {
       setAvailabilityError('Please select a date first.');
       return;
     }
-
     if (!selectedTime) {
       setAvailabilityError(
         'No worker available for selected slot. Please choose another date/time.',
       );
       return;
     }
-
     if (availabilityError) {
       setAvailabilityError('');
     }
-
     onNext();
   };
 
   return (
     <div className="border rounded-lg p-4 sm:p-5 bg-white">
-      <FormItem className="mb-6">
-        <FormLabel>Street Address</FormLabel>
-        <FormControl>
-          <Input
-            ref={inputRef}
-            type="text"
-            placeholder="Type your address and select from suggestions"
-            value={addressDateData.address}
-            onChange={(e) => {
-              setAddressDateData({
-                ...addressDateData,
-                address: e.target.value,
-              });
-              if (!isApplyingGoogleSelectionRef.current) {
-                setIsGoogleLocationSelected(false);
-              }
-              if (locationError) setLocationError('');
-              if (serviceAreaError) setServiceAreaError('');
-            }}
-            disabled={!isLoaded}
-          />
-        </FormControl>
-        {locationError && (
-          <p className="text-sm text-red-600 mt-2">{locationError}</p>
-        )}
-        {serviceAreaError && (
-          <p className="text-sm text-amber-600 mt-2">{serviceAreaError}</p>
-        )}
-      </FormItem>
+      {isMovingRemovals ? (
+        <>
+          <FormItem className="mb-6">
+            <FormLabel>To</FormLabel>
+            <FormControl>
+              <Input
+                ref={toInputRef}
+                type="text"
+                placeholder="Type destination address and select from suggestions"
+                value={toAddress}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setToAddress(value);
+                  setIsToGoogleLocationSelected(false);
+                  // Service area validation on manual input
+                  const isAllowed = ALLOWED_SERVICE_CITIES.some((city) =>
+                    value.toLowerCase().includes(city),
+                  );
+                  if (!value) {
+                    setToLocationError('');
+                  } else if (!isAllowed) {
+                    setToLocationError(
+                      'We currently provide services only in Johannesburg and Pretoria (South Africa).',
+                    );
+                  } else {
+                    setToLocationError('');
+                  }
+                }}
+                disabled={!isLoaded}
+              />
+            </FormControl>
+            {toLocationError && (
+              <p className="text-sm text-red-600 mt-2">{toLocationError}</p>
+            )}
+          </FormItem>
+          <FormItem className="mb-6">
+            <FormLabel>From</FormLabel>
+            <FormControl>
+              <Input
+                ref={fromInputRef}
+                type="text"
+                placeholder="Type pickup address and select from suggestions"
+                value={fromAddress}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setFromAddress(value);
+                  setIsFromGoogleLocationSelected(false);
+                  // Service area validation on manual input
+                  const isAllowed = ALLOWED_SERVICE_CITIES.some((city) =>
+                    value.toLowerCase().includes(city),
+                  );
+                  if (!value) {
+                    setFromLocationError('');
+                  } else if (!isAllowed) {
+                    setFromLocationError(
+                      'We currently provide services only in Johannesburg and Pretoria (South Africa).',
+                    );
+                  } else {
+                    setFromLocationError('');
+                  }
+                }}
+                disabled={!isLoaded}
+              />
+            </FormControl>
+            {fromLocationError && (
+              <p className="text-sm text-red-600 mt-2">{fromLocationError}</p>
+            )}
+          </FormItem>
+        </>
+      ) : (
+        <FormItem className="mb-6">
+          <FormLabel>Street Address</FormLabel>
+          <FormControl>
+            <Input
+              ref={inputRef}
+              type="text"
+              placeholder="Type your address and select from suggestions"
+              value={addressDateData.address}
+              onChange={(e) => {
+                setAddressDateData({
+                  ...addressDateData,
+                  address: e.target.value,
+                });
+                if (!isApplyingGoogleSelectionRef.current) {
+                  setIsGoogleLocationSelected(false);
+                }
+                if (locationError) setLocationError('');
+                if (serviceAreaError) setServiceAreaError('');
+              }}
+              disabled={!isLoaded}
+            />
+          </FormControl>
+          {locationError && (
+            <p className="text-sm text-red-600 mt-2">{locationError}</p>
+          )}
+          {serviceAreaError && (
+            <p className="text-sm text-amber-600 mt-2">{serviceAreaError}</p>
+          )}
+        </FormItem>
+      )}
       <FormItem className="mb-6">
         <FormLabel>Unit or Flat # (Optional)</FormLabel>
         <FormControl>
@@ -432,13 +623,22 @@ const AddressDateStep = ({
           type="button"
           onClick={handleNext}
           disabled={
-            !(
-              isGoogleLocationSelected &&
-              !serviceAreaError &&
-              addressDateData.address &&
-              addressDateData.date &&
-              selectedTime
-            )
+            isMovingRemovals
+              ? !(
+                  isToGoogleLocationSelected &&
+                  isFromGoogleLocationSelected &&
+                  toAddress &&
+                  fromAddress &&
+                  addressDateData.date &&
+                  selectedTime
+                )
+              : !(
+                  isGoogleLocationSelected &&
+                  !serviceAreaError &&
+                  addressDateData.address &&
+                  addressDateData.date &&
+                  selectedTime
+                )
           }
           className="px-4 w-full sm:w-auto"
         >

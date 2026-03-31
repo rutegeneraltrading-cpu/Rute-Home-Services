@@ -26,6 +26,7 @@ interface BookingAssignmentCancelledEmailData {
   bookingTime: string;
   totalAmount?: number;
   serviceFeePercent?: number;
+  priority_status?: boolean;
 }
 
 function formatRequirementType(type?: string): string {
@@ -118,7 +119,15 @@ export function bookingAssignmentCancelledTemplate(
     serviceDetailsHtml += `<p style="margin:12px 0 6px;font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:0.05em;">Booking Info</p>`;
 
     if (data.address) {
-      serviceDetailsHtml += `<p style="margin:0 0 4px;font-size:13px;color:#374151;">Address: ${data.address}</p>`;
+      if (data.address.includes('to=') && data.address.includes('from=')) {
+        const params = new URLSearchParams(data.address);
+        const to = decodeURIComponent(params.get('to') || '');
+        const from = decodeURIComponent(params.get('from') || '');
+        serviceDetailsHtml += `<p style="margin:0 0 4px;font-size:13px;color:#374151;"><strong>From:</strong> ${from}</p>`;
+        serviceDetailsHtml += `<p style="margin:0 0 4px;font-size:13px;color:#374151;"><strong>To:</strong> ${to}</p>`;
+      } else {
+        serviceDetailsHtml += `<p style="margin:0 0 4px;font-size:13px;color:#374151;">Address: ${data.address}</p>`;
+      }
     }
 
     if (data.unitOrFlat) {
@@ -131,14 +140,17 @@ export function bookingAssignmentCancelledTemplate(
   }
 
   if (totalAmount > 0) {
-    serviceDetailsHtml += `<p style="margin:12px 0 6px;font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:0.05em;">Payment Breakdown</p>`;
-    serviceDetailsHtml += `<p style="margin:0 0 4px;font-size:13px;color:#374151;">Total Booking: R${totalAmount.toFixed(2)}</p>`;
-    serviceDetailsHtml += `<p style="margin:0 0 4px;font-size:13px;color:#374151;">Damage Deduction: Only if damage occurs</p>`;
-    serviceDetailsHtml += `<p style="margin:0 0 4px;font-size:13px;color:#374151;">Max Deduction: R${maxDamageDeductionAmount.toFixed(2)} (${damageDeductionPercent}%)</p>`;
-    serviceDetailsHtml += `<p style="margin:0 0 4px;font-size:13px;color:#374151;">Service Platform Fee (${servicePlatformFeePercent.toFixed(2)}%): R${servicePlatformFeeAmount.toFixed(2)}</p>`;
-    serviceDetailsHtml += `<p style="margin:0 0 4px;font-size:13px;color:#374151;">Options Platform Fee (${optionsPlatformFeePercent.toFixed(2)}%): R${optionsPlatformFeeAmount.toFixed(2)}</p>`;
-    serviceDetailsHtml += `<p style="margin:0 0 4px;font-size:13px;color:#374151;font-weight:700;">Total Platform Fee: R${totalPlatformFeeAmount.toFixed(2)}</p>`;
-    serviceDetailsHtml += `<p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#111827;">Expected Payout: R${workerPayoutAmount.toFixed(2)}</p>`;
+    serviceDetailsHtml += `<p style=\"margin:12px 0 6px;font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:0.05em;\">Payment Breakdown</p>`;
+    if (data.priority_status && data.service?.priority_fee) {
+      serviceDetailsHtml += `<p style=\"margin:0 0 4px;font-size:13px;color:#374151;\">Priority Fee: R${Number(data.service.priority_fee).toFixed(2)}</p>`;
+    }
+    serviceDetailsHtml += `<p style=\"margin:0 0 4px;font-size:13px;color:#374151;\">Total Booking: R${totalAmount.toFixed(2)}${data.priority_status && data.service?.priority_fee ? ' (includes Priority Fee)' : ''}</p>`;
+    serviceDetailsHtml += `<p style=\"margin:0 0 4px;font-size:13px;color:#374151;\">Damage Deduction: Only if damage occurs</p>`;
+    serviceDetailsHtml += `<p style=\"margin:0 0 4px;font-size:13px;color:#374151;\">Max Deduction: R${maxDamageDeductionAmount.toFixed(2)} (${damageDeductionPercent}%)</p>`;
+    serviceDetailsHtml += `<p style=\"margin:0 0 4px;font-size:13px;color:#374151;\">Service Platform Fee (${servicePlatformFeePercent.toFixed(2)}%): R${servicePlatformFeeAmount.toFixed(2)}</p>`;
+    serviceDetailsHtml += `<p style=\"margin:0 0 4px;font-size:13px;color:#374151;\">Options Platform Fee (${optionsPlatformFeePercent.toFixed(2)}%): R${optionsPlatformFeeAmount.toFixed(2)}</p>`;
+    serviceDetailsHtml += `<p style=\"margin:0 0 4px;font-size:13px;color:#374151;font-weight:700;\">Total Platform Fee: R${totalPlatformFeeAmount.toFixed(2)}</p>`;
+    serviceDetailsHtml += `<p style=\"margin:0 0 4px;font-size:14px;font-weight:700;color:#111827;\">Expected Payout: R${workerPayoutAmount.toFixed(2)}</p>`;
   }
 
   serviceDetailsHtml += `</div>`;

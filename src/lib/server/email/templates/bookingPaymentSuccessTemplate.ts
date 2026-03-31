@@ -107,11 +107,37 @@ export function bookingPaymentSuccessTemplate(
     details: [
       { label: 'Booking ID', value: data.bookingId },
       { label: 'Customer', value: data.customerName },
-      { label: 'Address', value: data.address || 'N/A' },
+      ...(() => {
+        if (
+          data.address &&
+          data.address.includes('to=') &&
+          data.address.includes('from=')
+        ) {
+          const params = new URLSearchParams(data.address);
+          const to = decodeURIComponent(params.get('to') || '');
+          const from = decodeURIComponent(params.get('from') || '');
+          return [
+            { label: 'From', value: from || 'N/A' },
+            { label: 'To', value: to || 'N/A' },
+          ];
+        }
+        return [{ label: 'Address', value: data.address || 'N/A' }];
+      })(),
       { label: 'Unit / Flat', value: data.unitOrFlat || 'N/A' },
       { label: 'Booking Date', value: data.bookingDate },
       { label: 'Booking Time', value: data.bookingTime },
-      { label: 'Total Paid', value: `R${data.total.toFixed(2)}` },
+      ...(data.priority_status && data.service?.priority_fee
+        ? [
+            {
+              label: 'Priority Fee',
+              value: `R${Number(data.service.priority_fee).toFixed(2)}`,
+            },
+          ]
+        : []),
+      {
+        label: 'Total Paid',
+        value: `R${data.total.toFixed(2)}${data.priority_status && data.service?.priority_fee ? ' (includes Priority Fee)' : ''}`,
+      },
       ...(data.transactionId
         ? [{ label: 'Transaction ID', value: data.transactionId }]
         : []),
