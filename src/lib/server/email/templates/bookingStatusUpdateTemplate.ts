@@ -96,6 +96,12 @@ export function bookingStatusUpdateTemplate(
     customHtml += data.customHtml;
   }
 
+  const isMovingBooking =
+    !!data.address &&
+    data.address.includes('to=') &&
+    data.address.includes('from=');
+  const ratePerKm = Number(data.service?.base_price || 0);
+
   return renderNotificationTemplate({
     title: `Booking status update - ${serviceTitle}`,
     notificationMessage: `Your booking status changed from ${data.previousStatus} to ${data.newStatus}.`,
@@ -125,6 +131,12 @@ export function bookingStatusUpdateTemplate(
       { label: 'Previous Status', value: data.previousStatus },
       { label: 'Current Status', value: data.newStatus },
       { label: 'Updated At', value: data.updatedAt },
+      ...(isMovingBooking && ratePerKm > 0
+        ? [
+            { label: 'Pricing Model', value: 'Distance-based' },
+            { label: 'Rate per km', value: `R${ratePerKm.toFixed(2)}` },
+          ]
+        : []),
       ...(data.priority_status && data.service?.priority_fee
         ? [
             {

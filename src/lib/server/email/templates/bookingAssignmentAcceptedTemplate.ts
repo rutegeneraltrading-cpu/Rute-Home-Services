@@ -108,6 +108,12 @@ export function bookingAssignmentAcceptedTemplate(
     </div>
   `;
 
+  const isMovingBooking =
+    !!data.address &&
+    data.address.includes('to=') &&
+    data.address.includes('from=');
+  const ratePerKm = Number(data.service?.base_price || 0);
+
   return renderNotificationTemplate({
     title: `Professional assigned - ${serviceTitle}`,
     notificationMessage:
@@ -136,6 +142,12 @@ export function bookingAssignmentAcceptedTemplate(
       { label: 'Unit / Flat', value: data.unitOrFlat || 'N/A' },
       { label: 'Date', value: data.bookingDate },
       { label: 'Time', value: data.bookingTime },
+      ...(isMovingBooking && ratePerKm > 0
+        ? [
+            { label: 'Pricing Model', value: 'Distance-based' },
+            { label: 'Rate per km', value: `R${ratePerKm.toFixed(2)}` },
+          ]
+        : []),
       ...(data.priority_status && data.service?.priority_fee
         ? [
             {

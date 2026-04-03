@@ -31,11 +31,57 @@ function formatRequirementType(type?: string): string {
   );
 }
 
+function getMovingDistanceBreakdown(data: BookingCreatedEmailData): {
+  ratePerKm: number;
+  distanceKm: number;
+  distanceCost: number;
+} | null {
+  if (
+    !data.address ||
+    !data.address.includes('to=') ||
+    !data.address.includes('from=')
+  ) {
+    return null;
+  }
+
+  const ratePerKm = Number(data.service?.base_price || 0);
+  if (!Number.isFinite(ratePerKm) || ratePerKm <= 0) {
+    return null;
+  }
+
+  const selectedRequirements =
+    data.service.requirements || data.service.variants || [];
+  const requirementsTotal = selectedRequirements.reduce(
+    (sum, req) => sum + Number(req?.price || 0),
+    0,
+  );
+  const optionsTotal = (data.service.options || []).reduce(
+    (sum, opt) => sum + Number(opt?.price || 0),
+    0,
+  );
+  const priorityFee = data.priority_status
+    ? Number(data.service?.priority_fee || 0)
+    : 0;
+
+  const distanceCost = Math.max(
+    0,
+    Number(data.total || 0) - requirementsTotal - optionsTotal - priorityFee,
+  );
+  const distanceKm = Number((distanceCost / ratePerKm).toFixed(1));
+
+  return {
+    ratePerKm,
+    distanceKm,
+    distanceCost,
+  };
+}
+
 export function bookingCreatedTemplate(data: BookingCreatedEmailData): string {
   const serviceTitle = buildServiceTitle(
     data.service.name,
     data.service.category,
   );
+  const movingBreakdown = getMovingDistanceBreakdown(data);
 
   let serviceDetailsHtml = `
     <div style="font-weight: 600; color: #1f2937; margin-bottom: 8px; font-size: 15px;">
@@ -117,6 +163,22 @@ export function bookingCreatedTemplate(data: BookingCreatedEmailData): string {
       { label: 'Unit / Flat', value: data.unitOrFlat || 'N/A' },
       { label: 'Booking Date', value: data.bookingDate },
       { label: 'Booking Time', value: data.bookingTime },
+      ...(movingBreakdown
+        ? [
+            {
+              label: 'Rate per km',
+              value: `R${movingBreakdown.ratePerKm.toFixed(2)}`,
+            },
+            {
+              label: 'Distance',
+              value: `${movingBreakdown.distanceKm.toFixed(1)} km`,
+            },
+            {
+              label: 'Distance Cost',
+              value: `R${movingBreakdown.distanceCost.toFixed(2)}`,
+            },
+          ]
+        : []),
       ...(data.priority_status && data.service?.priority_fee
         ? [
             {

@@ -46,6 +46,7 @@ export interface BookingServiceDetail {
   slug?: string | null;
   description?: string | null;
   base_price?: number | null;
+  priority_fee?: number | null;
   duration_minutes?: number | null;
   is_active?: boolean | null;
   category?: BookingServiceCategoryDetail | null;

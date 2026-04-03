@@ -99,6 +99,7 @@ export interface ServiceRequirementDetail {
 export interface BookingServiceDetail {
   name: string;
   category?: string;
+  base_price?: number;
   options?: ServiceOptionDetail[];
   requirements?: ServiceRequirementDetail[];
   // Backward-compatible alias

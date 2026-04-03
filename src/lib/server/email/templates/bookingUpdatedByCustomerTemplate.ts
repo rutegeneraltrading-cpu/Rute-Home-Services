@@ -5,6 +5,11 @@ export function bookingUpdatedByCustomerTemplate(
   data: BookingUpdatedByCustomerEmailData,
 ): string {
   const isAdmin = data.audience === 'admin';
+  const isMovingBooking =
+    !!data.address &&
+    data.address.includes('to=') &&
+    data.address.includes('from=');
+  const ratePerKm = Number(data.service?.base_price || 0);
 
   // Fee breakdown HTML
   let feeHtml = '';
@@ -64,6 +69,14 @@ export function bookingUpdatedByCustomerTemplate(
             }
           </td>
         </tr>
+        ${
+          isMovingBooking && ratePerKm > 0
+            ? `<tr>
+          <td style="padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:600;color:#64748b;vertical-align:top;">Pricing</td>
+          <td style="padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:14px;font-weight:500;color:#0f172a;vertical-align:top;">Distance-based (R${ratePerKm.toFixed(2)}/km)</td>
+        </tr>`
+            : ''
+        }
         ${
           data.notes
             ? `<tr>

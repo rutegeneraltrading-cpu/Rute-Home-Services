@@ -1,5 +1,7 @@
 'use client';
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useJsApiLoader } from '@react-google-maps/api';
 import {
   ArrowLeft,
   CalendarDays,
@@ -71,6 +73,75 @@ const BookingDetails = () => {
           .filter(Boolean)
           .map((id) => ({ id: String(id), name: String(id) }))
       : [];
+
+  const movingAddresses =
+    booking?.address &&
+    booking.address.includes('to=') &&
+    booking.address.includes('from=')
+      ? (() => {
+          const params = new URLSearchParams(booking.address);
+          const to = decodeURIComponent(params.get('to') || '');
+          const from = decodeURIComponent(params.get('from') || '');
+
+          return from && to ? { from, to } : null;
+        })()
+      : null;
+
+  const isMovingBooking = Boolean(movingAddresses);
+  const [distanceKm, setDistanceKm] = useState<number | null>(null);
+  const [distanceError, setDistanceError] = useState('');
+  const { isLoaded: isGoogleMapsLoaded } = useJsApiLoader({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+    libraries: ['places'],
+  });
+  const isDistanceLoading =
+    isMovingBooking &&
+    isGoogleMapsLoaded &&
+    distanceKm === null &&
+    !distanceError;
+
+  useEffect(() => {
+    if (
+      !isMovingBooking ||
+      !movingAddresses ||
+      !isGoogleMapsLoaded ||
+      typeof window === 'undefined' ||
+      !window.google?.maps
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const service = new window.google.maps.DistanceMatrixService();
+    service.getDistanceMatrix(
+      {
+        origins: [movingAddresses.from],
+        destinations: [movingAddresses.to],
+        travelMode: window.google.maps.TravelMode.DRIVING,
+        unitSystem: window.google.maps.UnitSystem.METRIC,
+      },
+      (response, status) => {
+        if (cancelled) return;
+
+        if (
+          status === 'OK' &&
+          response?.rows?.[0]?.elements?.[0]?.status === 'OK'
+        ) {
+          const meters = response.rows[0].elements[0].distance.value;
+          setDistanceKm(Math.ceil(meters / 1000));
+          setDistanceError('');
+        } else {
+          setDistanceKm(null);
+          setDistanceError('Unable to calculate moving distance.');
+        }
+      },
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isMovingBooking, isGoogleMapsLoaded, movingAddresses]);
 
   if (isLoading) {
     return <Loading fullScreen />;
@@ -165,26 +236,17 @@ const BookingDetails = () => {
               <div className="rounded-lg border p-3 bg-slate-50">
                 <p className="text-xs text-slate-500 mb-1">Address</p>
                 {/* Address display: handle to=...&from=... format */}
-                {booking.address &&
-                booking.address.includes('to=') &&
-                booking.address.includes('from=') ? (
-                  (() => {
-                    const params = new URLSearchParams(booking.address);
-                    const to = decodeURIComponent(params.get('to') || '');
-                    const from = decodeURIComponent(params.get('from') || '');
-                    return (
-                      <>
-                        <p className="font-medium text-slate-900 flex items-start gap-2">
-                          <MapPin className="h-4 w-4 mt-0.5" />
-                          <span>From: {from}</span>
-                        </p>
-                        <p className="font-medium text-slate-900 flex items-start gap-2 mt-1">
-                          <MapPin className="h-4 w-4 mt-0.5" />
-                          <span>To: {to}</span>
-                        </p>
-                      </>
-                    );
-                  })()
+                {movingAddresses ? (
+                  <>
+                    <p className="font-medium text-slate-900 flex items-start gap-2">
+                      <MapPin className="h-4 w-4 mt-0.5" />
+                      <span>From: {movingAddresses.from}</span>
+                    </p>
+                    <p className="font-medium text-slate-900 flex items-start gap-2 mt-1">
+                      <MapPin className="h-4 w-4 mt-0.5" />
+                      <span>To: {movingAddresses.to}</span>
+                    </p>
+                  </>
                 ) : (
                   <p className="font-medium text-slate-900 flex items-start gap-2">
                     <MapPin className="h-4 w-4 mt-0.5" />
@@ -228,18 +290,59 @@ const BookingDetails = () => {
                   </p>
                 )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
-                  <p className="text-slate-700">
-                    Base Price:{' '}
-                    <span className="font-semibold">
-                      R{Number(serviceDetails?.base_price ?? 0).toFixed(2)}
-                    </span>
-                  </p>
+                  {isMovingBooking ? (
+                    <>
+                      <p className="text-slate-700">
+                        Rate per km:{' '}
+                        <span className="font-semibold">
+                          R{Number(serviceDetails?.base_price ?? 0).toFixed(2)}
+                        </span>
+                      </p>
+                      <p className="text-slate-700">
+                        Distance:{' '}
+                        <span className="font-semibold">
+                          {isDistanceLoading
+                            ? 'Calculating...'
+                            : distanceKm !== null
+                              ? `${distanceKm} km`
+                              : 'N/A'}
+                        </span>
+                      </p>
+                      <p className="text-slate-700">
+                        Distance Cost:{' '}
+                        <span className="font-semibold">
+                          R
+                          {(
+                            (distanceKm || 0) *
+                            Number(serviceDetails?.base_price ?? 0)
+                          ).toFixed(2)}
+                        </span>
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-slate-700">
+                      Base Price:{' '}
+                      <span className="font-semibold">
+                        R{Number(serviceDetails?.base_price ?? 0).toFixed(2)}
+                      </span>
+                    </p>
+                  )}
                   <p className="text-slate-700">
                     Base Duration:{' '}
                     <span className="font-semibold">
                       {Number(serviceDetails?.duration_minutes ?? 0)} mins
                     </span>
                   </p>
+                  {booking.priority_status &&
+                    Number(serviceDetails?.priority_fee ?? 0) > 0 && (
+                      <p className="text-slate-700">
+                        Priority Fee:{' '}
+                        <span className="font-semibold">
+                          R
+                          {Number(serviceDetails?.priority_fee ?? 0).toFixed(2)}
+                        </span>
+                      </p>
+                    )}
                   <p className="text-slate-700">
                     Charge Type:{' '}
                     <span className="font-semibold capitalize">
@@ -277,6 +380,9 @@ const BookingDetails = () => {
                     </span>
                   </p>
                 </div>
+                {distanceError && (
+                  <p className="text-xs text-amber-700">{distanceError}</p>
+                )}
               </div>
             </div>
 

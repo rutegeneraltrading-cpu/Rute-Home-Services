@@ -44,6 +44,8 @@ const BookingPage = () => {
   }>({ address: '', unit_or_flat: '', date: '', time: '' });
   // Priority (instant) booking state
   const [isPriorityBooking, setIsPriorityBooking] = useState(false);
+  // Distance in km for moving-removals (calculated from from/to addresses)
+  const [distanceKm, setDistanceKm] = useState<number | null>(null);
 
   const {
     data: categoryServices = [],
@@ -581,6 +583,8 @@ const BookingPage = () => {
                   setAddressDateData={setAddressDateData}
                   isPriorityBooking={isPriorityBooking}
                   setIsPriorityBooking={setIsPriorityBooking}
+                  distanceKm={distanceKm}
+                  setDistanceKm={setDistanceKm}
                   serviceData={serviceData}
                   onNext={() => setCurrentStep(stepMap.review)}
                   onBack={() =>
@@ -609,6 +613,7 @@ const BookingPage = () => {
                   priorityFee={
                     isPriorityBooking ? serviceData.priority_fee || 0 : 0
                   }
+                  distanceKm={distanceKm}
                   onBack={() => {
                     // Go back to address step
                     setCurrentStep(stepMap.address);

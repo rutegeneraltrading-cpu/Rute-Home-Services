@@ -51,6 +51,8 @@ interface AddressDateStepProps {
   isPriorityBooking: boolean;
   setIsPriorityBooking: (val: boolean) => void;
   serviceData: any;
+  distanceKm: number | null;
+  setDistanceKm: (km: number | null) => void;
   onNext: () => void;
   onBack: () => void;
 }
@@ -63,6 +65,8 @@ const AddressDateStep = ({
   isPriorityBooking,
   setIsPriorityBooking,
   serviceData,
+  distanceKm,
+  setDistanceKm,
   onNext,
   onBack,
 }: AddressDateStepProps) => {
@@ -77,6 +81,16 @@ const AddressDateStep = ({
     useState(false);
   const [isToGoogleLocationSelected, setIsToGoogleLocationSelected] =
     useState(false);
+  const [fromLatLng, setFromLatLng] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
+  const [toLatLng, setToLatLng] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
+  const [isCalculatingDistance, setIsCalculatingDistance] = useState(false);
+  const [distanceError, setDistanceError] = useState('');
   const fromInputRef = useRef<HTMLInputElement>(null);
   const toInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -192,12 +206,19 @@ const AddressDateStep = ({
             ? ''
             : 'We currently provide services only in Johannesburg and Pretoria (South Africa).',
         );
+        const loc = place.geometry?.location;
+        if (loc) {
+          setFromLatLng({ lat: loc.lat(), lng: loc.lng() });
+        } else {
+          setFromLatLng(null);
+          setDistanceKm(null);
+        }
       }
     });
     return () => {
       window.google.maps.event.clearInstanceListeners(autocomplete);
     };
-  }, [isLoaded, isMovingRemovals]);
+  }, [isLoaded, isMovingRemovals, setDistanceKm]);
 
   // Google Autocomplete for moving-removals: TO
   useEffect(() => {
@@ -221,12 +242,59 @@ const AddressDateStep = ({
             ? ''
             : 'We currently provide services only in Johannesburg and Pretoria (South Africa).',
         );
+        const loc = place.geometry?.location;
+        if (loc) {
+          setToLatLng({ lat: loc.lat(), lng: loc.lng() });
+        } else {
+          setToLatLng(null);
+          setDistanceKm(null);
+        }
       }
     });
     return () => {
       window.google.maps.event.clearInstanceListeners(autocomplete);
     };
-  }, [isLoaded, isMovingRemovals]);
+  }, [isLoaded, isMovingRemovals, setDistanceKm]);
+
+  // Calculate driving distance between from/to addresses for moving-removals
+  useEffect(() => {
+    if (!isLoaded || !fromLatLng || !toLatLng || !isMovingRemovals) {
+      if (isMovingRemovals && (!fromLatLng || !toLatLng)) {
+        setDistanceKm(null);
+      }
+      return;
+    }
+    setIsCalculatingDistance(true);
+    setDistanceError('');
+    const svc = new window.google.maps.DistanceMatrixService();
+    svc.getDistanceMatrix(
+      {
+        origins: [
+          new window.google.maps.LatLng(fromLatLng.lat, fromLatLng.lng),
+        ],
+        destinations: [
+          new window.google.maps.LatLng(toLatLng.lat, toLatLng.lng),
+        ],
+        travelMode: window.google.maps.TravelMode.DRIVING,
+        unitSystem: window.google.maps.UnitSystem.METRIC,
+      },
+      (response, status) => {
+        setIsCalculatingDistance(false);
+        if (
+          status === 'OK' &&
+          response?.rows[0]?.elements[0]?.status === 'OK'
+        ) {
+          const meters = response.rows[0].elements[0].distance.value;
+          setDistanceKm(Math.ceil(meters / 1000));
+        } else {
+          setDistanceError(
+            'Could not calculate distance. Please re-select your addresses.',
+          );
+          setDistanceKm(null);
+        }
+      },
+    );
+  }, [isLoaded, fromLatLng, toLatLng, isMovingRemovals, setDistanceKm]);
 
   // Prevent selecting previous dates
   const today = new Date();
@@ -357,6 +425,12 @@ const AddressDateStep = ({
         );
         hasError = true;
       }
+      if (!distanceKm && !isCalculatingDistance) {
+        setDistanceError(
+          'Please wait for the distance to be calculated, or re-select your addresses.',
+        );
+        hasError = true;
+      }
       if (hasError) return;
       // Save as to=...&from=... in address
       setAddressDateData({
@@ -409,6 +483,8 @@ const AddressDateStep = ({
                   const value = e.target.value;
                   setToAddress(value);
                   setIsToGoogleLocationSelected(false);
+                  setToLatLng(null);
+                  setDistanceKm(null);
                   // Service area validation on manual input
                   const isAllowed = ALLOWED_SERVICE_CITIES.some((city) =>
                     value.toLowerCase().includes(city),
@@ -442,6 +518,8 @@ const AddressDateStep = ({
                   const value = e.target.value;
                   setFromAddress(value);
                   setIsFromGoogleLocationSelected(false);
+                  setFromLatLng(null);
+                  setDistanceKm(null);
                   // Service area validation on manual input
                   const isAllowed = ALLOWED_SERVICE_CITIES.some((city) =>
                     value.toLowerCase().includes(city),
@@ -463,6 +541,24 @@ const AddressDateStep = ({
               <p className="text-sm text-red-600 mt-2">{fromLocationError}</p>
             )}
           </FormItem>
+
+          {/* Distance calculation result */}
+          {(fromLatLng || toLatLng) && (
+            <div className="mb-4 p-3 rounded-lg bg-slate-50 border border-slate-200 text-sm">
+              {isCalculatingDistance ? (
+                <p className="text-slate-500">Calculating distance...</p>
+              ) : distanceKm !== null ? (
+                <p className="text-green-700 font-semibold">
+                  Estimated distance: ~{distanceKm} km
+                  {serviceData?.base_price
+                    ? ` · Rate: R${serviceData.base_price}/km`
+                    : ''}
+                </p>
+              ) : distanceError ? (
+                <p className="text-red-600">{distanceError}</p>
+              ) : null}
+            </div>
+          )}
         </>
       ) : (
         <FormItem className="mb-6">
@@ -630,7 +726,9 @@ const AddressDateStep = ({
                   toAddress &&
                   fromAddress &&
                   addressDateData.date &&
-                  selectedTime
+                  selectedTime &&
+                  distanceKm !== null &&
+                  !isCalculatingDistance
                 )
               : !(
                   isGoogleLocationSelected &&

@@ -37,6 +37,30 @@ export function bookingAssignedToWorkerTemplate(
   data: BookingAssignedToWorkerEmailData,
 ) {
   const totalAmount = Number(data.totalAmount || 0);
+  const isMovingBooking =
+    !!data.address &&
+    data.address.includes('to=') &&
+    data.address.includes('from=');
+  const ratePerKm = Number(data.service?.base_price || 0);
+  const selectedRequirements =
+    data.service.requirements || data.service.variants || [];
+  const requirementsTotal = selectedRequirements.reduce(
+    (sum, req) => sum + Number(req?.price || 0),
+    0,
+  );
+  const optionsPriceTotal = (data.service.options || []).reduce(
+    (sum, opt) => sum + Number(opt?.price || 0),
+    0,
+  );
+  const priorityFee = data.priority_status
+    ? Number(data.service?.priority_fee || 0)
+    : 0;
+  const inferredDistanceCost = Math.max(
+    0,
+    totalAmount - requirementsTotal - optionsPriceTotal - priorityFee,
+  );
+  const inferredDistanceKm =
+    ratePerKm > 0 ? Number((inferredDistanceCost / ratePerKm).toFixed(1)) : 0;
   const damageDeductionPercent = 40;
   const maxDamageDeductionAmount = Number(
     ((totalAmount * damageDeductionPercent) / 100).toFixed(2),
@@ -78,9 +102,6 @@ export function bookingAssignedToWorkerTemplate(
   if (data.service.category) {
     serviceDetailsHtml += `<p style="margin:0 0 12px;font-size:13px;color:#6b7280;">Category: ${data.service.category}</p>`;
   }
-
-  const selectedRequirements =
-    data.service.requirements || data.service.variants;
 
   if (selectedRequirements && selectedRequirements.length > 0) {
     serviceDetailsHtml += `<p style="margin:12px 0 6px;font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:0.05em;">Details</p><ul style="margin:0;padding-left:18px;">`;
@@ -124,6 +145,11 @@ export function bookingAssignedToWorkerTemplate(
 
   if (totalAmount > 0) {
     serviceDetailsHtml += `<p style=\"margin:12px 0 6px;font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:0.05em;\">Payment Breakdown</p>`;
+    if (isMovingBooking && ratePerKm > 0) {
+      serviceDetailsHtml += `<p style=\"margin:0 0 4px;font-size:13px;color:#374151;\">Rate per km: R${ratePerKm.toFixed(2)}</p>`;
+      serviceDetailsHtml += `<p style=\"margin:0 0 4px;font-size:13px;color:#374151;\">Distance: ${inferredDistanceKm.toFixed(1)} km</p>`;
+      serviceDetailsHtml += `<p style=\"margin:0 0 4px;font-size:13px;color:#374151;\">Distance Cost: R${inferredDistanceCost.toFixed(2)}</p>`;
+    }
     if (data.priority_status && data.service?.priority_fee) {
       serviceDetailsHtml += `<p style=\"margin:0 0 4px;font-size:13px;color:#374151;\">Priority Fee: R${Number(data.service.priority_fee).toFixed(2)}</p>`;
     }

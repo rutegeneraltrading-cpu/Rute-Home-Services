@@ -29,6 +29,7 @@ interface ReviewPaymentStepProps {
     date: string;
     time: string;
   };
+  distanceKm?: number | null;
   isPriorityBooking: boolean;
   priorityFee: number;
   onBack: () => void;
@@ -43,6 +44,7 @@ const ReviewPaymentStep = ({
   requirementsData,
   additionalDetails,
   addressDateData,
+  distanceKm,
   isPriorityBooking,
   priorityFee,
   onBack,
@@ -87,9 +89,13 @@ const ReviewPaymentStep = ({
     .filter(Boolean) as ServiceRequirement[];
 
   // Calculate totals
+  const isMovingRemovals = categoryData?.slug === 'moving-removals';
+  const distanceCost = isMovingRemovals
+    ? (distanceKm || 0) * (serviceData?.base_price || 0)
+    : serviceData?.base_price || 0;
 
   const baseTotal =
-    (serviceData?.base_price || 0) +
+    distanceCost +
     selectedOptionsArray.reduce((sum, opt) => sum + opt.price, 0) +
     selectedRequirementsArray.reduce(
       (sum, requirement) => sum + requirement.price,
@@ -202,14 +208,46 @@ const ReviewPaymentStep = ({
                 {serviceData.name}
               </span>
             </div>
-            <div className="flex justify-between items-center gap-3 py-2">
-              <span className="text-sm text-slate-600 shrink-0">
-                Service Price
-              </span>
-              <span className="text-sm font-semibold text-slate-900">
-                R{serviceData.base_price}
-              </span>
-            </div>
+            {isMovingRemovals ? (
+              <>
+                <div className="flex justify-between items-center gap-3 py-2">
+                  <span className="text-sm text-slate-600 shrink-0">Rate</span>
+                  <span className="text-sm font-semibold text-slate-900">
+                    R{serviceData.base_price}/km
+                  </span>
+                </div>
+                <div className="flex justify-between items-center gap-3 py-2">
+                  <span className="text-sm text-slate-600 shrink-0">
+                    Distance
+                  </span>
+                  <span className="text-sm font-semibold text-slate-900">
+                    {distanceKm != null
+                      ? `~${distanceKm} km`
+                      : 'Calculating...'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center gap-3 py-2">
+                  <span className="text-sm text-slate-600 shrink-0">
+                    Distance Cost
+                  </span>
+                  <span className="text-sm font-semibold text-slate-900">
+                    R
+                    {(
+                      (distanceKm || 0) * (serviceData?.base_price || 0)
+                    ).toFixed(2)}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <div className="flex justify-between items-center gap-3 py-2">
+                <span className="text-sm text-slate-600 shrink-0">
+                  Service Price
+                </span>
+                <span className="text-sm font-semibold text-slate-900">
+                  R{serviceData.base_price}
+                </span>
+              </div>
+            )}
             {isPriorityBooking && priorityFee > 0 && (
               <div className="flex justify-between items-center gap-3 py-2">
                 <span className="text-sm text-amber-700 font-semibold shrink-0">
@@ -379,6 +417,14 @@ const ReviewPaymentStep = ({
           </p>
         </div>
       </div>
+      {isMovingRemovals && !distanceKm && (
+        <div className="mt-4 p-3 bg-amber-50 rounded-lg border border-amber-200">
+          <p className="text-sm text-amber-800">
+            Distance could not be calculated. Please go back and re-select your
+            addresses.
+          </p>
+        </div>
+      )}
       {!user && !userLoading && (
         <div className="mt-8 p-6 bg-yellow-50 rounded-lg border border-yellow-200">
           <p className="text-sm text-yellow-800">
@@ -400,14 +446,21 @@ const ReviewPaymentStep = ({
         <Button
           type="button"
           onClick={handlePayment}
-          disabled={isProcessing || !user || userLoading}
+          disabled={
+            isProcessing ||
+            !user ||
+            userLoading ||
+            (isMovingRemovals && !distanceKm)
+          }
           className="w-full sm:w-auto px-5 bg-linear-to-r from-black to-gray-800 text-white font-bold shadow hover:from-gray-800 hover:to-black"
         >
           {isProcessing
             ? 'Processing...'
             : !user
               ? 'Login to Pay'
-              : `Pay R${totalPrice.toFixed(2)}`}
+              : isMovingRemovals && !distanceKm
+                ? 'Distance Required'
+                : `Pay R${totalPrice.toFixed(2)}`}
         </Button>
       </div>
 
