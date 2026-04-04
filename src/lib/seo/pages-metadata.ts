@@ -15,36 +15,30 @@ import { buildMetadata, buildNoIndexMetadata } from './metadata';
 // ───────────────────────────────────────────────────────────────────
 // ROOT — layout.tsx (title template + full base metadata)
 // ───────────────────────────────────────────────────────────────────
-export const ROOT_METADATA: Metadata = {
-  ...buildMetadata({
-    title: SITE_CONFIG.name,
-    description: SITE_CONFIG.description,
-    keywords: [
-      'Rute',
-      'home services',
-      'book home service',
-      'buy home products',
-      'electrician',
-      'plumber',
-      'painter',
-      'cleaner',
-      'handyman',
-      'home maintenance',
-      'online home shop',
-    ],
-    path: '',
-  }),
-  // Title template: child pages show "Our Services | Rute"
-  title: {
-    template: `%s | ${SITE_CONFIG.name}`,
-    default: SITE_CONFIG.name,
-  },
-  // Add your actual keys when GSC/Bing verification is ready:
-  // verification: {
-  //   google: 'your-google-site-verification-key',
-  //   other: { 'msvalidate.01': 'your-bing-key' },
+export const ROOT_METADATA: Metadata = buildMetadata({
+  title: SITE_CONFIG.name,
+  description: SITE_CONFIG.description,
+  keywords: [
+    'Rute',
+    'home services',
+    'book home service',
+    'buy home products',
+    'electrician',
+    'plumber',
+    'painter',
+    'cleaner',
+    'handyman',
+    'home maintenance',
+    'online home shop',
+  ],
+  path: '',
+  type: 'website',
+  image: PAGE_IMAGES.home,
+  // title: {
+  //   template: `%s | ${SITE_CONFIG.name}`,
+  //   default: SITE_CONFIG.name,
   // },
-};
+});
 
 // ═══════════════════════════════════════════════════════════════════
 //  PUBLIC PAGES — INDEXED
