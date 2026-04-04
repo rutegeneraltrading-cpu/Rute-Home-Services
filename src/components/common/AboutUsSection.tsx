@@ -135,7 +135,7 @@ const AboutUsSection = () => {
             <div className="space-y-6 h-full">
               <div className="rounded-2xl border border-green-100/60 bg-white/80 p-4 shadow-md">
                 <Image
-                  src="/image3.png"
+                  src="/about.webp"
                   alt="How Rute works"
                   width={900}
                   height={1200}

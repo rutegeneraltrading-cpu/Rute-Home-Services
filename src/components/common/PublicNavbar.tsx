@@ -128,7 +128,7 @@ const PublicNavbar = () => {
                 aria-label="Become a Worker"
                 title="Become a Worker"
               >
-                <Link href="/worker/register">
+                <Link href="/register/worker">
                   <Briefcase className="h-4 w-4 mr-1" /> Become a Worker
                 </Link>
               </Button>

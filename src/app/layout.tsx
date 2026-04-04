@@ -1,13 +1,11 @@
 import type { Metadata } from 'next';
 import { QueryProvider } from '@/lib/client/providers';
 import { Toaster } from '@/components/ui';
+import { ROOT_METADATA, STRUCTURED_DATA } from '@/lib/seo';
 import 'react-phone-input-2/lib/style.css';
 import './globals.css';
 
-export const metadata: Metadata = {
-  title: 'Home Services',
-  description: 'Professional home services platform',
-};
+export const metadata: Metadata = ROOT_METADATA;
 
 export default function RootLayout({
   children,
@@ -16,6 +14,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(STRUCTURED_DATA) }}
+        />
+      </head>
       <body>
         <QueryProvider>{children}</QueryProvider>
         <Toaster />
