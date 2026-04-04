@@ -1,6 +1,10 @@
 import type { Metadata } from 'next';
 import { SITE_CONFIG } from './config';
 
+type MetadataWithImage = Metadata & {
+  image?: string;
+};
+
 // ─────────────────────────────────────────────────────────────────
 // buildMetadata() — Central helper to generate page metadata
 // Usage: export const metadata = buildMetadata({ ... })
@@ -54,7 +58,7 @@ export function buildMetadata({
   const twitterImage = twitter?.image || ogImage;
   const ogType = openGraph?.type || type;
 
-  return {
+  const metadata: MetadataWithImage = {
     title,
     description,
     keywords,
@@ -63,8 +67,9 @@ export function buildMetadata({
     publisher: SITE_CONFIG.name,
     referrer: 'origin-when-cross-origin',
     metadataBase: new URL(SITE_CONFIG.url),
+    image: image || ogImage,
     other: {
-      image: ogImage,
+      image: image || ogImage,
     },
     alternates: {
       canonical: canonicalUrl,
@@ -100,18 +105,23 @@ export function buildMetadata({
       ? { index: false, follow: false }
       : { index: true, follow: true },
   };
+
+  return metadata;
 }
 
 // ─────────────────────────────────────────────────────────────────
 // Reusable noIndex-only metadata (for cart, checkout, dashboards)
 // ─────────────────────────────────────────────────────────────────
 export function buildNoIndexMetadata(title: string): Metadata {
-  return {
+  const metadata: MetadataWithImage = {
     title,
     robots: { index: false, follow: false },
     metadataBase: new URL(SITE_CONFIG.url),
+    image: SITE_CONFIG.ogImage,
     other: {
       image: SITE_CONFIG.ogImage,
     },
   };
+
+  return metadata;
 }
