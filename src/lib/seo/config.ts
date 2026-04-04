@@ -38,7 +38,7 @@ export const SITE_CONFIG = {
 // ─────────────────────────────────────────────────────────────────
 export const PAGE_IMAGES = {
   // Public pages
-  home: `${SITE_URL}/home.webp`,
+  home: `${SITE_URL}/default.webp`,
   services: `${SITE_URL}/services.webp`,
   blogs: `${SITE_URL}/blogs.webp`,
   shop: `${SITE_URL}/shop.webp`,

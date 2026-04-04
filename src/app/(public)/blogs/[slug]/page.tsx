@@ -21,9 +21,26 @@ const parseKeywords = (value: unknown): string[] => {
 
 const toAbsoluteImageUrl = (value?: string): string | undefined => {
   if (!value) return undefined;
-  if (value.startsWith('http://') || value.startsWith('https://')) return value;
-  if (value.startsWith('//')) return `https:${value}`;
-  return value;
+  const absoluteUrl =
+    value.startsWith('http://') || value.startsWith('https://')
+      ? value
+      : value.startsWith('//')
+        ? `https:${value}`
+        : value;
+
+  // Social crawlers often skip very large images.
+  // For Contentful assets, generate a lightweight OG-friendly version.
+  if (absoluteUrl.includes('images.ctfassets.net')) {
+    const url = new URL(absoluteUrl);
+    url.searchParams.set('w', '1200');
+    url.searchParams.set('h', '630');
+    url.searchParams.set('fit', 'fill');
+    url.searchParams.set('fm', 'jpg');
+    url.searchParams.set('q', '80');
+    return url.toString();
+  }
+
+  return absoluteUrl;
 };
 
 export async function generateMetadata({
