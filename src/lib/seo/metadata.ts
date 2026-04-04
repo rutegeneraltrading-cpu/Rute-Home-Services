@@ -63,7 +63,9 @@ export function buildMetadata({
     publisher: SITE_CONFIG.name,
     referrer: 'origin-when-cross-origin',
     metadataBase: new URL(SITE_CONFIG.url),
-
+    other: {
+      image: ogImage,
+    },
     alternates: {
       canonical: canonicalUrl,
     },
@@ -108,5 +110,8 @@ export function buildNoIndexMetadata(title: string): Metadata {
     title,
     robots: { index: false, follow: false },
     metadataBase: new URL(SITE_CONFIG.url),
+    other: {
+      image: SITE_CONFIG.ogImage,
+    },
   };
 }
