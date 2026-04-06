@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { GoogleAnalytics } from '@next/third-parties/google';
+import { GoogleAnalytics } from '@/components/common/GoogleAnalytics';
 import { QueryProvider } from '@/lib/client/providers';
 import { Toaster } from '@/components/ui';
 import { ROOT_METADATA, STRUCTURED_DATA } from '@/lib/seo';
@@ -7,7 +7,11 @@ import 'react-phone-input-2/lib/style.css';
 import './globals.css';
 
 export const metadata: Metadata = ROOT_METADATA;
-const measurementId = process.env.NEXT_PUBLIC_GA_ID || 'G-XYZ';
+const measurementId =
+  process.env.NEXT_PUBLIC_GA_ID ||
+  process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ||
+  '';
+
 export default function RootLayout({
   children,
 }: {
@@ -24,8 +28,8 @@ export default function RootLayout({
       <body>
         <QueryProvider>{children}</QueryProvider>
         <Toaster />
+        <GoogleAnalytics gaId={measurementId} />
       </body>
-      <GoogleAnalytics gaId={measurementId} />
     </html>
   );
 }
