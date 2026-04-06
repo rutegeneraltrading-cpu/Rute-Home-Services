@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next';
-import { SITE_URL } from '@/lib/seo';
+import { SITE_URL, SITEMAP_URL } from '@/lib/seo';
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -17,7 +17,7 @@ export default function robots(): MetadataRoute.Robots {
         ],
       },
     ],
-    sitemap: `${SITE_URL}/sitemap.xml`,
+    sitemap: SITEMAP_URL,
     host: SITE_URL,
   };
 }

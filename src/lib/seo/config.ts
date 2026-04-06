@@ -3,8 +3,36 @@
 // Update SITE_URL when domain is finalised.
 // ─────────────────────────────────────────────────────────────────
 
-export const SITE_URL =
-  process.env.NEXT_PUBLIC_APP_URL || 'https://www.rute.co.za';
+function normalizeSiteUrl(rawUrl?: string): string {
+  const fallbackUrl = 'https://www.rute.co.za';
+
+  if (!rawUrl?.trim()) {
+    return fallbackUrl;
+  }
+
+  const trimmedUrl = rawUrl.trim();
+  const withProtocol = /^https?:\/\//i.test(trimmedUrl)
+    ? trimmedUrl
+    : `https://${trimmedUrl}`;
+
+  try {
+    const parsedUrl = new URL(withProtocol);
+
+    if (
+      parsedUrl.hostname === 'rute.co.za' ||
+      parsedUrl.hostname === 'ww.rute.co.za'
+    ) {
+      parsedUrl.hostname = 'www.rute.co.za';
+    }
+
+    return parsedUrl.toString().replace(/\/$/, '');
+  } catch {
+    return fallbackUrl;
+  }
+}
+
+export const SITE_URL = normalizeSiteUrl(process.env.NEXT_PUBLIC_APP_URL);
+export const SITEMAP_URL = `${SITE_URL}/sitemap.xml`;
 
 export const SITE_CONFIG = {
   name: 'Rute',
