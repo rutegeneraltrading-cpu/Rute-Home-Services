@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { sendEmail } from '@/lib/server/email/ses-mailer';
+import { sendWhatsAppMessage } from '@/lib/server/whatsapp/twilio';
 import {
   bookingAssignedToWorkerTemplate,
   bookingStatusUpdateTemplate,
@@ -72,6 +73,43 @@ const buildServiceSubject = (serviceName: string, serviceCategory?: string) => {
   return title.length > MAX_EMAIL_SUBJECT_LENGTH
     ? `${title.slice(0, MAX_EMAIL_SUBJECT_LENGTH - 3).trimEnd()}...`
     : title;
+};
+
+const buildWorkerAssignmentWhatsAppMessage = (params: {
+  workerName: string;
+  bookingId: string;
+  serviceName: string;
+  address?: string;
+  bookingDate: string;
+  bookingTime: string;
+  customerName: string;
+  appUrl: string;
+}) => {
+  let locationText = params.address || 'N/A';
+  if (
+    params.address &&
+    params.address.includes('to=') &&
+    params.address.includes('from=')
+  ) {
+    const addressParams = new URLSearchParams(params.address);
+    const from = decodeURIComponent(addressParams.get('from') || 'N/A');
+    const to = decodeURIComponent(addressParams.get('to') || 'N/A');
+    locationText = `From: ${from}\nTo: ${to}`;
+  }
+
+  return [
+    `Hi ${params.workerName},`,
+    '',
+    'You have a new booking assignment.',
+    `Booking ID: ${params.bookingId}`,
+    `Customer: ${params.customerName}`,
+    `Service: ${params.serviceName}`,
+    `Date: ${params.bookingDate}`,
+    `Time: ${params.bookingTime}`,
+    `Location: ${locationText}`,
+    '',
+    `Open: ${params.appUrl}/contact-us`,
+  ].join('\n');
 };
 
 // Removed unused assignmentEventTime function
@@ -873,7 +911,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     const getWorkerProfile = async (workerId: string) => {
       const { data: workerRow } = await supabaseAdmin
         .from('workers')
-        .select('profile_id')
+        .select('profile_id, phone')
         .eq('id', workerId)
         .maybeSingle();
 
@@ -881,11 +919,16 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
       const { data: workerProfile } = await supabaseAdmin
         .from('profiles')
-        .select('full_name, email')
+        .select('full_name, email, phone')
         .eq('id', workerRow.profile_id)
         .maybeSingle();
 
-      return workerProfile || null;
+      if (!workerProfile) return null;
+
+      return {
+        ...workerProfile,
+        phone: workerProfile.phone || workerRow.phone || null,
+      };
     };
 
     const getServiceDetails = async (): Promise<
@@ -977,11 +1020,17 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
     // (Removed: No email to admin/user on assignment status accepted/declined/cancelled)
 
-    // Send updated assignment emails to all active (pending/accepted) workers
+    // Send updated assignment notifications (email + WhatsApp) to all active (pending/accepted) workers
     const isPaidBooking =
       String(updatedBooking.payment_status || '') === 'paid';
-    if (isPaidBooking) {
-      // ...existing code for worker emails...
+    const shouldSendWorkerAssignmentNotifications =
+      isPaidBooking ||
+      hasWorkerField ||
+      !!body.auto_assign ||
+      Array.isArray(body.assignments) ||
+      body.status === 'assigned';
+
+    if (shouldSendWorkerAssignmentNotifications) {
       const { data: allAssignments } = await supabaseAdmin
         .from('booking_assignments')
         .select('worker_id, status')
@@ -1029,6 +1078,37 @@ export async function PATCH(request: NextRequest, { params }: Params) {
           } catch (emailError) {
             console.error('Booking assigned worker email failed:', emailError);
           }
+        }
+
+        if (workerProfile?.phone) {
+          try {
+            await sendWhatsAppMessage({
+              to: workerProfile.phone,
+              body: buildWorkerAssignmentWhatsAppMessage({
+                workerName: workerProfile.full_name || 'Worker',
+                bookingId: id,
+                serviceName: serviceDetailsForEmails.name || serviceName,
+                address: bookingAddressForEmails,
+                bookingDate,
+                bookingTime,
+                customerName,
+                appUrl: process.env.NEXT_PUBLIC_APP_URL || '',
+              }),
+            });
+          } catch (whatsAppError) {
+            console.error(
+              'Booking assigned worker WhatsApp send failed:',
+              whatsAppError,
+            );
+          }
+        } else {
+          console.warn(
+            'Booking assigned worker WhatsApp skipped: worker phone missing',
+            {
+              bookingId: id,
+              workerId: assignment.worker_id,
+            },
+          );
         }
       }
     }
