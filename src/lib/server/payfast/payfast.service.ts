@@ -106,6 +106,11 @@ export class PayFastService {
       ? `${dataString}&passphrase=${this.payFastEncode(this.config.passphrase)}`
       : dataString;
 
+    if (this.isDebugEnabled()) {
+      console.log('[PayFast Debug] Signature mode:', mode, '| Order:', order);
+      console.log('[PayFast Debug] Hash input string:', queryString);
+    }
+
     // Generate MD5 hash
     return crypto.createHash('md5').update(queryString).digest('hex');
   }
@@ -294,10 +299,12 @@ export function getPayFastService(): PayFastService {
         : passphrase
           ? 'with-passphrase'
           : 'without-passphrase';
+  // PayFast always verifies signatures using ksort (alphabetical order).
+  // Default to alphabetical unless explicitly overridden to insertion.
   const signatureOrder =
-    process.env.PAYFAST_SIGNATURE_ORDER === 'alphabetical'
-      ? 'alphabetical'
-      : 'insertion';
+    process.env.PAYFAST_SIGNATURE_ORDER === 'insertion'
+      ? 'insertion'
+      : 'alphabetical';
 
   const config: PayFastConfig = {
     merchantId:
