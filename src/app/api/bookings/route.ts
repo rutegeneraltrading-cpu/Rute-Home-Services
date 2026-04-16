@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { CreateBookingDTO } from '@/lib/types/bookings';
-// import { sendEmail } from '@/lib/server/email/ses-mailer';
+// import { sendResendEmail } from '@/lib/server/email';
 // import { bookingCreatedTemplate } from '@/lib/server/email';
 
 // const MAX_TITLE_LENGTH = 70;
@@ -416,7 +416,7 @@ export async function POST(request: NextRequest) {
     //       serviceDetails.category,
     //     );
 
-    //     await sendEmail({
+    //     await sendResendEmail({
     //       to: user.email,
     //       subject: `Booking Created - ${serviceSubject}`,
     //       html: bookingCreatedTemplate({

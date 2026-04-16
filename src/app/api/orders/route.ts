@@ -1,54 +1,54 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase';
-import { sendEmail } from '@/lib/server/email/ses-mailer';
-import { orderCreatedTemplate } from '@/lib/server/email';
+// import { sendResendEmail } from '@/lib/server/email';
+// import { orderCreatedTemplate } from '@/lib/server/email';
 
-const SUBJECT_MAX_LENGTH = 70;
+// const SUBJECT_MAX_LENGTH = 70;
 
-function cleanProductNameForHeading(name: string): string {
-  return String(name || '')
-    .replace(/\s*\([^)]*\)\s*$/g, '')
-    .trim();
-}
+// function cleanProductNameForHeading(name: string): string {
+//   return String(name || '')
+//     .replace(/\s*\([^)]*\)\s*$/g, '')
+//     .trim();
+// }
 
-function resolveProductImageUrl(url?: string): string | undefined {
-  if (!url) return undefined;
-  if (/^https?:\/\//i.test(url)) return url;
+// function resolveProductImageUrl(url?: string): string | undefined {
+//   if (!url) return undefined;
+//   if (/^https?:\/\//i.test(url)) return url;
 
-  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!base) return undefined;
+//   const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+//   if (!base) return undefined;
 
-  const normalizedPath = String(url)
-    .replace(/^\/+/, '')
-    .replace(/^storage\/v1\/object\/public\/products\//, '');
+//   const normalizedPath = String(url)
+//     .replace(/^\/+/, '')
+//     .replace(/^storage\/v1\/object\/public\/products\//, '');
 
-  return `${base}/storage/v1/object/public/products/${normalizedPath}`;
-}
+//   return `${base}/storage/v1/object/public/products/${normalizedPath}`;
+// }
 
-function getPrimaryProductImageUrl(images: any[]): string | undefined {
-  const sortedImages = [...images].sort(
-    (a: any, b: any) =>
-      Number(a?.sort_order ?? 9999) - Number(b?.sort_order ?? 9999),
-  );
-  return sortedImages.find((img: any) => img?.is_primary)?.url;
-}
+// function getPrimaryProductImageUrl(images: any[]): string | undefined {
+//   const sortedImages = [...images].sort(
+//     (a: any, b: any) =>
+//       Number(a?.sort_order ?? 9999) - Number(b?.sort_order ?? 9999),
+//   );
+//   return sortedImages.find((img: any) => img?.is_primary)?.url;
+// }
 
-function buildOrderProductsSubject(
-  items: Array<{ productName: string }>,
-): string {
-  const products = Array.from(
-    new Set(
-      items
-        .map((item) => cleanProductNameForHeading(item.productName))
-        .filter(Boolean),
-    ),
-  );
-  const joined = products.join(', ') || 'Products';
+// function buildOrderProductsSubject(
+//   items: Array<{ productName: string }>,
+// ): string {
+//   const products = Array.from(
+//     new Set(
+//       items
+//         .map((item) => cleanProductNameForHeading(item.productName))
+//         .filter(Boolean),
+//     ),
+//   );
+//   const joined = products.join(', ') || 'Products';
 
-  if (joined.length <= SUBJECT_MAX_LENGTH) return joined;
-  return `${joined.slice(0, SUBJECT_MAX_LENGTH - 3).trimEnd()}...`;
-}
+//   if (joined.length <= SUBJECT_MAX_LENGTH) return joined;
+//   return `${joined.slice(0, SUBJECT_MAX_LENGTH - 3).trimEnd()}...`;
+// }
 
 interface OrderItemPayload {
   product_id: string;
@@ -294,7 +294,7 @@ export async function POST(request: NextRequest) {
 
     //     const productSummary = buildOrderProductsSubject(orderItems);
 
-    //     await sendEmail({
+    //     await sendResendEmail({
     //       to: profile.email,
     //       subject: `Order Created - ${productSummary}`,
     //       html: orderCreatedTemplate({

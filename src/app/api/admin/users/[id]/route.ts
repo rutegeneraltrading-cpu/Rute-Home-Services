@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase';
-// import { sendEmail } from '@/lib/server/email/ses-mailer';
+// import { sendResendEmail } from '@/lib/server/email';
 // import { userStatusChangeTemplate } from '@/lib/server/email';
 
 /**
@@ -79,7 +79,7 @@ export async function PUT(
 
     // if (existingProfile?.email && status && existingProfile.status !== status) {
     //   try {
-    //     await sendEmail({
+    //     await sendResendEmail({
     //       to: existingProfile.email,
     //       subject: 'Your account status has been updated',
     //       html: userStatusChangeTemplate({

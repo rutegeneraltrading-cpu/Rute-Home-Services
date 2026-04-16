@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { getPayFastService } from '@/lib/server/payfast/payfast.service';
-import { sendEmail } from '@/lib/server/email/ses-mailer';
+import { sendResendEmail } from '@/lib/server/email';
 import { orderPaymentSuccessTemplate } from '@/lib/server/email';
 import { bookingPaymentSuccessTemplate } from '@/lib/server/email';
 
@@ -240,7 +240,7 @@ export async function POST(request: NextRequest) {
               serviceDetails.category,
             );
 
-            await sendEmail({
+            await sendResendEmail({
               to: customerEmail,
               subject: `Payment Successful - ${serviceSubject}`,
               html: bookingPaymentSuccessTemplate({
@@ -275,7 +275,7 @@ export async function POST(request: NextRequest) {
               serviceDetails.category,
             );
 
-            await sendEmail({
+            await sendResendEmail({
               to: adminEmail,
               subject: `Booking Payment Received - ${serviceSubject}`,
               html: bookingPaymentSuccessTemplate({
@@ -431,7 +431,7 @@ export async function POST(request: NextRequest) {
 
       if (customerEmail) {
         try {
-          await sendEmail({
+          await sendResendEmail({
             to: customerEmail,
             subject: `Payment Successful - ${productSummary}`,
             html: orderPaymentSuccessTemplate({
@@ -451,7 +451,7 @@ export async function POST(request: NextRequest) {
 
       if (adminEmail) {
         try {
-          await sendEmail({
+          await sendResendEmail({
             to: adminEmail,
             subject: `Order Payment Received - ${productSummary}`,
             html: orderPaymentSuccessTemplate({

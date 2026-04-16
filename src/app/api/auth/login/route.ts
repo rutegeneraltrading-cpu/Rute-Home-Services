@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 import { createClient } from '@/lib/supabase';
-import { sendEmail } from '@/lib/server/email/ses-mailer';
+import { sendResendEmail } from '@/lib/server/email';
 import { signinAlertTemplate } from '@/lib/server/email';
 
 function isAuthAlertEnabled() {
@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
 
     if (shouldSendSigninAlert) {
       try {
-        await sendEmail({
+        await sendResendEmail({
           to: userData.email,
           subject: 'New sign-in alert - RUTE Home Services',
           html: signinAlertTemplate({

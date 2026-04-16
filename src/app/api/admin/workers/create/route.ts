@@ -1,7 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server';
 import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/server';
-import { sendEmail } from '@/lib/server/email/ses-mailer';
+import { sendResendEmail } from '@/lib/server/email';
 import { workerWelcomeTemplate } from '@/lib/server/email';
 
 const E164_PHONE_REGEX = /^\+[1-9]\d{7,14}$/;
@@ -309,7 +309,7 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      await sendEmail({
+      await sendResendEmail({
         to: normalizedEmail,
         subject: 'Welcome to RUTE',
         html: workerWelcomeTemplate({

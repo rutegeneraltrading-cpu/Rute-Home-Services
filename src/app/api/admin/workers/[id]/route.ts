@@ -1,6 +1,6 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase';
-import { sendEmail } from '@/lib/server/email/ses-mailer';
+import { sendResendEmail } from '@/lib/server/email';
 import { workerVerificationTemplate } from '@/lib/server/email';
 
 const E164_PHONE_REGEX = /^\+[1-9]\d{7,14}$/;
@@ -237,7 +237,7 @@ export async function PUT(
 
     if (verificationOutcome && workerProfile?.email) {
       try {
-        await sendEmail({
+        await sendResendEmail({
           to: workerProfile.email,
           subject:
             verificationOutcome === 'approved'

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { contactMessageSchema } from '@/lib/validations';
-import { sendEmail } from '@/lib/server/email/ses-mailer';
+import { sendResendEmail } from '@/lib/server/email';
 import {
   contactFormAdminTemplate,
   contactFormUserTemplate,
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
 
     if (adminEmail) {
       try {
-        await sendEmail({
+        await sendResendEmail({
           to: adminEmail,
           subject: `New Contact Form: ${data.subject}`,
           html: contactFormAdminTemplate({
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      await sendEmail({
+      await sendResendEmail({
         to: data.email,
         subject: `We received your inquiry: ${data.subject}`,
         html: contactFormUserTemplate({

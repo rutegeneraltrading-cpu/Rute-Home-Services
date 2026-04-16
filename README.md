@@ -230,7 +230,7 @@ Visit: http://localhost:3000
 - [ ] Worker management
 - [ ] User management
 - [ ] Analytics dashboard
-- [ ] Email notifications (SES)
+- [ ] Email notifications (resend)
 - [ ] Payment processing (PayFast)
 
 ## 🔐 Authentication

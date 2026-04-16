@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
-import { sendEmail } from '@/lib/server/email/ses-mailer';
+import { sendResendEmail } from '@/lib/server/email';
 import { sendWhatsAppMessage } from '@/lib/server/whatsapp/twilio';
 import {
   bookingAssignedToWorkerTemplate,
@@ -1058,7 +1058,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         const workerProfile = await getWorkerProfile(assignment.worker_id);
         if (workerProfile?.email) {
           try {
-            await sendEmail({
+            await sendResendEmail({
+              from: process.env.ADMIN_FROM,
               to: workerProfile.email,
               subject: `New Booking Assigned - ${serviceSubject}`,
               html: bookingAssignedToWorkerTemplate({
@@ -1181,8 +1182,9 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
       // Use bookingStatusUpdateTemplate for now, with customHtml for workers
       try {
-        await sendEmail({
+        await sendResendEmail({
           to: customerProfile.email,
+          from: process.env.ADMIN_FROM,
           subject: `Booking Assigned - ${serviceSubject}`,
           html: bookingStatusUpdateTemplate({
             customerName,
@@ -1240,7 +1242,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       const workerProfile = await getWorkerProfile(assignment.worker_id);
       if (workerProfile?.email) {
         try {
-          await sendEmail({
+          await sendResendEmail({
             to: workerProfile.email,
             subject: `Booking Assignment Completed - ${serviceSubject}`,
             html: await bookingCompletionTemplate({
@@ -1306,7 +1308,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
           }
           // Unique rating link per worker
           const ratingLink = `${process.env.NEXT_PUBLIC_APP_URL}/user/bookings/${id}?rate=true&worker=${assignment.worker_id}`;
-          await sendEmail({
+          await sendResendEmail({
             to: customerProfile.email,
             subject: `Booking Complete - Rate ${workerNameForEmail}`,
             html: await bookingCompletionTemplate({
@@ -1340,7 +1342,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
       if (shouldSendStatusUpdateEmail) {
         try {
-          await sendEmail({
+          await sendResendEmail({
             to: customerProfile.email,
             subject: `Booking Status Updated - ${serviceSubject}`,
             html: bookingStatusUpdateTemplate({

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase';
-import { sendEmail } from '@/lib/server/email/ses-mailer';
+import { sendResendEmail } from '@/lib/server/email';
 import { adminCreatedUserTemplate } from '@/lib/server/email';
 
 export async function GET() {
@@ -108,7 +108,7 @@ export async function POST(request: Request) {
     }
 
     try {
-      await sendEmail({
+      await sendResendEmail({
         to: normalizedEmail,
         subject: 'Your RUTE account is ready',
         html: adminCreatedUserTemplate({

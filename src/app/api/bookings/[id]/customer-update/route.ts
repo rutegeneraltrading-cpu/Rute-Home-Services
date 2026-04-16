@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
-import { sendEmail } from '@/lib/server/email/ses-mailer';
+import { sendResendEmail } from '@/lib/server/email';
 import { bookingUpdatedByCustomerTemplate } from '@/lib/server/email';
 
 const EDIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour in milliseconds
@@ -283,7 +283,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
     if (adminEmail) {
       try {
-        await sendEmail({
+        await sendResendEmail({
           to: adminEmail,
           subject: emailSubject,
           html: bookingUpdatedByCustomerTemplate({
@@ -318,7 +318,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
             .maybeSingle();
 
           if (workerProfile?.email) {
-            await sendEmail({
+            await sendResendEmail({
               to: workerProfile.email,
               subject: emailSubject,
               html: bookingUpdatedByCustomerTemplate({

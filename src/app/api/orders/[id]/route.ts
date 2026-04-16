@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { sendEmail } from '@/lib/server/email/ses-mailer';
+import { sendResendEmail } from '@/lib/server/email';
 import { orderStatusUpdateTemplate } from '@/lib/server/email';
 import { createAdminClient } from '@/lib/supabase';
 
@@ -341,7 +341,7 @@ export async function PATCH(
 
           const productSummary = buildOrderProductsSubject(orderItems);
 
-          await sendEmail({
+          await sendResendEmail({
             to: customerProfile.email,
             subject: `Status Update - ${productSummary}`,
             html: orderStatusUpdateTemplate({

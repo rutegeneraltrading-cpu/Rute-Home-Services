@@ -1,5 +1,5 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server';
-import { sendEmail } from '@/lib/server/email/ses-mailer';
+import { sendResendEmail } from '@/lib/server/email';
 import { workerRatingReceivedTemplate } from '@/lib/server/email';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -181,7 +181,7 @@ export async function POST(req: NextRequest) {
 
       if (workerProfile?.email) {
         try {
-          await sendEmail({
+          await sendResendEmail({
             to: workerProfile.email,
             subject: `Great job! You received an updated ${rating}-star rating`,
             html: workerRatingReceivedTemplate({
@@ -236,7 +236,7 @@ export async function POST(req: NextRequest) {
 
     if (workerProfile?.email) {
       try {
-        await sendEmail({
+        await sendResendEmail({
           to: workerProfile.email,
           subject: `Great job! You received a ${rating}-star rating`,
           html: workerRatingReceivedTemplate({

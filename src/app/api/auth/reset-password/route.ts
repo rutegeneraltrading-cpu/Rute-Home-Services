@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase';
-import { sendEmail } from '@/lib/server/email/ses-mailer';
+import { sendResendEmail } from '@/lib/server/email';
 import { resetPasswordChangedTemplate } from '@/lib/server/email';
 
 export async function POST(request: NextRequest) {
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
 
     if (user.email) {
       try {
-        await sendEmail({
+        await sendResendEmail({
           to: user.email,
           subject: 'Your password was changed - RUTE Home Services',
           html: resetPasswordChangedTemplate({
