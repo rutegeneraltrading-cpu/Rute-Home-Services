@@ -6,6 +6,8 @@ import type {
   UpdateBookingDTO,
   UserUpdateBookingDTO,
   AvailableWorker,
+  BookingAdditionalWork,
+  CreateAdditionalWorkDTO,
 } from '@/lib/types/bookings';
 
 // ============================================
@@ -106,4 +108,46 @@ export const getPayFastPaymentUrlApi = async (
   paymentData: BookingPaymentData,
 ): Promise<{ payment_url: string }> => {
   return httpClient.post('/api/payments/payfast/redirect', paymentData);
+};
+
+// ============================================
+// ADDITIONAL WORK API
+// ============================================
+
+/**
+ * Get all additional works for a booking
+ */
+export const getAdditionalWorksApi = async (
+  bookingId: string,
+): Promise<BookingAdditionalWork[]> => {
+  const { additional_works } = await httpClient.get<{
+    additional_works: BookingAdditionalWork[];
+  }>(`/api/bookings/${bookingId}/additional-work`);
+  return additional_works || [];
+};
+
+/**
+ * Create additional work + get PayFast redirect URL
+ */
+export const createAdditionalWorkApi = async (
+  bookingId: string,
+  data: CreateAdditionalWorkDTO,
+): Promise<{ payment_url: string; additional_work: BookingAdditionalWork }> => {
+  return httpClient.post(
+    `/api/bookings/${bookingId}/additional-work`,
+    data,
+  );
+};
+
+/**
+ * Get PayFast payment URL for an existing pending_payment additional work
+ */
+export const retryAdditionalWorkPaymentApi = async (
+  bookingId: string,
+  awId: string,
+): Promise<{ payment_url: string }> => {
+  return httpClient.post(
+    `/api/bookings/${bookingId}/additional-work/${awId}/pay`,
+    {},
+  );
 };

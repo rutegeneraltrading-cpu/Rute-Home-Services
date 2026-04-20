@@ -74,9 +74,6 @@ export function BookingEditModal({
     control,
     handleSubmit,
     reset,
-    formState: { isDirty },
-    // setValue, // unused
-    // watch, // unused
   } = useForm<BookingStatusFormValues>({
     defaultValues: {
       status: booking ? booking.status : 'pending',
@@ -84,20 +81,18 @@ export function BookingEditModal({
     },
   });
   useEffect(() => {
-    if (booking) {
+    if (open && booking) {
       const assigned = booking.assignments || [];
       setAssignments(assigned as BookingAssignment[]);
       setLastSavedAssignments(assigned as BookingAssignment[]);
-      setSelectedWorkerIds([]); // Clear selection on open/change
-      Promise.resolve().then(() => {
-        reset({
-          status: booking ? booking.status : 'pending',
-          payment_status: booking ? booking.payment_status : 'pending',
-        });
+      setSelectedWorkerIds([]);
+      reset({
+        status: booking.status,
+        payment_status: booking.payment_status,
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [booking]);
+  }, [open, booking?.id]);
   // On submit, send booking status, payment status, and assignments (worker assignments with their statuses)
   // Save booking status/payment status only
   // Replace 'any' with BookingStatusFormValues or a more specific type if available
@@ -223,7 +218,7 @@ export function BookingEditModal({
               <Button
                 type="button"
                 onClick={() => handleSubmit(onSaveStatus)()}
-                disabled={updateBookingMutation.isPending || !isDirty}
+                disabled={updateBookingMutation.isPending}
               >
                 Save Status
               </Button>

@@ -4,6 +4,8 @@ import { getPayFastService } from '@/lib/server/payfast/payfast.service';
 import { sendResendEmail } from '@/lib/server/email';
 import { orderPaymentSuccessTemplate } from '@/lib/server/email';
 import { bookingPaymentSuccessTemplate } from '@/lib/server/email';
+import { additionalWorkPaymentSuccessTemplate } from '@/lib/server/email';
+import { sendWhatsAppMessage, normalizeToE164 } from '@/lib/server/whatsapp/twilio';
 
 const SUBJECT_MAX_LENGTH = 70;
 
@@ -117,6 +119,201 @@ export async function POST(request: NextRequest) {
       bookingStatus = 'cancelled';
       orderStatus = 'cancelled';
     }
+
+    // ── Check if this is an additional work payment ──────────────────────────
+    const { data: existingAdditionalWork } = await supabase
+      .from('booking_additional_works')
+      .select(
+        'id, booking_id, description, fee, status, bookings(id, user_id, profiles!user_id(full_name, email, phone), services(name))',
+      )
+      .eq('id', referenceId)
+      .maybeSingle();
+
+    if (existingAdditionalWork) {
+      const wasAlreadyPaid = existingAdditionalWork.status === 'paid';
+
+      if (dbPaymentStatus === 'paid' && !wasAlreadyPaid) {
+        const { error: updateAWError } = await supabase
+          .from('booking_additional_works')
+          .update({
+            status: 'paid',
+            payfast_transaction_id: transactionId,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', referenceId);
+
+        if (updateAWError) {
+          console.error('Error updating additional work:', updateAWError);
+          return NextResponse.json(
+            { error: 'Failed to update additional work' },
+            { status: 500 },
+          );
+        }
+
+        // Add additional work fee to booking total_price
+        const { data: currentBooking } = await supabase
+          .from('bookings')
+          .select('total_price')
+          .eq('id', existingAdditionalWork.booking_id)
+          .single();
+
+        if (currentBooking) {
+          const newTotal =
+            Number(currentBooking.total_price || 0) +
+            Number(existingAdditionalWork.fee || 0);
+          await supabase
+            .from('bookings')
+            .update({
+              total_price: newTotal,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', existingAdditionalWork.booking_id);
+        }
+
+        // Gather details for notifications
+        const booking = Array.isArray(existingAdditionalWork.bookings)
+          ? existingAdditionalWork.bookings[0]
+          : existingAdditionalWork.bookings;
+
+        const profile = Array.isArray((booking as any)?.profiles)
+          ? (booking as any).profiles[0]
+          : (booking as any)?.profiles;
+
+        const service = Array.isArray((booking as any)?.services)
+          ? (booking as any).services[0]
+          : (booking as any)?.services;
+
+        const customerName = profile?.full_name || 'Customer';
+        const customerEmail = profile?.email || null;
+        const bookingId = existingAdditionalWork.booking_id;
+        const fee = Number(existingAdditionalWork.fee || 0);
+        const description = existingAdditionalWork.description;
+        const serviceName = service?.name || 'Service Booking';
+
+        const adminEmail =
+          process.env.ADMIN_BOOKING_EMAIL ||
+          process.env.AWS_SES_FROM_EMAIL ||
+          '';
+
+        // Fetch assigned worker for WhatsApp notification
+        const { data: workerAssignment } = await supabase
+          .from('booking_assignments')
+          .select('workers(profiles(full_name, email, phone))')
+          .eq('booking_id', bookingId)
+          .in('status', ['accepted', 'pending'])
+          .limit(1)
+          .maybeSingle();
+
+        const workerProfile = (() => {
+          const w = (workerAssignment as any)?.workers;
+          const wp = Array.isArray(w?.profiles) ? w.profiles[0] : w?.profiles;
+          return wp || null;
+        })();
+
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
+
+        // Email to customer
+        if (customerEmail) {
+          try {
+            await sendResendEmail({
+              to: customerEmail,
+              subject: `Additional Work Payment Confirmed - ${serviceName}`,
+              html: additionalWorkPaymentSuccessTemplate({
+                audience: 'user',
+                customerName,
+                bookingId,
+                additionalWorkId: referenceId,
+                description,
+                fee,
+                serviceName,
+                transactionId,
+                dashboardUrl: `${appUrl}/user/bookings/${bookingId}`,
+              }),
+            });
+          } catch (e) {
+            console.error('Additional work user email failed:', e);
+          }
+        }
+
+        // Email to admin
+        if (adminEmail) {
+          try {
+            await sendResendEmail({
+              to: adminEmail,
+              subject: `Additional Work Payment Received - ${serviceName}`,
+              html: additionalWorkPaymentSuccessTemplate({
+                audience: 'admin',
+                customerName,
+                bookingId,
+                additionalWorkId: referenceId,
+                description,
+                fee,
+                serviceName,
+                transactionId,
+                dashboardUrl: `${appUrl}/admin/bookings`,
+              }),
+            });
+          } catch (e) {
+            console.error('Additional work admin email failed:', e);
+          }
+        }
+
+        // Email to worker
+        if (workerProfile?.email) {
+          try {
+            await sendResendEmail({
+              to: workerProfile.email,
+              subject: `Additional Work Payment Received - ${serviceName}`,
+              html: additionalWorkPaymentSuccessTemplate({
+                audience: 'worker',
+                customerName,
+                bookingId,
+                additionalWorkId: referenceId,
+                description,
+                fee,
+                serviceName,
+                transactionId,
+                dashboardUrl: `${appUrl}/admin/bookings`,
+              }),
+            });
+          } catch (e) {
+            console.error('Additional work worker email failed:', e);
+          }
+        }
+
+        // WhatsApp to worker
+        if (workerProfile?.phone) {
+          try {
+            const workerPhone = normalizeToE164(workerProfile.phone);
+            if (workerPhone) {
+              await sendWhatsAppMessage({
+                to: workerPhone,
+                body: `Additional work payment received!\n\nBooking: ${bookingId.slice(0, 8)}\nService: ${serviceName}\nDescription: ${description}\nAmount: R${fee.toFixed(2)}\n\nThe customer has paid for additional work. Please proceed accordingly.`,
+              });
+            }
+          } catch (e) {
+            console.error('Additional work WhatsApp to worker failed:', e);
+          }
+        }
+      } else if (
+        (dbPaymentStatus === 'failed' || paymentStatus === 'CANCELLED') &&
+        !wasAlreadyPaid
+      ) {
+        await supabase
+          .from('booking_additional_works')
+          .update({
+            status: 'cancelled',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', referenceId);
+      }
+
+      return NextResponse.json(
+        { success: true, message: 'Additional work webhook processed' },
+        { status: 200 },
+      );
+    }
+    // ── End additional work block ─────────────────────────────────────────────
 
     const { data: existingBooking, error: existingBookingError } =
       await supabase

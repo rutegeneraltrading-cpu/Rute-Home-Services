@@ -471,13 +471,15 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         { status: 400 },
       );
     }
+    // Fetch current assignments before any mutations (used for notification diffing)
+    const { data: currentAssignmentsBeforeUpdate } = await supabaseAdmin
+      .from('booking_assignments')
+      .select('worker_id, status')
+      .eq('booking_id', id);
+
     // Multi-worker assignment logic
     if (hasAssignmentsArray) {
-      // Fetch current assignments
-      const { data: currentAssignments } = await supabaseAdmin
-        .from('booking_assignments')
-        .select('worker_id, status')
-        .eq('booking_id', id);
+      const currentAssignments = currentAssignmentsBeforeUpdate;
 
       const currentMap = new Map(
         (currentAssignments || []).map((a: unknown) => {
@@ -854,7 +856,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       updatePayload.payment_status = body.payment_status;
     }
 
-    if (didAssignWorker) {
+    // Only auto-set 'assigned' if admin did not explicitly send a status
+    if (didAssignWorker && typeof body.status === 'undefined') {
       updatePayload.status = 'assigned';
     }
 
@@ -1020,15 +1023,26 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
     // (Removed: No email to admin/user on assignment status accepted/declined/cancelled)
 
-    // Send updated assignment notifications (email + WhatsApp) to all active (pending/accepted) workers
+    // Send assignment notifications only when new workers are actually being assigned
+    // (not when only updating existing assignment statuses)
+    const isNewWorkerAssignment =
+      hasWorkerField ||
+      !!body.auto_assign ||
+      (Array.isArray(body.assignments) &&
+        body.assignments.some((a) => {
+          const existingStatus = (
+            currentAssignmentsBeforeUpdate as Array<{
+              worker_id: string;
+              status: string;
+            }>
+          )?.find((c) => c.worker_id === a.worker_id);
+          return !existingStatus; // only new workers
+        }));
+
     const isPaidBooking =
       String(updatedBooking.payment_status || '') === 'paid';
     const shouldSendWorkerAssignmentNotifications =
-      isPaidBooking ||
-      hasWorkerField ||
-      !!body.auto_assign ||
-      Array.isArray(body.assignments) ||
-      body.status === 'assigned';
+      isNewWorkerAssignment || (isPaidBooking && body.status === 'assigned');
 
     if (shouldSendWorkerAssignmentNotifications) {
       const { data: allAssignments } = await supabaseAdmin

@@ -9,6 +9,7 @@ import {
   Clock3,
   CreditCard,
   MapPin,
+  PlusCircle,
   User,
   Wrench,
 } from 'lucide-react';
@@ -24,7 +25,15 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Loading } from '@/components/common';
-import { useGetBooking } from '@/lib/client/api/bookings/bookings.query';
+import {
+  useGetBooking,
+  useGetAdditionalWorks,
+} from '@/lib/client/api/bookings/bookings.query';
+import {
+  useCreateAdditionalWork,
+  useRetryAdditionalWorkPayment,
+} from '@/lib/client/api/bookings/payments.mutation';
+import { useGetProfile } from '@/lib/client/api/profile/profile.query';
 import type {
   BookingOptionDetail,
   BookingVariantDetail,
@@ -62,11 +71,19 @@ const BookingDetailsPage = () => {
   const bookingId = params?.id;
 
   const { data: booking, isLoading, isError } = useGetBooking(bookingId || '');
+  const { data: additionalWorks = [] } = useGetAdditionalWorks(bookingId || '');
+  const { data: profile } = useGetProfile();
+  const createAdditionalWork = useCreateAdditionalWork(bookingId || '');
+  const retryAdditionalWorkPayment = useRetryAdditionalWorkPayment(bookingId || '');
 
   const [ratingModalOpen, setRatingModalOpen] = useState(false);
   const [rating, setRating] = useState<number>(0);
   const [review, setReview] = useState('');
   const [isSubmittingRating, setIsSubmittingRating] = useState(false);
+
+  const [additionalWorkModalOpen, setAdditionalWorkModalOpen] = useState(false);
+  const [awDescription, setAwDescription] = useState('');
+  const [awFee, setAwFee] = useState('');
 
   const ratingFromUrl = useMemo(() => {
     const raw = searchParams.get('rating');
@@ -142,6 +159,25 @@ const BookingDetailsPage = () => {
     } finally {
       setIsSubmittingRating(false);
     }
+  };
+
+  const handleSubmitAdditionalWork = async () => {
+    if (!awDescription.trim()) {
+      toast.error('Please describe the additional work.');
+      return;
+    }
+    const parsedFee = parseFloat(awFee);
+    if (!parsedFee || parsedFee <= 0 || !Number.isFinite(parsedFee)) {
+      toast.error('Please enter a valid fee amount.');
+      return;
+    }
+    await createAdditionalWork.mutateAsync({
+      description: awDescription.trim(),
+      fee: parsedFee,
+    });
+    setAdditionalWorkModalOpen(false);
+    setAwDescription('');
+    setAwFee('');
   };
 
   const selectedOptions: BookingOptionDetail[] = Array.isArray(
@@ -613,6 +649,70 @@ const BookingDetailsPage = () => {
               </CardContent>
             </Card>
           )}
+        {/* Additional Work */}
+        {(booking.status === 'assigned' ||
+          booking.status === 'in_progress') && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <PlusCircle className="h-4 w-4" /> Additional Work
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              {additionalWorks.length > 0 && (
+                <ul className="space-y-2">
+                  {additionalWorks.map((aw) => (
+                    <li
+                      key={aw.id}
+                      className="border rounded-lg p-3 bg-slate-50 space-y-2"
+                    >
+                      <p className="text-slate-700 text-xs">{aw.description}</p>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-semibold text-slate-900">
+                          R{Number(aw.fee).toFixed(2)}
+                        </span>
+                        {aw.status === 'pending_payment' ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700 whitespace-nowrap">
+                              Pending Payment
+                            </span>
+                            <button
+                              onClick={() =>
+                                retryAdditionalWorkPayment.mutate(aw.id)
+                              }
+                              disabled={retryAdditionalWorkPayment.isPending}
+                              className="inline-flex items-center gap-1 text-xs font-medium whitespace-nowrap bg-black rounded-full text-white px-2 py-1 hover:bg-black/80 disabled:opacity-50"
+                            >
+                              Pay Now
+                              <CreditCard className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ) : (
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${
+                              aw.status === 'paid'
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-gray-100 text-gray-500'
+                            }`}
+                          >
+                            {aw.status}
+                          </span>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <Button
+                className="w-full"
+                onClick={() => setAdditionalWorkModalOpen(true)}
+              >
+                <PlusCircle className="h-4 w-4 mr-2" />
+                Add Additional Work
+              </Button>
+            </CardContent>
+          </Card>
+        )}
         </div>
       </div>
 
@@ -675,6 +775,83 @@ const BookingDetailsPage = () => {
             </Button>
             <Button onClick={handleSubmitRating} disabled={isSubmittingRating}>
               {isSubmittingRating ? 'Submitting...' : 'Submit Rating'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Additional Work Modal */}
+      <Dialog
+        open={additionalWorkModalOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setAwDescription('');
+            setAwFee('');
+          }
+          setAdditionalWorkModalOpen(open);
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Additional Work</DialogTitle>
+            <DialogDescription>
+              Describe the extra work and the agreed fee. You will be redirected
+              to PayFast to complete the payment.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <label
+                htmlFor="aw-description"
+                className="text-sm font-medium text-slate-700 mb-1.5 block"
+              >
+                Description
+              </label>
+              <textarea
+                id="aw-description"
+                value={awDescription}
+                onChange={(e) => setAwDescription(e.target.value)}
+                rows={4}
+                placeholder="Describe the additional work to be done..."
+                className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="aw-fee"
+                className="text-sm font-medium text-slate-700 mb-1.5 block"
+              >
+                Agreed Fee (R)
+              </label>
+              <input
+                id="aw-fee"
+                type="number"
+                min="1"
+                step="0.01"
+                value={awFee}
+                onChange={(e) => setAwFee(e.target.value)}
+                placeholder="e.g. 250.00"
+                className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setAdditionalWorkModalOpen(false)}
+              disabled={createAdditionalWork.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmitAdditionalWork}
+              disabled={createAdditionalWork.isPending}
+            >
+              {createAdditionalWork.isPending
+                ? 'Redirecting to payment...'
+                : 'Proceed to Payment'}
             </Button>
           </DialogFooter>
         </DialogContent>

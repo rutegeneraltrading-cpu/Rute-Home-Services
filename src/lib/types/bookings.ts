@@ -113,6 +113,7 @@ export interface Booking {
   updated_at: string;
   priority_status?: boolean; // true if instant booking
   priority_fee?: number; // fee for instant booking
+  additional_works?: BookingAdditionalWork[];
 }
 
 export interface CreateBookingDTO {
@@ -166,4 +167,34 @@ export interface BookingPaymentData {
   total_price: number;
   service_name: string;
   service_description: string;
+}
+
+export type AdditionalWorkStatus = 'pending_payment' | 'paid' | 'cancelled';
+
+export interface BookingAdditionalWork {
+  id: string;
+  booking_id: string;
+  description: string;
+  fee: number;
+  status: AdditionalWorkStatus;
+  payfast_transaction_id?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateAdditionalWorkDTO {
+  description: string;
+  fee: number;
+}
+
+export interface AdditionalWorkPaymentData {
+  additional_work_id: string;
+  booking_id: string;
+  user_id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone?: string;
+  fee: number;
+  description: string;
 }

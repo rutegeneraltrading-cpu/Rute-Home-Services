@@ -1,5 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
-import { getBookingsApi, getBookingApi } from './bookings.api';
+import {
+  getBookingsApi,
+  getBookingApi,
+  getAdditionalWorksApi,
+} from './bookings.api';
 
 // ============================================
 // QUERY KEYS
@@ -10,6 +14,8 @@ export const bookingKeys = {
   lists: () => [...bookingKeys.all, 'list'] as const,
   details: () => [...bookingKeys.all, 'detail'] as const,
   detail: (id: string) => [...bookingKeys.details(), id] as const,
+  additionalWorks: (bookingId: string) =>
+    [...bookingKeys.detail(bookingId), 'additional-works'] as const,
 };
 
 // ============================================
@@ -36,5 +42,17 @@ export const useGetBooking = (bookingId: string) => {
     queryFn: () => getBookingApi(bookingId),
     enabled: !!bookingId,
     staleTime: 5 * 60 * 1000,
+  });
+};
+
+/**
+ * Get additional works for a booking
+ */
+export const useGetAdditionalWorks = (bookingId: string) => {
+  return useQuery({
+    queryKey: bookingKeys.additionalWorks(bookingId),
+    queryFn: () => getAdditionalWorksApi(bookingId),
+    enabled: !!bookingId,
+    staleTime: 2 * 60 * 1000,
   });
 };

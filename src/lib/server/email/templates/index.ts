@@ -19,6 +19,7 @@ import { orderStatusUpdateTemplate } from './orderStatusUpdateTemplate';
 import { bookingCompletionTemplate } from './bookingCompletionTemplate';
 import { workerRatingReceivedTemplate } from './workerRatingReceivedTemplate';
 import { bookingUpdatedByCustomerTemplate } from './bookingUpdatedByCustomerTemplate';
+import { additionalWorkPaymentSuccessTemplate } from './additionalWorkPaymentSuccessTemplate';
 
 export {
   signinAlertTemplate,
@@ -42,4 +43,5 @@ export {
   bookingCompletionTemplate,
   workerRatingReceivedTemplate,
   bookingUpdatedByCustomerTemplate,
+  additionalWorkPaymentSuccessTemplate,
 };
