@@ -33,9 +33,6 @@ const AuthRequiredModal = ({
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
 
   const handleOpenChange = (nextOpen: boolean) => {
-    if (!isAuthenticated && !nextOpen) {
-      return;
-    }
     onOpenChange?.(nextOpen);
   };
 

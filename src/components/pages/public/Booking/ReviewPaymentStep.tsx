@@ -511,7 +511,10 @@ const ReviewPaymentStep = ({
         open={shouldOpenLoginModal}
         isAuthenticated={!!user}
         onOpenChange={(open) => {
-          if (!open) setIsLoginModalDismissed(true);
+          if (!open) {
+            setIsLoginModalDismissed(true);
+            if (!user) onBack();
+          }
         }}
         onAuthenticated={() => {
           refetchUser();

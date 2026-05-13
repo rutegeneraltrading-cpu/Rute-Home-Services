@@ -38,6 +38,16 @@ interface AddressDateStepProps {
   onBack: () => void;
 }
 
+const parseMovingAddress = (address: string) => {
+  if (!address?.includes('to=') || !address?.includes('from='))
+    return { from: '', to: '' };
+  const params = new URLSearchParams(address);
+  return {
+    to: decodeURIComponent(params.get('to') || ''),
+    from: decodeURIComponent(params.get('from') || ''),
+  };
+};
+
 const AddressDateStep = ({
   serviceId,
   totalDurationMinutes,
@@ -53,15 +63,19 @@ const AddressDateStep = ({
 }: AddressDateStepProps) => {
   // Detect if category is moving-removals
   const isMovingRemovals = serviceData?.category?.slug === 'moving-removals';
+
+  // Parse saved moving address immediately so state initializes correctly on remount
+  const initialMoving = parseMovingAddress(addressDateData.address);
+
   // Separate state for from/to fields if moving-removals
-  const [fromAddress, setFromAddress] = useState('');
-  const [toAddress, setToAddress] = useState('');
+  const [fromAddress, setFromAddress] = useState(initialMoving.from);
+  const [toAddress, setToAddress] = useState(initialMoving.to);
   const [fromLocationError, setFromLocationError] = useState('');
   const [toLocationError, setToLocationError] = useState('');
   const [isFromGoogleLocationSelected, setIsFromGoogleLocationSelected] =
-    useState(false);
+    useState(!!initialMoving.from);
   const [isToGoogleLocationSelected, setIsToGoogleLocationSelected] =
-    useState(false);
+    useState(!!initialMoving.to);
   const [fromLatLng, setFromLatLng] = useState<{
     lat: number;
     lng: number;
@@ -80,8 +94,9 @@ const AddressDateStep = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const addressDateDataRef = useRef(addressDateData);
   const isApplyingGoogleSelectionRef = useRef(false);
+  // Initialize directly from persisted address so Next button is enabled on remount
   const [isGoogleLocationSelected, setIsGoogleLocationSelected] =
-    useState<boolean>(false);
+    useState<boolean>(!isMovingRemovals && !!addressDateData.address);
   const [locationError, setLocationError] = useState<string>('');
   const [serviceAreaError, setServiceAreaError] = useState<string>('');
   const [availabilityError, setAvailabilityError] = useState<string>('');
@@ -93,34 +108,13 @@ const AddressDateStep = ({
 
   // Set tomorrow's date as default on mount
   useEffect(() => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowDate = tomorrow.toISOString().split('T')[0];
-
     if (!addressDateData.date) {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
       setAddressDateData({
         ...addressDateData,
-        date: tomorrowDate,
+        date: tomorrow.toISOString().split('T')[0],
       });
-    }
-
-    if (isMovingRemovals) {
-      // If address field already has to/from, split and set
-      if (
-        addressDateData.address &&
-        addressDateData.address.includes('to=') &&
-        addressDateData.address.includes('from=')
-      ) {
-        const params = new URLSearchParams(addressDateData.address);
-        setToAddress(params.get('to') || '');
-        setFromAddress(params.get('from') || '');
-        setIsToGoogleLocationSelected(!!params.get('to'));
-        setIsFromGoogleLocationSelected(!!params.get('from'));
-      }
-    } else {
-      if (addressDateData.address) {
-        setIsGoogleLocationSelected(true);
-      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -240,13 +234,39 @@ const AddressDateStep = ({
     };
   }, [isLoaded, isMovingRemovals, setDistanceKm]);
 
+  // Re-geocode saved addresses on remount to restore LatLng (and re-display the map route)
+  useEffect(() => {
+    if (!isLoaded || !isMovingRemovals) return;
+    if (fromLatLng && toLatLng) return; // already have coords
+    if (!fromAddress && !toAddress) return;
+    const geocoder = new window.google.maps.Geocoder();
+    if (fromAddress && !fromLatLng) {
+      geocoder.geocode({ address: fromAddress }, (results, status) => {
+        if (status === 'OK' && results?.[0]?.geometry?.location) {
+          const loc = results[0].geometry.location;
+          setFromLatLng({ lat: loc.lat(), lng: loc.lng() });
+        }
+      });
+    }
+    if (toAddress && !toLatLng) {
+      geocoder.geocode({ address: toAddress }, (results, status) => {
+        if (status === 'OK' && results?.[0]?.geometry?.location) {
+          const loc = results[0].geometry.location;
+          setToLatLng({ lat: loc.lat(), lng: loc.lng() });
+        }
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoaded, isMovingRemovals]);
+
   // Fetch route directions and extract actual driving distance
   useEffect(() => {
     if (!isLoaded || !fromLatLng || !toLatLng || !isMovingRemovals) {
       if (!fromLatLng || !toLatLng) {
         setDirections(null);
         setDirectionsError('');
-        setDistanceKm(null);
+        // Only reset distanceKm when the user actually cleared an address field
+        if (!fromAddress || !toAddress) setDistanceKm(null);
       }
       return;
     }
@@ -273,7 +293,7 @@ const AddressDateStep = ({
         }
       },
     );
-  }, [isLoaded, fromLatLng, toLatLng, isMovingRemovals, setDistanceKm]);
+  }, [isLoaded, fromLatLng, toLatLng, isMovingRemovals, fromAddress, toAddress, setDistanceKm]);
 
   // Prevent selecting previous dates
   const today = new Date();
@@ -505,9 +525,6 @@ const AddressDateStep = ({
               ) : distanceKm !== null ? (
                 <p className="text-green-700 font-semibold">
                   Estimated distance: ~{distanceKm} km
-                  {serviceData?.base_price
-                    ? ` · Rate: R${serviceData.base_price}/km`
-                    : ''}
                 </p>
               ) : distanceError ? (
                 <p className="text-red-600">{distanceError}</p>

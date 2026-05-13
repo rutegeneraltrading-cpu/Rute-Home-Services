@@ -574,6 +574,9 @@ const CheckoutPage = () => {
       <AuthRequiredModal
         open={showLoginModal}
         isAuthenticated={!!user}
+        onOpenChange={(open) => {
+          if (!open && !user) router.push('/cart');
+        }}
         onAuthenticated={() => {
           refetchAddresses();
         }}
