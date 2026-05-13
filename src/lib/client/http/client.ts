@@ -5,7 +5,7 @@ interface FetchOptions extends RequestInit {
   timeout?: number;
 }
 
-const DEFAULT_TIMEOUT = 10000;
+const DEFAULT_TIMEOUT = 30000;
 let lastNetworkErrorTime = 0;
 const NETWORK_ERROR_DEBOUNCE_MS = 5000;
 
@@ -61,22 +61,36 @@ class HTTPClient {
 
       return responseText as unknown as T;
     } catch (error: unknown) {
-      // Network error (no internet, timeout, etc)
-      if (
-        (error instanceof Error && error.name === 'AbortError') ||
-        (error instanceof Error && error.message === 'Failed to fetch') ||
-        !navigator.onLine
-      ) {
+      const isAbort =
+        error instanceof Error && error.name === 'AbortError';
+      const isOffline = !navigator.onLine;
+      const isNetworkFailure =
+        error instanceof Error && error.message === 'Failed to fetch';
+
+      if (isAbort || isNetworkFailure || isOffline) {
         const now = Date.now();
         if (now - lastNetworkErrorTime >= NETWORK_ERROR_DEBOUNCE_MS) {
           lastNetworkErrorTime = now;
+          if (isAbort && !isOffline) {
+            toast({
+              variant: 'destructive',
+              title: 'Request Timed Out',
+              description:
+                'The server is taking too long to respond. Please try again.',
+            });
+            throw new Error('Request timed out. Please try again.');
+          }
           toast({
             variant: 'destructive',
             title: 'Network Error',
             description: 'Please check your internet connection.',
           });
         }
-        throw new Error('Network error. Please check your connection.');
+        throw new Error(
+          isAbort && !isOffline
+            ? 'Request timed out. Please try again.'
+            : 'Network error. Please check your connection.',
+        );
       }
 
       throw error;

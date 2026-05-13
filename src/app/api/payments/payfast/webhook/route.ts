@@ -374,7 +374,7 @@ export async function POST(request: NextRequest) {
         const { data: bookingDetails } = await supabase
           .from('bookings')
           .select(
-            'id, service_id, address, unit_or_flat, notes, booking_date, booking_time, total_price, selected_options, selected_variants',
+            'id, service_id, address, unit_or_flat, notes, booking_date, booking_time, total_price, selected_options, selected_variants, app_fee, priority_status, priority_fee',
           )
           .eq('id', referenceId)
           .maybeSingle();
@@ -455,6 +455,8 @@ export async function POST(request: NextRequest) {
                 total: Number(existingBooking.total_price || 0),
                 transactionId: webhookData.pf_payment_id,
                 dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL}/user/bookings/${referenceId}`,
+                app_fee: Number(bookingDetails?.app_fee || 0) || undefined,
+                priority_status: bookingDetails?.priority_status ?? undefined,
               }),
             });
           } catch (emailError) {
@@ -490,6 +492,8 @@ export async function POST(request: NextRequest) {
                 total: Number(existingBooking.total_price || 0),
                 transactionId: webhookData.pf_payment_id,
                 dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL}/admin/bookings`,
+                app_fee: Number(bookingDetails?.app_fee || 0) || undefined,
+                priority_status: bookingDetails?.priority_status ?? undefined,
               }),
             });
           } catch (emailError) {

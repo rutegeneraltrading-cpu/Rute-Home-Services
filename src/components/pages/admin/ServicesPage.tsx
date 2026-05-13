@@ -273,6 +273,13 @@ export default function ServicesPage() {
       cell: (value) => `R${parseFloat(value).toFixed(2)}`,
     },
     {
+      id: 'app_fee',
+      header: 'App Fee',
+      accessorKey: 'app_fee',
+      sortable: true,
+      cell: (value) => `R${parseFloat(value ?? 0).toFixed(2)}`,
+    },
+    {
       id: 'duration_minutes',
       header: 'Duration (min)',
       accessorKey: 'duration_minutes',

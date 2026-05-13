@@ -63,9 +63,10 @@ function getMovingDistanceBreakdown(data: BookingCreatedEmailData): {
     ? Number(data.service?.priority_fee || 0)
     : 0;
 
+  const appFee = Number(data.app_fee || 0);
   const distanceCost = Math.max(
     0,
-    Number(data.total || 0) - requirementsTotal - optionsTotal - priorityFee,
+    Number(data.total || 0) - requirementsTotal - optionsTotal - priorityFee - appFee,
   );
   const distanceKm = Number((distanceCost / ratePerKm).toFixed(1));
 
@@ -187,9 +188,12 @@ export function bookingCreatedTemplate(data: BookingCreatedEmailData): string {
             },
           ]
         : []),
+      ...(data.app_fee
+        ? [{ label: 'App Fee', value: `R${Number(data.app_fee).toFixed(2)}` }]
+        : []),
       {
         label: 'Total',
-        value: `R${data.total.toFixed(2)}${data.priority_status && data.service?.priority_fee ? ' (includes Priority Fee)' : ''}`,
+        value: `R${data.total.toFixed(2)}`,
       },
       { label: 'Payment Status', value: data.paymentStatus },
       { label: 'Notes', value: data.notes || 'N/A' },

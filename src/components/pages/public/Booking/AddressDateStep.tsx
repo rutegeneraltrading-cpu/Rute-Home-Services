@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, useMemo } from 'react';
-import { useJsApiLoader } from '@react-google-maps/api';
+import { useJsApiLoader, GoogleMap, DirectionsRenderer } from '@react-google-maps/api';
 import { useQuery } from '@tanstack/react-query';
 import { FormItem, FormLabel, FormControl } from '@/components/ui/form';
 import {
@@ -12,26 +12,7 @@ import {
   Switch,
 } from '@/components/ui';
 
-const ALLOWED_SERVICE_CITIES = [
-  'johannesburg',
-  'pretoria',
-  'city of tshwane metropolitan municipality',
-  'tshwane',
-];
-
-const isSupportedServiceArea = (place: google.maps.places.PlaceResult) => {
-  const components = (place.address_components || []).map((component) =>
-    component.long_name.toLowerCase(),
-  );
-
-  const formattedAddress = (place.formatted_address || '').toLowerCase();
-
-  return ALLOWED_SERVICE_CITIES.some(
-    (city) =>
-      components.some((value) => value.includes(city)) ||
-      formattedAddress.includes(city),
-  );
-};
+import { isSupportedServiceArea } from '@/lib/config/serviceAreas';
 
 interface AddressDateStepProps {
   serviceId: string;
@@ -89,8 +70,11 @@ const AddressDateStep = ({
     lat: number;
     lng: number;
   } | null>(null);
-  const [isCalculatingDistance, setIsCalculatingDistance] = useState(false);
+  const [isCalculatingDistance] = useState(false);
   const [distanceError, setDistanceError] = useState('');
+  const [directions, setDirections] =
+    useState<google.maps.DirectionsResult | null>(null);
+  const [directionsError, setDirectionsError] = useState('');
   const fromInputRef = useRef<HTMLInputElement>(null);
   const toInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -104,7 +88,7 @@ const AddressDateStep = ({
   const [hasSetDefaultTime, setHasSetDefaultTime] = useState<boolean>(false);
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
-    libraries: ['places'],
+    libraries: ['places', 'routes'],
   });
 
   // Set tomorrow's date as default on mount
@@ -256,40 +240,35 @@ const AddressDateStep = ({
     };
   }, [isLoaded, isMovingRemovals, setDistanceKm]);
 
-  // Calculate driving distance between from/to addresses for moving-removals
+  // Fetch route directions and extract actual driving distance
   useEffect(() => {
     if (!isLoaded || !fromLatLng || !toLatLng || !isMovingRemovals) {
-      if (isMovingRemovals && (!fromLatLng || !toLatLng)) {
+      if (!fromLatLng || !toLatLng) {
+        setDirections(null);
+        setDirectionsError('');
         setDistanceKm(null);
       }
       return;
     }
-    setIsCalculatingDistance(true);
+    setDirectionsError('');
     setDistanceError('');
-    const svc = new window.google.maps.DistanceMatrixService();
-    svc.getDistanceMatrix(
+    const svc = new window.google.maps.DirectionsService();
+    svc.route(
       {
-        origins: [
-          new window.google.maps.LatLng(fromLatLng.lat, fromLatLng.lng),
-        ],
-        destinations: [
-          new window.google.maps.LatLng(toLatLng.lat, toLatLng.lng),
-        ],
+        origin: new window.google.maps.LatLng(fromLatLng.lat, fromLatLng.lng),
+        destination: new window.google.maps.LatLng(toLatLng.lat, toLatLng.lng),
         travelMode: window.google.maps.TravelMode.DRIVING,
-        unitSystem: window.google.maps.UnitSystem.METRIC,
       },
-      (response, status) => {
-        setIsCalculatingDistance(false);
-        if (
-          status === 'OK' &&
-          response?.rows[0]?.elements[0]?.status === 'OK'
-        ) {
-          const meters = response.rows[0].elements[0].distance.value;
-          setDistanceKm(Math.ceil(meters / 1000));
+      (result, status) => {
+        if (status === 'OK' && result) {
+          setDirections(result);
+          const meters = result.routes[0]?.legs[0]?.distance?.value;
+          if (meters) {
+            setDistanceKm(Math.ceil(meters / 1000));
+          }
         } else {
-          setDistanceError(
-            'Could not calculate distance. Please re-select your addresses.',
-          );
+          setDirections(null);
+          setDirectionsError('Route could not be displayed on map.');
           setDistanceKm(null);
         }
       },
@@ -485,19 +464,7 @@ const AddressDateStep = ({
                   setIsToGoogleLocationSelected(false);
                   setToLatLng(null);
                   setDistanceKm(null);
-                  // Service area validation on manual input
-                  const isAllowed = ALLOWED_SERVICE_CITIES.some((city) =>
-                    value.toLowerCase().includes(city),
-                  );
-                  if (!value) {
-                    setToLocationError('');
-                  } else if (!isAllowed) {
-                    setToLocationError(
-                      'We currently provide services only in Johannesburg and Pretoria (South Africa).',
-                    );
-                  } else {
-                    setToLocationError('');
-                  }
+                  if (!value) setToLocationError('');
                 }}
                 disabled={!isLoaded}
               />
@@ -520,19 +487,7 @@ const AddressDateStep = ({
                   setIsFromGoogleLocationSelected(false);
                   setFromLatLng(null);
                   setDistanceKm(null);
-                  // Service area validation on manual input
-                  const isAllowed = ALLOWED_SERVICE_CITIES.some((city) =>
-                    value.toLowerCase().includes(city),
-                  );
-                  if (!value) {
-                    setFromLocationError('');
-                  } else if (!isAllowed) {
-                    setFromLocationError(
-                      'We currently provide services only in Johannesburg and Pretoria (South Africa).',
-                    );
-                  } else {
-                    setFromLocationError('');
-                  }
+                  if (!value) setFromLocationError('');
                 }}
                 disabled={!isLoaded}
               />
@@ -557,6 +512,40 @@ const AddressDateStep = ({
               ) : distanceError ? (
                 <p className="text-red-600">{distanceError}</p>
               ) : null}
+            </div>
+          )}
+
+          {/* Route map */}
+          {fromLatLng && toLatLng && isLoaded && (
+            <div className="mb-6 rounded-lg overflow-hidden border border-slate-200">
+              {directions ? (
+                <GoogleMap
+                  mapContainerStyle={{ width: '100%', height: '260px' }}
+                  zoom={10}
+                  center={fromLatLng}
+                  options={{
+                    disableDefaultUI: true,
+                    zoomControl: true,
+                    gestureHandling: 'cooperative',
+                  }}
+                >
+                  <DirectionsRenderer
+                    directions={directions}
+                    options={{
+                      suppressMarkers: false,
+                      polylineOptions: { strokeColor: '#2563eb', strokeWeight: 4 },
+                    }}
+                  />
+                </GoogleMap>
+              ) : directionsError ? (
+                <div className="p-3 text-sm text-amber-600 bg-amber-50">
+                  {directionsError}
+                </div>
+              ) : (
+                <div className="p-3 text-sm text-slate-400">
+                  Loading route...
+                </div>
+              )}
             </div>
           )}
         </>

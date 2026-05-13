@@ -51,6 +51,7 @@ export function ServiceEditModal({
         service?.platform_fee !== undefined ? service.platform_fee : 0,
       priority_fee:
         service?.priority_fee !== undefined ? service.priority_fee : 0,
+      app_fee: service?.app_fee !== undefined ? service.app_fee : 0,
     }),
     [service],
   );
@@ -86,6 +87,7 @@ export function ServiceEditModal({
         is_active: data.is_active,
         platform_fee: data.platform_fee,
         priority_fee: data.priority_fee,
+        app_fee: data.app_fee,
       },
       {
         onSuccess: () => {
@@ -198,9 +200,26 @@ export function ServiceEditModal({
                 {errors.priority_fee.message}
               </p>
             )}
+          </div>
+
+          <div>
+            <Label htmlFor="app_fee">App Fee (ZAR)</Label>
+            <Input
+              id="app_fee"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="0.00"
+              {...register('app_fee', { valueAsNumber: true })}
+              className="mt-2"
+            />
+            {errors.app_fee && (
+              <p className="text-sm text-red-500 mt-1">
+                {errors.app_fee.message}
+              </p>
+            )}
             <p className="text-xs text-muted-foreground mt-1">
-              Determines the order in which this category appears (lower comes
-              first)
+              Fixed app fee charged per booking for this service.
             </p>
           </div>
           <div>

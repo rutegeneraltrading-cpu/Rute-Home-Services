@@ -944,7 +944,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       if (booking.service_id) {
         const { data: svcData } = await supabaseAdmin
           .from('services')
-          .select('id, category_id')
+          .select('id, category_id, base_price, platform_fee')
           .eq('id', booking.service_id)
           .maybeSingle();
 
@@ -960,21 +960,26 @@ export async function PATCH(request: NextRequest, { params }: Params) {
           );
         }
 
+        details.base_price = toNumber(svcData?.base_price, 0);
+        details.platform_fee = toNumber(svcData?.platform_fee, 0);
+
         if (updatedBooking.selected_options?.length > 0) {
           const { data: optData } = await supabaseAdmin
             .from('service_options')
-            .select('id, name, description, price')
+            .select('id, name, description, price, platform_fee')
             .in('id', updatedBooking.selected_options);
           details.options = (optData || []).map((opt: unknown) => {
             const o = opt as {
               name: string;
               description?: string;
               price?: number;
+              platform_fee?: number;
             };
             return {
               name: o.name,
               description: o.description || undefined,
               price: o.price ?? undefined,
+              platform_fee: o.platform_fee ?? undefined,
             };
           });
         }
@@ -1017,6 +1022,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       serviceDetailsForEmails.category,
     );
     const bookingTotalForPayout = toNumber(updatedBooking.total_price, 0);
+    const bookingAppFee = toNumber(updatedBooking.app_fee, 0);
     const serviceFeePercentForPayout = clampPercent(
       toNumber(serviceDetailsForEmails.categoryFeePercent, 0),
     );
@@ -1054,10 +1060,11 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       const activeAssignments = (allAssignments || []).filter(
         (a) => a.status === 'pending' || a.status === 'accepted',
       );
+      const workerEarningsTotal = bookingTotalForPayout - bookingAppFee;
       const perWorkerPayout =
         activeAssignments.length > 0
           ? Number(
-              (bookingTotalForPayout / activeAssignments.length).toFixed(2),
+              (workerEarningsTotal / activeAssignments.length).toFixed(2),
             )
           : 0;
 
@@ -1087,7 +1094,11 @@ export async function PATCH(request: NextRequest, { params }: Params) {
                 bookingTime,
                 customerName,
                 totalAmount: perWorkerPayout,
+                full_booking_total: bookingTotalForPayout,
                 serviceFeePercent: serviceFeePercentForPayout,
+                app_fee: bookingAppFee || undefined,
+                priority_status: updatedBooking.priority_status ?? undefined,
+                priority_fee: toNumber(updatedBooking.priority_fee, 0) || undefined,
               }),
             });
           } catch (emailError) {
@@ -1224,60 +1235,51 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       }
     }
 
-    // (Removed: No email to admin/user on assignment status cancelled)
-    // Send email to all workers with assignment status 'completed' (on status change to completed)
-    // Re-fetch all assignments with status accepted or completed (after possible status updates above)
-    const { data: completedAssignments } = await supabaseAdmin
-      .from('booking_assignments')
-      .select('worker_id, status')
-      .eq('booking_id', id)
-      .in('status', ['accepted', 'completed']);
+    // Send completion emails to workers only when booking status is set to completed
+    if (body.status === 'completed') {
+      const { data: completedAssignments } = await supabaseAdmin
+        .from('booking_assignments')
+        .select('worker_id, status')
+        .eq('booking_id', id)
+        .in('status', ['accepted', 'completed']);
 
-    // Only count accepted/completed workers for payout calculation
-    const payoutWorkerCount = (completedAssignments || []).length;
-    const payoutAmount =
-      payoutWorkerCount > 0
-        ? Number(
-            (
-              toNumber(updatedBooking.total_price, 0) / payoutWorkerCount
-            ).toFixed(2),
-          )
-        : 0;
+      const payoutWorkerCount = (completedAssignments || []).length;
+      const payoutAmount =
+        payoutWorkerCount > 0
+          ? Number(
+              (
+                (bookingTotalForPayout - bookingAppFee) / payoutWorkerCount
+              ).toFixed(2),
+            )
+          : 0;
 
-    for (const assignment of completedAssignments || []) {
-      // If not already completed, update to completed (should be handled above, but double-check)
-      if (assignment.status !== 'completed') {
-        await supabaseAdmin
-          .from('booking_assignments')
-          .update({ status: 'completed' })
-          .eq('booking_id', id)
-          .eq('worker_id', assignment.worker_id);
-      }
-      const workerProfile = await getWorkerProfile(assignment.worker_id);
-      if (workerProfile?.email) {
-        try {
-          await sendResendEmail({
-            to: workerProfile.email,
-            subject: `Booking Assignment Completed - ${serviceSubject}`,
-            html: await bookingCompletionTemplate({
-              userEmail: workerProfile.email,
-              userName: workerProfile.full_name || 'Worker',
-              bookingId: id,
-              serviceName: serviceDetailsForEmails.name,
-              serviceCategory: serviceDetailsForEmails.category || 'General',
-              bookingDate,
-              bookingTime,
-              workerName: workerProfile.full_name || 'Worker',
-              workerImage: '',
-              ratingLink: '',
-              payoutAmount,
-            }),
-          });
-        } catch (emailError) {
-          console.error(
-            'Booking assignment completed worker email failed:',
-            emailError,
-          );
+      for (const assignment of completedAssignments || []) {
+        const workerProfile = await getWorkerProfile(assignment.worker_id);
+        if (workerProfile?.email) {
+          try {
+            await sendResendEmail({
+              to: workerProfile.email,
+              subject: `Booking Assignment Completed - ${serviceSubject}`,
+              html: await bookingCompletionTemplate({
+                userEmail: workerProfile.email,
+                userName: workerProfile.full_name || 'Worker',
+                bookingId: id,
+                serviceName: serviceDetailsForEmails.name,
+                serviceCategory: serviceDetailsForEmails.category || 'General',
+                bookingDate,
+                bookingTime,
+                workerName: workerProfile.full_name || 'Worker',
+                workerImage: '',
+                ratingLink: '',
+                payoutAmount,
+              }),
+            });
+          } catch (emailError) {
+            console.error(
+              'Booking assignment completed worker email failed:',
+              emailError,
+            );
+          }
         }
       }
     }

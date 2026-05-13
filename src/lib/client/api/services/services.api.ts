@@ -72,6 +72,7 @@ export interface Service {
   };
   platform_fee: number;
   priority_fee?: number;
+  app_fee?: number;
 }
 
 export interface CreateServiceDTO {
@@ -83,6 +84,7 @@ export interface CreateServiceDTO {
   duration_minutes?: number;
   platform_fee: number;
   priority_fee: number;
+  app_fee: number;
 }
 
 export interface UpdateServiceDTO {
@@ -95,6 +97,7 @@ export interface UpdateServiceDTO {
   is_active?: boolean;
   platform_fee?: number;
   priority_fee?: number;
+  app_fee?: number;
 }
 
 export interface ServiceOption {

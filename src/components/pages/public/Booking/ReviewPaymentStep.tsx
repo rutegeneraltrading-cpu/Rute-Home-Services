@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Button } from '@/components/ui';
+import { Switch } from '@/components/ui';
 import type { Service, ServiceOptionItem } from '@/lib/types/admin/services';
 import type { ServiceRequirement } from '@/lib/types/admin/services/variant';
 import { useCreateBooking } from '@/lib/client/api/bookings/bookings.mutation';
@@ -51,6 +53,7 @@ const ReviewPaymentStep = ({
 }: ReviewPaymentStepProps) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLoginModalDismissed, setIsLoginModalDismissed] = useState(false);
+  const [isInsured, setIsInsured] = useState(false);
 
   const {
     data: user,
@@ -94,6 +97,8 @@ const ReviewPaymentStep = ({
     ? (distanceKm || 0) * (serviceData?.base_price || 0)
     : serviceData?.base_price || 0;
 
+  const appFee = Number(serviceData?.app_fee || 0);
+
   const baseTotal =
     distanceCost +
     selectedOptionsArray.reduce((sum, opt) => sum + opt.price, 0) +
@@ -101,10 +106,8 @@ const ReviewPaymentStep = ({
       (sum, requirement) => sum + requirement.price,
       0,
     );
-  const totalPrice = isPriorityBooking
-    ? baseTotal + (priorityFee || 0)
-    : baseTotal;
-  // Show priority fee in summary if instant booking
+  const totalPrice =
+    baseTotal + (isPriorityBooking ? priorityFee || 0 : 0) + appFee;
 
   const totalDuration =
     (serviceData?.duration_minutes || 0) +
@@ -149,6 +152,8 @@ const ReviewPaymentStep = ({
         notes: additionalDetails.notes?.trim() || undefined,
         priority_status: isPriorityBooking || undefined,
         priority_fee: isPriorityBooking ? priorityFee : undefined,
+        app_fee: appFee > 0 ? appFee : undefined,
+        insurance: isInsured,
       };
 
       const booking = await createBookingMutation.mutateAsync(bookingData);
@@ -255,6 +260,14 @@ const ReviewPaymentStep = ({
                 </span>
                 <span className="text-sm font-semibold text-amber-700">
                   +R{priorityFee}
+                </span>
+              </div>
+            )}
+            {appFee > 0 && (
+              <div className="flex justify-between items-center gap-3 py-2">
+                <span className="text-sm text-slate-600 shrink-0">App Fee</span>
+                <span className="text-sm font-semibold text-slate-900">
+                  +R{appFee.toFixed(2)}
                 </span>
               </div>
             )}
@@ -417,6 +430,36 @@ const ReviewPaymentStep = ({
           </p>
         </div>
       </div>
+      {/* Insurance toggle */}
+      <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-slate-900">
+              Add Insurance Protection
+            </p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Protect your booking against unexpected damages.
+            </p>
+          </div>
+          <Switch
+            checked={isInsured}
+            onCheckedChange={setIsInsured}
+            aria-label="Add insurance"
+          />
+        </div>
+        <p className="text-xs text-slate-400 mt-2">
+          By enabling insurance you agree to our{' '}
+          <Link
+            href="/terms-and-conditions"
+            target="_blank"
+            className="underline text-slate-600 hover:text-slate-900"
+          >
+            Terms &amp; Conditions
+          </Link>
+          .
+        </p>
+      </div>
+
       {isMovingRemovals && !distanceKm && (
         <div className="mt-4 p-3 bg-amber-50 rounded-lg border border-amber-200">
           <p className="text-sm text-amber-800">

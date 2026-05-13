@@ -62,6 +62,7 @@ export const updateBookingApi = async (
   const { booking } = await httpClient.patch<{ booking: Booking }>(
     `/api/bookings/${bookingId}`,
     data,
+    { timeout: 60000 },
   );
   return booking;
 };

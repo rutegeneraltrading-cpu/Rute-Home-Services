@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Loader2 } from 'lucide-react';
 import { useForm, Controller } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -49,6 +50,7 @@ export function BookingEditModal({
 }) {
   // Use real mutation for backend update
   const updateBookingMutation = useUpdateBooking(booking?.id || '');
+  const [savingSection, setSavingSection] = useState<'status' | 'assignments' | null>(null);
   // Fetch available workers for this booking
   const { data: workerData, isLoading: isWorkersLoading } = useQuery({
     queryKey: ['booking-available-workers', booking?.id],
@@ -86,6 +88,7 @@ export function BookingEditModal({
       setAssignments(assigned as BookingAssignment[]);
       setLastSavedAssignments(assigned as BookingAssignment[]);
       setSelectedWorkerIds([]);
+      setSavingSection(null);
       reset({
         status: booking.status,
         payment_status: booking.payment_status,
@@ -102,11 +105,14 @@ export function BookingEditModal({
       status: data.status,
       payment_status: data.payment_status,
     };
+    setSavingSection('status');
     updateBookingMutation.mutate(payload, {
       onSuccess: () => {
+        setSavingSection(null);
         onSuccess?.();
         onOpenChange(false);
       },
+      onError: () => setSavingSection(null),
     });
   };
 
@@ -218,9 +224,12 @@ export function BookingEditModal({
               <Button
                 type="button"
                 onClick={() => handleSubmit(onSaveStatus)()}
-                disabled={updateBookingMutation.isPending}
+                disabled={savingSection !== null}
               >
-                Save Status
+                {savingSection === 'status' && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                {savingSection === 'status' ? 'Saving...' : 'Save Status'}
               </Button>
             </div>
           </div>
@@ -306,21 +315,27 @@ export function BookingEditModal({
                       status: a.status,
                     })),
                   };
+                  setSavingSection('assignments');
                   updateBookingMutation.mutate(payload, {
                     onSuccess: () => {
+                      setSavingSection(null);
                       setLastSavedAssignments(
                         newAssignments as BookingAssignment[],
                       );
                       onSuccess?.();
                       onOpenChange(false);
                     },
+                    onError: () => setSavingSection(null),
                   });
                 }}
-                disabled={
-                  updateBookingMutation.isPending || !canSaveAssignments
-                }
+                disabled={savingSection !== null || !canSaveAssignments}
               >
-                Save Worker Assignments
+                {savingSection === 'assignments' && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                {savingSection === 'assignments'
+                  ? 'Saving...'
+                  : 'Save Worker Assignments'}
               </Button>
             </div>
           </div>

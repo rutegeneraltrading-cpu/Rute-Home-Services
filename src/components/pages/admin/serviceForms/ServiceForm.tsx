@@ -41,6 +41,7 @@ export function ServiceForm({ onServiceCreated }: ServiceFormProps) {
       duration_minutes: '60',
       platform_fee: 0,
       priority_fee: 0,
+      app_fee: 0,
     },
   });
 
@@ -53,7 +54,8 @@ export function ServiceForm({ onServiceCreated }: ServiceFormProps) {
       category_id: data.category_id,
       duration_minutes: parseInt(data.duration_minutes || '60'),
       platform_fee: data.platform_fee,
-      priority_fee: data.platform_fee,
+      priority_fee: data.priority_fee,
+      app_fee: data.app_fee,
     };
 
     createMutation.mutate(payload, {
@@ -235,9 +237,26 @@ export function ServiceForm({ onServiceCreated }: ServiceFormProps) {
               {errors.priority_fee.message}
             </p>
           )}
+        </div>
+
+        <div>
+          <Label htmlFor="app_fee">App Fee (ZAR)</Label>
+          <Input
+            id="app_fee"
+            type="number"
+            step="0.01"
+            min="0"
+            placeholder="0.00"
+            {...register('app_fee', { valueAsNumber: true })}
+            className="mt-2"
+          />
+          {errors.app_fee && (
+            <p className="text-sm text-red-500 mt-1">
+              {errors.app_fee.message}
+            </p>
+          )}
           <p className="text-xs text-muted-foreground mt-1">
-            Determines the order in which this category appears (lower comes
-            first)
+            Fixed app fee charged per booking for this service.
           </p>
         </div>
 

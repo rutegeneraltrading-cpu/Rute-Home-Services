@@ -102,10 +102,10 @@ export interface BookingServiceDetail {
   base_price?: number;
   options?: ServiceOptionDetail[];
   requirements?: ServiceRequirementDetail[];
-  // Backward-compatible alias
   variants?: ServiceVariantDetail[];
   platform_fee?: number;
   priority_fee?: number;
+  app_fee?: number;
 }
 
 export interface BookingCreatedEmailData {
@@ -122,6 +122,7 @@ export interface BookingCreatedEmailData {
   detailsUrl?: string;
   dashboardUrl?: string;
   priority_status?: boolean;
+  app_fee?: number;
 }
 
 export interface BookingPaymentSuccessEmailData {
@@ -139,6 +140,7 @@ export interface BookingPaymentSuccessEmailData {
   detailsUrl?: string;
   dashboardUrl?: string;
   priority_status?: boolean;
+  app_fee?: number;
 }
 
 export interface WorkerProfileDetail {

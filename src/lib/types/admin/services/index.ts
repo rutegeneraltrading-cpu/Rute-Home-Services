@@ -25,6 +25,7 @@ export interface ServiceItem {
   is_active: boolean;
   platform_fee?: number;
   priority_fee?: number;
+  app_fee?: number;
 }
 
 export interface ServiceEditModalProps {
@@ -47,6 +48,7 @@ export type ServiceFormValues = {
   duration_minutes: string;
   platform_fee: number;
   priority_fee: number;
+  app_fee: number;
 };
 
 export interface ServiceOptionItem {
@@ -106,7 +108,8 @@ export interface Service {
   is_active: boolean;
   created_at: string;
   updated_at: string;
-  priority_fee?: number; // Priority (instant booking) fee
+  priority_fee?: number;
+  app_fee?: number;
   category?: {
     id: string;
     name: string;
@@ -123,6 +126,9 @@ export interface CreateServiceDTO {
   base_price: number;
   category_id: string;
   duration_minutes?: number;
+  platform_fee?: number;
+  priority_fee?: number;
+  app_fee?: number;
 }
 
 export interface ServiceOption {

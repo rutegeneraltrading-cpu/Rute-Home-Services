@@ -287,6 +287,9 @@ export async function POST(request: NextRequest) {
       selected_variants = [],
       notes,
       priority_status,
+      priority_fee,
+      app_fee,
+      insurance,
     } = body;
 
     // Validate required fields
@@ -338,6 +341,9 @@ export async function POST(request: NextRequest) {
           status: 'pending',
           payment_status: 'pending',
           priority_status,
+          priority_fee: priority_fee || null,
+          app_fee: app_fee || null,
+          insurance: insurance ?? false,
         },
       ])
       .select()

@@ -12,9 +12,11 @@ interface BookingAssignedToWorkerEmailData {
   bookingTime: string;
   customerName: string;
   totalAmount?: number;
+  full_booking_total?: number;
   serviceFeePercent?: number;
   priority_status?: boolean;
   priority_fee?: number;
+  app_fee?: number;
 }
 
 function formatRequirementType(type?: string): string {
@@ -36,7 +38,12 @@ function formatRequirementType(type?: string): string {
 export function bookingAssignedToWorkerTemplate(
   data: BookingAssignedToWorkerEmailData,
 ) {
+  // totalAmount = per-worker earnings base (app_fee already excluded in route)
   const totalAmount = Number(data.totalAmount || 0);
+  const appFee = Number(data.app_fee || 0);
+  const workerBase = totalAmount;
+  // full_booking_total = actual amount paid by customer (before dividing by worker count)
+  const fullBookingTotal = Number(data.full_booking_total ?? totalAmount + appFee);
   const isMovingBooking =
     !!data.address &&
     data.address.includes('to=') &&
@@ -57,41 +64,25 @@ export function bookingAssignedToWorkerTemplate(
     : 0;
   const inferredDistanceCost = Math.max(
     0,
-    totalAmount - requirementsTotal - optionsPriceTotal - priorityFee,
+    workerBase - requirementsTotal - optionsPriceTotal - priorityFee,
   );
   const inferredDistanceKm =
     ratePerKm > 0 ? Number((inferredDistanceCost / ratePerKm).toFixed(1)) : 0;
   const damageDeductionPercent = 40;
   const maxDamageDeductionAmount = Number(
-    ((totalAmount * damageDeductionPercent) / 100).toFixed(2),
+    ((workerBase * damageDeductionPercent) / 100).toFixed(2),
   );
 
-  // Calculate platform_fee for service
-  const servicePlatformFeePercent = Math.max(
+  // Single platform fee applied on workerBase (excludes app_fee)
+  const platformFeePercent = Math.max(
     0,
     Math.min(100, Number(data.service?.platform_fee || 0)),
   );
-  const servicePlatformFeeAmount = Number(
-    ((totalAmount * servicePlatformFeePercent) / 100).toFixed(2),
-  );
-
-  // Calculate platform_fee for options
-  const options = Array.isArray(data.service.options)
-    ? data.service.options
-    : [];
-  const optionsPlatformFeePercent = options.reduce(
-    (sum, opt) => sum + Number(opt.platform_fee || 0),
-    0,
-  );
-  const optionsPlatformFeeAmount = Number(
-    ((totalAmount * optionsPlatformFeePercent) / 100).toFixed(2),
-  );
-
   const totalPlatformFeeAmount = Number(
-    (servicePlatformFeeAmount + optionsPlatformFeeAmount).toFixed(2),
+    ((workerBase * platformFeePercent) / 100).toFixed(2),
   );
   const workerPayoutAmount = Number(
-    (totalAmount - totalPlatformFeeAmount).toFixed(2),
+    (workerBase - totalPlatformFeeAmount).toFixed(2),
   );
 
   let serviceDetailsHtml = `
@@ -153,12 +144,14 @@ export function bookingAssignedToWorkerTemplate(
     if (data.priority_status && data.service?.priority_fee) {
       serviceDetailsHtml += `<p style=\"margin:0 0 4px;font-size:13px;color:#374151;\">Priority Fee: R${Number(data.service.priority_fee).toFixed(2)}</p>`;
     }
-    serviceDetailsHtml += `<p style=\"margin:0 0 4px;font-size:13px;color:#374151;\">Total Booking: R${totalAmount.toFixed(2)}${data.priority_status && data.service?.priority_fee ? ' (includes Priority Fee)' : ''}</p>`;
+    serviceDetailsHtml += `<p style=\"margin:0 0 4px;font-size:13px;color:#374151;\">Total Booking (paid by customer): R${fullBookingTotal.toFixed(2)}</p>`;
+    if (appFee > 0) {
+      serviceDetailsHtml += `<p style=\"margin:0 0 4px;font-size:13px;color:#374151;\">App Fee (platform): R${appFee.toFixed(2)}</p>`;
+      serviceDetailsHtml += `<p style=\"margin:0 0 4px;font-size:13px;color:#374151;\">Your Earnings Base: R${workerBase.toFixed(2)}</p>`;
+    }
     serviceDetailsHtml += `<p style=\"margin:0 0 4px;font-size:13px;color:#374151;\">Damage Deduction: Only if damage occurs</p>`;
     serviceDetailsHtml += `<p style=\"margin:0 0 4px;font-size:13px;color:#374151;\">Max Deduction: R${maxDamageDeductionAmount.toFixed(2)} (${damageDeductionPercent}%)</p>`;
-    serviceDetailsHtml += `<p style=\"margin:0 0 4px;font-size:13px;color:#374151;\">Service Platform Fee (${servicePlatformFeePercent.toFixed(2)}%): R${servicePlatformFeeAmount.toFixed(2)}</p>`;
-    serviceDetailsHtml += `<p style=\"margin:0 0 4px;font-size:13px;color:#374151;\">Options Platform Fee (${optionsPlatformFeePercent.toFixed(2)}%): R${optionsPlatformFeeAmount.toFixed(2)}</p>`;
-    serviceDetailsHtml += `<p style=\"margin:0 0 4px;font-size:13px;color:#374151;font-weight:700;\">Total Platform Fee: R${totalPlatformFeeAmount.toFixed(2)}</p>`;
+    serviceDetailsHtml += `<p style=\"margin:0 0 4px;font-size:13px;color:#374151;\">Platform Fee (${platformFeePercent.toFixed(2)}%): R${totalPlatformFeeAmount.toFixed(2)}</p>`;
     serviceDetailsHtml += `<p style=\"margin:0 0 4px;font-size:14px;font-weight:700;color:#111827;\">Expected Payout: R${workerPayoutAmount.toFixed(2)}</p>`;
   }
 
