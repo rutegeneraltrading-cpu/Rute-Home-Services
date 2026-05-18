@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { Menu, X, ShoppingCart, Briefcase } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -25,14 +25,13 @@ const navItems = [
   { label: 'Services', href: '/services' },
   { label: 'Shop', href: '/shop' },
   { label: 'How it works', href: '/how-it-works' },
+  { label: 'About', href: '/about' },
   { label: 'Blogs', href: '/blogs' },
   { label: 'Contact', href: '/contact-us' },
 ];
 
 const PublicNavbar = () => {
   const [open, setOpen] = useState(false);
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const router = useRouter();
   const { data: user } = useGetMe();
   const signOutMutation = useSignOut();
@@ -53,23 +52,6 @@ const PublicNavbar = () => {
     } catch (error) {
       console.error('Sign out error:', error);
     }
-  };
-
-  const handleUserMenuEnter = () => {
-    if (closeTimeoutRef.current) {
-      clearTimeout(closeTimeoutRef.current);
-      closeTimeoutRef.current = null;
-    }
-    setUserMenuOpen(true);
-  };
-
-  const handleUserMenuLeave = () => {
-    if (closeTimeoutRef.current) {
-      clearTimeout(closeTimeoutRef.current);
-    }
-    closeTimeoutRef.current = setTimeout(() => {
-      setUserMenuOpen(false);
-    }, 120);
   };
 
   return (
@@ -134,13 +116,11 @@ const PublicNavbar = () => {
               </Button>
             </>
           ) : (
-            <DropdownMenu open={userMenuOpen} modal={false}>
+            <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
                   className="flex items-center gap-2 rounded-md px-2 py-1 text-sm cursor-pointer border-none outline-none focus-visible:ring-0"
-                  onPointerEnter={handleUserMenuEnter}
-                  onPointerLeave={handleUserMenuLeave}
                 >
                   {user.avatar_url ? (
                     <Avatar className="h-8 w-8">
@@ -164,8 +144,6 @@ const PublicNavbar = () => {
                 className="w-48"
                 align="end"
                 sideOffset={0}
-                onPointerEnter={handleUserMenuEnter}
-                onPointerLeave={handleUserMenuLeave}
               >
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex min-w-0 flex-col">

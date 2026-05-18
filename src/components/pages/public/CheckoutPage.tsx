@@ -44,6 +44,7 @@ const CheckoutPage = () => {
   const orderPayFastPaymentMutation = useOrderPayFastPayment();
 
   const [isProcessing, setIsProcessing] = useState(false);
+  const [wasAuthenticated, setWasAuthenticated] = useState(false);
 
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(
     null,
@@ -575,9 +576,10 @@ const CheckoutPage = () => {
         open={showLoginModal}
         isAuthenticated={!!user}
         onOpenChange={(open) => {
-          if (!open && !user) router.push('/cart');
+          if (!open && !user && !wasAuthenticated) router.push('/cart');
         }}
         onAuthenticated={() => {
+          setWasAuthenticated(true);
           refetchAddresses();
         }}
         title="Login Required"

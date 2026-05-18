@@ -1,3 +1,4 @@
+import AboutPage from './AboutPage';
 import ShopPage from './ShopPage';
 import HomePage from './HomePage';
 import CartPage from './CartPage';
@@ -14,6 +15,7 @@ import SingleProductsPage from './SingleProductPage';
 import TermsAndConditionPage from './TermsAndConditionPage';
 
 export {
+  AboutPage,
   ShopPage,
   HomePage,
   BlogsPage,

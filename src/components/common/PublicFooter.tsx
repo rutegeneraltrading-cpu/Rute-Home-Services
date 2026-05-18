@@ -13,7 +13,7 @@ const PublicFooter = () => {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="border-t border-gray-200 bg-black text-white px-4">
+    <footer className="bg-black text-white px-4">
       <div className="container mx-auto py-14 lg:h-80">
         <div className="sm:grid grid-cols-1 gap-8 md:grid-cols-12 md:h-full flex flex-col">
           <div className="flex flex-col justify-between md:h-full xl:col-span-4 lg:col-span-3 col-span-12">
@@ -73,6 +73,11 @@ const PublicFooter = () => {
                 </Link>
               </li>
               <li>
+                <Link className="hover:text-green-600" href="/about">
+                  About us
+                </Link>
+              </li>
+              <li>
                 <Link className="hover:text-green-600" href="/blogs">
                   Blogs
                 </Link>
@@ -103,7 +108,10 @@ const PublicFooter = () => {
             <h4 className="text-sm font-semibold text-white">Legal</h4>
             <ul className="mt-4 space-y-2 text-sm text-gray-300">
               <li>
-                <Link className="hover:text-green-600" href="/terms-and-conditions">
+                <Link
+                  className="hover:text-green-600"
+                  href="/terms-and-conditions"
+                >
                   Terms & conditions
                 </Link>
               </li>

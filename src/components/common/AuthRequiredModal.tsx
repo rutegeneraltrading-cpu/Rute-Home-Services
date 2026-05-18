@@ -36,14 +36,20 @@ const AuthRequiredModal = ({
     onOpenChange?.(nextOpen);
   };
 
+  const handleAuthSuccess = () => {
+    onAuthenticated?.();
+    onOpenChange?.(false);
+    router.refresh();
+  };
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
-        <DialogHeader>
+      <DialogContent className="flex flex-col max-h-[90dvh] sm:max-h-[85dvh]">
+        <DialogHeader className="shrink-0">
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        <div className="pt-4">
+        <div className="pt-4 overflow-y-auto flex-1 min-h-0">
           <div className="grid grid-cols-2 gap-2 mb-4">
             <Button
               type="button"
@@ -65,21 +71,13 @@ const AuthRequiredModal = ({
             <LoginPage
               className="mt-0 shadow-none border-0 p-0"
               hideFooterLinks
-              onSuccess={() => {
-                onOpenChange?.(false);
-                router.refresh();
-                onAuthenticated?.();
-              }}
+              onSuccess={handleAuthSuccess}
             />
           ) : (
             <SignupPage
               className="mt-0 shadow-none border-0 p-0"
               hideFooterLinks
-              onSuccess={() => {
-                onOpenChange?.(false);
-                router.refresh();
-                onAuthenticated?.();
-              }}
+              onSuccess={handleAuthSuccess}
             />
           )}
         </div>

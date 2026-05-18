@@ -2,7 +2,7 @@
 import { useState, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Search, ChevronDown } from 'lucide-react';
+import { Search, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button, Input } from '../ui';
 import {
   useGetCategories,
@@ -17,6 +17,13 @@ const HeroSection = () => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
   const filterDropdownRef = useRef<HTMLDivElement>(null);
+  const categoriesScrollRef = useRef<HTMLDivElement>(null);
+
+  const scrollCategories = (direction: 'left' | 'right') => {
+    const el = categoriesScrollRef.current;
+    if (!el) return;
+    el.scrollBy({ left: direction === 'left' ? -240 : 240, behavior: 'smooth' });
+  };
 
   const {
     data: categoriesData = { categories: [] },
@@ -197,30 +204,52 @@ const HeroSection = () => {
       </section>
       <div className="container mx-auto flex flex-col gap-4 pb-4 lg:px-0 px-4">
         {/* Categories Row */}
-        <div className="w-full overflow-x-auto border-b border-slate-200">
-          <div className="flex items-center text-center gap-4 pb-2">
-            {categories.map((cat: Category) => (
-              <div
-                key={cat.id}
-                className="flex flex-col items-center min-w-30 cursor-pointer px-2 py-4 rounded-lg transition-all border-2 border-transparent hover:border-green-500"
-                onClick={() => {
-                  const categorySlug = cat.slug || cat.id;
-                  router.push(`/booking?category=${encodeURIComponent(categorySlug)}`);
-                }}
-              >
-                {cat.image_url && typeof cat.image_url === 'string' && (
-                  <Image
-                    src={cat.image_url}
-                    alt={cat.name}
-                    width={60}
-                    height={60}
-                    className="rounded-full mb-2 object-cover"
-                  />
-                )}
-                <span className={`text-sm font-medium `}>{cat.name}</span>
-              </div>
-            ))}
+        <div className="relative w-full border-b border-slate-200">
+          <button
+            type="button"
+            onClick={() => scrollCategories('left')}
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-8 h-8 rounded-full bg-white border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors cursor-pointer"
+            aria-label="Scroll left"
+          >
+            <ChevronLeft className="w-4 h-4 text-slate-600" />
+          </button>
+          <div
+            ref={categoriesScrollRef}
+            className="w-full overflow-x-auto scrollbar-hide px-10"
+            style={{ scrollbarWidth: 'none' }}
+          >
+            <div className="flex items-center text-center gap-4 pb-2">
+              {categories.map((cat: Category) => (
+                <div
+                  key={cat.id}
+                  className="flex flex-col items-center min-w-30 cursor-pointer px-2 py-4 rounded-lg transition-all border-2 border-transparent hover:border-green-500"
+                  onClick={() => {
+                    const categorySlug = cat.slug || cat.id;
+                    router.push(`/booking?category=${encodeURIComponent(categorySlug)}`);
+                  }}
+                >
+                  {cat.image_url && typeof cat.image_url === 'string' && (
+                    <Image
+                      src={cat.image_url}
+                      alt={cat.name}
+                      width={60}
+                      height={60}
+                      className="rounded-full mb-2 object-cover"
+                    />
+                  )}
+                  <span className="text-sm font-medium">{cat.name}</span>
+                </div>
+              ))}
+            </div>
           </div>
+          <button
+            type="button"
+            onClick={() => scrollCategories('right')}
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-8 h-8 rounded-full bg-white border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors cursor-pointer"
+            aria-label="Scroll right"
+          >
+            <ChevronRight className="w-4 h-4 text-slate-600" />
+          </button>
         </div>
       </div>
     </>

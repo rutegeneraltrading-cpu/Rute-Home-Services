@@ -70,6 +70,27 @@ export const HOME_METADATA: Metadata = buildMetadata({
 });
 
 // ───────────────────────────────────────────────────────────────────
+// About Page  /about
+// ───────────────────────────────────────────────────────────────────
+export const ABOUT_METADATA: Metadata = buildMetadata({
+  title: 'About Us',
+  description:
+    'Learn about Rute — the South African platform connecting homeowners with vetted professionals for electrical, plumbing, painting, cleaning, and more services in Johannesburg and Pretoria.',
+  keywords: [
+    'about Rute',
+    'Rute South Africa',
+    'home services platform South Africa',
+    'vetted professionals Johannesburg',
+    'home services Pretoria',
+    'trusted home services',
+    'Rute mission',
+  ],
+  path: '/about',
+  image: PAGE_IMAGES.home,
+  type: 'website',
+});
+
+// ───────────────────────────────────────────────────────────────────
 // Services Page  /services
 // OG: public/services.jpg
 // ───────────────────────────────────────────────────────────────────
