@@ -140,11 +140,7 @@ const PublicNavbar = () => {
                   </span>
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent
-                className="w-48"
-                align="end"
-                sideOffset={0}
-              >
+              <DropdownMenuContent className="w-48" align="end" sideOffset={0}>
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex min-w-0 flex-col">
                     <span className="truncate text-sm font-medium">
@@ -259,7 +255,7 @@ const PublicNavbar = () => {
                     title="Become a Worker"
                   >
                     <Link
-                      href="/worker/register"
+                      href="/register/worker"
                       onClick={() => setOpen(false)}
                     >
                       <Briefcase className="h-4 w-4 mr-1" /> Become a Worker

@@ -139,3 +139,30 @@
 .animate-bounce-dot {
   animation: bounce-dot 1.4s infinite ease-in-out both;
 }
+
+/* Chat Widget */
+.glowing-circle {
+  background-color: #00bcd4;
+  box-shadow: 0 0 20px #00bcd4, 0 0 30px #00bcd4, 0 0 40px #00bcd4;
+  animation: glow-pulse 2s infinite;
+}
+
+@keyframes glow-pulse {
+  0% {
+    box-shadow: 0 0 20px #00bcd4, 0 0 30px #00bcd4, 0 0 40px #00bcd4;
+  }
+  50% {
+    box-shadow: 0 0 25px #00bcd4, 0 0 35px #00bcd4, 0 0 45px #00bcd4;
+  }
+  100% {
+    box-shadow: 0 0 20px #00bcd4, 0 0 30px #00bcd4, 0 0 40px #00bcd4;
+  }
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

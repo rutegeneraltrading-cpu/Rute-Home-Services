@@ -3,6 +3,7 @@ import { GoogleAnalytics } from '@/components/common/GoogleAnalytics';
 import { QueryProvider } from '@/lib/client/providers';
 import { Toaster } from '@/components/ui';
 import { ROOT_METADATA, STRUCTURED_DATA } from '@/lib/seo';
+import ChatWidget from '@/components/common/ChatWidget';
 import 'react-phone-input-2/lib/style.css';
 import './globals.css';
 
@@ -26,7 +27,10 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <QueryProvider>{children}</QueryProvider>
+        <QueryProvider>
+          {children}
+          <ChatWidget />
+        </QueryProvider>
         <Toaster />
         <GoogleAnalytics gaId={measurementId} />
       </body>
