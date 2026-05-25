@@ -159,7 +159,7 @@ const ChatWidget = () => {
           exit={{ opacity: 0, scale: 0 }}
           whileHover={{ scale: 1.1 }}
           transition={{ duration: 0.2, ease: 'easeOut' }}
-          className="fixed bottom-4 right-4 bg-cyan-400 text-white rounded-full shadow-2xl flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 border-2 border-white/20 z-50"
+          className="fixed bottom-4 right-4 bg-cyan-400 text-white rounded-full shadow-2xl flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 border-2 border-white/20 z-50 cursor-pointer"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
