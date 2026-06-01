@@ -17,6 +17,7 @@ import { ChatHistory } from './parts/ChatHistory';
 const ChatWidget = () => {
   const [isWidgetOpen, setIsWidgetOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
+  const [showTeaser, setShowTeaser] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -70,7 +71,7 @@ const ChatWidget = () => {
     }
     const timer = setTimeout(() => {
       setIsVisible(true);
-      setIsWidgetOpen(true);
+      setShowTeaser(true);
       sessionStorage.setItem('chatAutoOpened', 'true');
     }, 2000);
     return () => clearTimeout(timer);
@@ -150,16 +151,50 @@ const ChatWidget = () => {
 
   return (
     <div ref={widgetRef}>
+      {/* Teaser bubble */}
+      <AnimatePresence>
+        {showTeaser && !isWidgetOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="fixed md:bottom-19 md:right-14 right-14 bottom-17 z-50 bg-white rounded-2xl shadow-xl border border-gray-200 px-4 py-3 w-64 cursor-pointer"
+            onClick={() => { setShowTeaser(false); setIsWidgetOpen(true); }}
+          >
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowTeaser(false); }}
+              className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 cursor-pointer p-0.5"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 6 6 18" /><path d="m6 6 12 12" />
+              </svg>
+            </button>
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-full bg-green-600 flex items-center justify-center shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-gray-900">RuteBot</p>
+                <p className="text-xs text-gray-600 mt-0.5 leading-relaxed">Hi! Need help? Ask me anything about our services or bookings.</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Floating Button */}
       {!isWidgetOpen && (
         <motion.button
-          onClick={() => setIsWidgetOpen(true)}
+          onClick={() => { setShowTeaser(false); setIsWidgetOpen(true); }}
           initial={{ opacity: 0, scale: 0 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0 }}
           whileHover={{ scale: 1.1 }}
           transition={{ duration: 0.2, ease: 'easeOut' }}
-          className="fixed bottom-4 right-4 bg-cyan-400 text-white rounded-full shadow-2xl flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 border-2 border-white/20 z-50 cursor-pointer"
+          className="fixed bottom-4 right-4 bg-green-600 text-white rounded-full shadow-2xl flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 border-2 border-white/20 z-50 cursor-pointer"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -188,7 +223,7 @@ const ChatWidget = () => {
             className="fixed bottom-4 right-4 z-50"
           >
             <div
-              className="relative bg-[#1a1a1a] rounded-2xl shadow-2xl border border-gray-700 overflow-hidden"
+              className="relative bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden"
               style={{
                 width: 'min(400px, calc(100vw - 32px))',
                 height: '600px',
@@ -197,8 +232,8 @@ const ChatWidget = () => {
               {/* Brand label — only in chat view */}
               {!showHistory && (
                 <div className="absolute top-3.5 left-4 z-10 flex items-center gap-1.5 pointer-events-none">
-                  <span className="w-2 h-2 rounded-full bg-cyan-400 block" />
-                  <span className="text-sm font-semibold text-white tracking-wide">RuteBot</span>
+                  <span className="w-2 h-2 rounded-full bg-green-600 block" />
+                  <span className="text-sm font-semibold text-gray-900 tracking-wide">RuteBot</span>
                 </div>
               )}
 
@@ -208,7 +243,7 @@ const ChatWidget = () => {
                   <button
                     onClick={handleNewChat}
                     title="New chat"
-                    className="cursor-pointer text-gray-400 hover:text-white transition-colors duration-200 bg-black/20 rounded-full p-1"
+                    className="cursor-pointer text-gray-500 hover:text-gray-900 transition-colors duration-200 bg-gray-100 rounded-full p-1"
                   >
                     <Plus className="w-4.5 h-4.5" />
                   </button>
@@ -216,7 +251,7 @@ const ChatWidget = () => {
                 <button
                   onClick={() => setShowHistory((v) => !v)}
                   title="Chat history"
-                  className="cursor-pointer text-gray-400 hover:text-white transition-colors duration-200 bg-black/20 rounded-full p-1"
+                  className="cursor-pointer text-gray-500 hover:text-gray-900 transition-colors duration-200 bg-gray-100 rounded-full p-1"
                 >
                   <History className="w-4.5 h-4.5" />
                 </button>
@@ -224,14 +259,14 @@ const ChatWidget = () => {
                   <button
                     onClick={handleClearHistory}
                     title="Clear all history"
-                    className="cursor-pointer text-gray-400 hover:text-red-400 transition-colors duration-200 bg-black/20 rounded-full p-1"
+                    className="cursor-pointer text-gray-500 hover:text-red-500 transition-colors duration-200 bg-gray-100 rounded-full p-1"
                   >
                     <Trash2 className="w-4.5 h-4.5" />
                   </button>
                 )}
                 <button
                   onClick={() => setIsWidgetOpen(false)}
-                  className="cursor-pointer text-gray-400 hover:text-white transition-colors duration-200 bg-black/20 rounded-full p-1"
+                  className="cursor-pointer text-gray-500 hover:text-gray-900 transition-colors duration-200 bg-gray-100 rounded-full p-1"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -268,7 +303,7 @@ const ChatWidget = () => {
                     initial="hidden"
                     animate="visible"
                     transition={{ duration: 0.2, ease: 'easeOut' }}
-                    className="bg-[#1a1a1a] text-white flex flex-col w-full h-full"
+                    className="bg-white text-gray-900 flex flex-col w-full h-full"
                   >
                     <div className="mb-12" />
 

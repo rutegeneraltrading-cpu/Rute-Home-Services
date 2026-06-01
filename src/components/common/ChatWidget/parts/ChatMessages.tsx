@@ -36,12 +36,12 @@ export const ChatMessages = ({
             <div
               className={`max-w-[80%] p-3 rounded-lg text-sm ${
                 message.role === 'user'
-                  ? 'bg-linear-to-r from-cyan-200 from-10% to-cyan-100 text-black'
-                  : 'bg-gray-800 text-white'
+                  ? 'bg-green-600 text-white'
+                  : 'bg-gray-100 text-gray-900'
               }`}
             >
               {message.role === 'user' ? (
-                <p className="whitespace-pre-wrap break-words">
+                <p className="whitespace-pre-wrap wrap-break-word">
                   {message.content}
                 </p>
               ) : (
@@ -79,7 +79,7 @@ export const ChatMessages = ({
                           href={href}
                           target={isExternal ? '_blank' : '_self'}
                           rel={isExternal ? 'noopener noreferrer' : undefined}
-                          className="text-cyan-400 hover:text-cyan-300 underline cursor-pointer"
+                          className="text-green-600 hover:text-green-700 underline cursor-pointer"
                         >
                           {children}
                         </a>
@@ -92,18 +92,18 @@ export const ChatMessages = ({
                       <em className="italic">{children}</em>
                     ),
                     code: ({ children }) => (
-                      <code className="bg-black/30 rounded px-1 py-0.5 text-xs font-mono">
+                      <code className="bg-gray-200 text-gray-800 rounded px-1 py-0.5 text-xs font-mono">
                         {children}
                       </code>
                     ),
                     blockquote: ({ children }) => (
-                      <blockquote className="border-l-2 border-cyan-400 pl-3 italic text-gray-300 my-1.5">
+                      <blockquote className="border-l-2 border-green-600 pl-3 italic text-gray-500 my-1.5">
                         {children}
                       </blockquote>
                     ),
                     hr: () => <hr className="border-gray-600 my-2" />,
                     table: ({ children }) => (
-                      <div className="overflow-x-auto my-2 rounded-lg border border-gray-600">
+                      <div className="overflow-x-auto my-2 rounded-lg border border-gray-200">
                         <table
                           className="w-full text-xs border-collapse"
                           onClick={(e) => {
@@ -120,23 +120,23 @@ export const ChatMessages = ({
                       </div>
                     ),
                     thead: ({ children }) => (
-                      <thead className="bg-gray-700/60">{children}</thead>
+                      <thead className="bg-gray-100">{children}</thead>
                     ),
                     tbody: ({ children }) => (
-                      <tbody className="divide-y divide-gray-700">{children}</tbody>
+                      <tbody className="divide-y divide-gray-200">{children}</tbody>
                     ),
                     tr: ({ children }) => (
-                      <tr className="transition-colors in-[tbody]:hover:bg-cyan-400/10 in-[tbody]:cursor-pointer">
+                      <tr className="transition-colors in-[tbody]:hover:bg-green-50 in-[tbody]:cursor-pointer">
                         {children}
                       </tr>
                     ),
                     th: ({ children }) => (
-                      <th className="px-2.5 py-2 text-left font-semibold text-gray-300 whitespace-nowrap border-b border-gray-600">
+                      <th className="px-2.5 py-2 text-left font-semibold text-gray-600 whitespace-nowrap border-b border-gray-200">
                         {children}
                       </th>
                     ),
                     td: ({ children }) => (
-                      <td className="px-2.5 py-2 text-gray-200 whitespace-nowrap">{children}</td>
+                      <td className="px-2.5 py-2 text-gray-800 whitespace-nowrap">{children}</td>
                     ),
                   }}
                 >
@@ -153,7 +153,7 @@ export const ChatMessages = ({
             animate={{ opacity: 1 }}
             className="flex justify-start"
           >
-            <div className="bg-gray-800 text-white max-w-[80%] p-3 rounded-lg text-sm">
+            <div className="bg-gray-100 text-gray-500 max-w-[80%] p-3 rounded-lg text-sm">
               <div className="flex items-center space-x-2">
                 <div className="flex space-x-1">
                   <div
@@ -169,7 +169,7 @@ export const ChatMessages = ({
                     style={{ animationDelay: '300ms' }}
                   />
                 </div>
-                <span className="text-gray-400">AI is thinking...</span>
+                <span className="text-gray-500">AI is thinking...</span>
               </div>
             </div>
           </motion.div>
@@ -181,7 +181,7 @@ export const ChatMessages = ({
             animate={{ opacity: 1 }}
             className="flex justify-center"
           >
-            <div className="bg-red-900/20 border border-red-500 text-red-400 p-2 rounded text-xs">
+            <div className="bg-red-50 border border-red-300 text-red-600 p-2 rounded text-xs">
               Error: {error.message}
             </div>
           </motion.div>
