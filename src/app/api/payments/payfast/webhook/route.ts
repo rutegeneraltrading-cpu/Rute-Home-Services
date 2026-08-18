@@ -288,7 +288,7 @@ export async function POST(request: NextRequest) {
             if (workerPhone) {
               await sendWhatsAppMessage({
                 to: workerPhone,
-                body: `Additional work payment received!\n\nBooking: ${bookingId.slice(0, 8)}\nService: ${serviceName}\nDescription: ${description}\nAmount: R${fee.toFixed(2)}\n\nThe customer has paid for additional work. Please proceed accordingly.`,
+                body: `Additional work payment received!\n\nBooking: ${bookingId.slice(0, 8)}\nService: ${serviceName}\nDescription: ${description}\nAmount: R${fee.toFixed(2)}\n\nThe customer has paid for additional work. Please proceed accordingly.\n\nReply STOP to opt out.`,
               });
             }
           } catch (e) {

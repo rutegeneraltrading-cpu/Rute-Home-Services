@@ -109,6 +109,8 @@ const buildWorkerAssignmentWhatsAppMessage = (params: {
     `Location: ${locationText}`,
     '',
     `Open: ${params.appUrl}/contact-us`,
+    '',
+    'Reply STOP to opt out.',
   ].join('\n');
 };
 
