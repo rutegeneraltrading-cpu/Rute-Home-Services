@@ -103,7 +103,23 @@ const TermsAndConditionPage = () => {
             </div>
             <div>
               <h2 className="text-xl font-semibold text-slate-900">
-                9. Limitation of liability
+                9. WhatsApp and SMS messaging consent
+              </h2>
+              <p className="mt-2 text-sm text-slate-600">
+                By opting in during sign-up, you consent to receive WhatsApp
+                messages from Rute regarding your bookings, worker
+                assignments, and payments. Message frequency varies. Message
+                and data rates may apply. You may reply STOP to opt out or
+                HELP for assistance at any time. See our{' '}
+                <a href="/privacy-policy" className="underline">
+                  Privacy Policy
+                </a>{' '}
+                for more details on how we handle your phone number.
+              </p>
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-slate-900">
+                10. Limitation of liability
               </h2>
               <p className="mt-2 text-sm text-slate-600">
                 Rute is not liable for indirect damages or losses arising from
@@ -130,7 +146,7 @@ const TermsAndConditionPage = () => {
               <h3 className="text-lg font-semibold text-slate-900">
                 Last updated
               </h3>
-              <p className="mt-2 text-sm text-slate-600">February 12, 2026</p>
+              <p className="mt-2 text-sm text-slate-600">August 18, 2026</p>
             </div>
           </aside>
         </div>

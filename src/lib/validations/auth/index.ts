@@ -53,6 +53,9 @@ export const signupSchema = z
     phone: phoneSchema,
     password: strongPasswordSchema,
     confirmPassword: z.string().min(1, 'Please confirm your password'),
+    whatsappConsent: z.boolean().refine((value) => value === true, {
+      message: 'Please agree to receive WhatsApp notifications to continue',
+    }),
   })
   .refine((data) => data.password === data.confirmPassword, {
     path: ['confirmPassword'],

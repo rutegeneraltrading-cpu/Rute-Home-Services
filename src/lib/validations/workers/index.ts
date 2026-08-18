@@ -28,6 +28,9 @@ export const workerFormSchema = z.object({
     .email('Invalid email address'),
   phone: requiredAddressPhoneSchema,
   service_ids: z.array(z.string()).min(1, 'Select at least one service'),
+  whatsappConsent: z.boolean().refine((value) => value === true, {
+    message: 'Please agree to receive WhatsApp notifications to continue',
+  }),
   address: workerAddressSchema,
   documents: z
     .array(

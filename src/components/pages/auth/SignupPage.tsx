@@ -30,6 +30,7 @@ const SignupPage = ({
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [whatsappConsent, setWhatsappConsent] = useState(false);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -48,6 +49,7 @@ const SignupPage = ({
       phone,
       password,
       confirmPassword,
+      whatsappConsent,
     });
 
     if (!validation.success) {
@@ -166,6 +168,45 @@ const SignupPage = ({
           />
           {errors.phone && (
             <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
+          )}
+        </div>
+        <div>
+          <label className="flex items-start gap-2 text-sm text-slate-600">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 shrink-0"
+              checked={whatsappConsent}
+              onChange={(e) => {
+                setWhatsappConsent(e.target.checked);
+                if (errors.whatsappConsent) {
+                  setErrors((prev) => ({
+                    ...prev,
+                    whatsappConsent: undefined,
+                  }));
+                }
+              }}
+              disabled={signUpMutation.isPending}
+            />
+            <span>
+              Yes, sign me up to receive WhatsApp messages from Rute Home
+              Services about my booking confirmations, worker assignments,
+              and payment notifications. Message frequency varies. Message
+              and data rates may apply. Reply STOP to opt out or HELP for
+              help. See our{' '}
+              <Link href="/terms-and-conditions" className="underline">
+                Terms and Conditions
+              </Link>{' '}
+              and{' '}
+              <Link href="/privacy-policy" className="underline">
+                Privacy Policy
+              </Link>
+              .
+            </span>
+          </label>
+          {errors.whatsappConsent && (
+            <p className="mt-1 text-sm text-red-600">
+              {errors.whatsappConsent}
+            </p>
           )}
         </div>
         <div>

@@ -56,7 +56,22 @@ const PrivacyPolicyPage = () => {
             </div>
             <div>
               <h2 className="text-xl font-semibold text-slate-900">
-                4. Data security
+                4. WhatsApp and SMS messaging
+              </h2>
+              <p className="mt-2 text-sm text-slate-600">
+                If you provide your mobile number and opt in during sign-up,
+                we may send you WhatsApp messages about your booking
+                confirmations, worker assignments, and payment notifications.
+                Message frequency varies based on your account and booking
+                activity. Message and data rates may apply. You can reply
+                STOP at any time to opt out, or HELP for assistance. Your
+                mobile number is never shared or sold to third parties for
+                marketing purposes.
+              </p>
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-slate-900">
+                5. Data security
               </h2>
               <p className="mt-2 text-sm text-slate-600">
                 We use industry-standard security practices to protect your
@@ -65,7 +80,7 @@ const PrivacyPolicyPage = () => {
             </div>
             <div>
               <h2 className="text-xl font-semibold text-slate-900">
-                5. Your choices
+                6. Your choices
               </h2>
               <p className="mt-2 text-sm text-slate-600">
                 You can update your profile, manage notification preferences, or
@@ -90,7 +105,7 @@ const PrivacyPolicyPage = () => {
               <h3 className="text-lg font-semibold text-slate-900">
                 Last updated
               </h3>
-              <p className="mt-2 text-sm text-slate-600">February 12, 2026</p>
+              <p className="mt-2 text-sm text-slate-600">August 18, 2026</p>
             </div>
           </aside>
         </div>

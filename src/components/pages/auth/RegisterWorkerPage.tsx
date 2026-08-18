@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import PhoneInput from 'react-phone-input-2';
@@ -58,6 +59,7 @@ const RegisterWorkerPage = () => {
       full_name: '',
       email: '',
       phone: '',
+      whatsappConsent: false,
       service_ids: [],
       address: {
         label: 'home',
@@ -82,7 +84,7 @@ const RegisterWorkerPage = () => {
       }
       // Only validate step 1 fields
       const valid = await trigger(
-        ['full_name', 'email', 'phone', 'service_ids'],
+        ['full_name', 'email', 'phone', 'whatsappConsent', 'service_ids'],
         { shouldFocus: true },
       );
       if (valid) {
@@ -368,6 +370,39 @@ const RegisterWorkerPage = () => {
                   {formErrors.phone && (
                     <p className="text-sm text-red-500 mt-1">
                       {formErrors.phone.message}
+                    </p>
+                  )}
+                  <label className="flex items-start gap-2 text-xs text-muted-foreground mb-2">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 h-4 w-4 shrink-0"
+                      checked={watch('whatsappConsent') || false}
+                      onChange={(e) => {
+                        setValue('whatsappConsent', e.target.checked, {
+                          shouldDirty: true,
+                        });
+                        trigger('whatsappConsent');
+                      }}
+                    />
+                    <span>
+                      Yes, sign me up to receive WhatsApp messages from Rute
+                      Home Services about job assignments and booking
+                      updates. Message frequency varies. Message and data
+                      rates may apply. Reply STOP to opt out or HELP for
+                      help. See our{' '}
+                      <Link href="/terms-and-conditions" className="underline">
+                        Terms and Conditions
+                      </Link>{' '}
+                      and{' '}
+                      <Link href="/privacy-policy" className="underline">
+                        Privacy Policy
+                      </Link>
+                      .
+                    </span>
+                  </label>
+                  {formErrors.whatsappConsent && (
+                    <p className="text-sm text-red-500 mt-1">
+                      {formErrors.whatsappConsent.message}
                     </p>
                   )}
                   <Label className="block text-sm font-medium mb-1">
