@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { sendResendEmail } from '@/lib/server/email';
-import { sendWhatsAppMessage } from '@/lib/server/whatsapp/twilio';
+import {
+  sendWhatsAppMessage,
+  sendWhatsAppTemplateMessage,
+} from '@/lib/server/whatsapp/twilio';
 import {
   bookingAssignedToWorkerTemplate,
   bookingStatusUpdateTemplate,
@@ -1110,19 +1113,42 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
         if (workerProfile?.phone) {
           try {
-            await sendWhatsAppMessage({
-              to: workerProfile.phone,
-              body: buildWorkerAssignmentWhatsAppMessage({
-                workerName: workerProfile.full_name || 'Worker',
-                bookingId: id,
-                serviceName: serviceDetailsForEmails.name || serviceName,
-                address: bookingAddressForEmails,
-                bookingDate,
-                bookingTime,
-                customerName,
-                appUrl: process.env.NEXT_PUBLIC_APP_URL || '',
-              }),
-            });
+            const bookingAssignedTemplateSid =
+              process.env.TWILIO_TEMPLATE_BOOKING_ASSIGNED_SID;
+            const workerName = workerProfile.full_name || 'Worker';
+            const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
+            const locationText = bookingAddressForEmails || 'N/A';
+
+            if (bookingAssignedTemplateSid) {
+              await sendWhatsAppTemplateMessage({
+                to: workerProfile.phone,
+                contentSid: bookingAssignedTemplateSid,
+                contentVariables: {
+                  '1': workerName,
+                  '2': id,
+                  '3': customerName,
+                  '4': serviceDetailsForEmails.name || serviceName,
+                  '5': bookingDate,
+                  '6': bookingTime,
+                  '7': locationText,
+                  '8': `${appUrl}/contact-us`,
+                },
+              });
+            } else {
+              await sendWhatsAppMessage({
+                to: workerProfile.phone,
+                body: buildWorkerAssignmentWhatsAppMessage({
+                  workerName,
+                  bookingId: id,
+                  serviceName: serviceDetailsForEmails.name || serviceName,
+                  address: bookingAddressForEmails,
+                  bookingDate,
+                  bookingTime,
+                  customerName,
+                  appUrl,
+                }),
+              });
+            }
           } catch (whatsAppError) {
             console.error(
               'Booking assigned worker WhatsApp send failed:',

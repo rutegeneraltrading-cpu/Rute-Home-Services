@@ -5,6 +5,12 @@ export interface WhatsAppMessageInput {
   body: string;
 }
 
+export interface WhatsAppTemplateMessageInput {
+  to: string;
+  contentSid: string;
+  contentVariables: Record<string, string>;
+}
+
 export function normalizeToE164(value?: string | null): string | null {
   const raw = String(value || '').trim();
   if (!raw) return null;
@@ -16,10 +22,9 @@ export function normalizeToE164(value?: string | null): string | null {
   return E164_PHONE_REGEX.test(normalized) ? normalized : null;
 }
 
-export async function sendWhatsAppMessage({
-  to,
-  body,
-}: WhatsAppMessageInput): Promise<void> {
+async function postToTwilioMessages(
+  fields: Record<string, string>,
+): Promise<void> {
   const isEnabled = String(
     process.env.WHATSAPP_NOTIFICATIONS_ENABLED || 'false',
   ).toLowerCase();
@@ -36,16 +41,10 @@ export async function sendWhatsAppMessage({
     throw new Error('Missing Twilio WhatsApp configuration in environment');
   }
 
-  const normalizedTo = normalizeToE164(to);
-  if (!normalizedTo) {
-    throw new Error('Invalid recipient phone for WhatsApp');
-  }
-
   const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
   const payload = new URLSearchParams({
     From: from.startsWith('whatsapp:') ? from : `whatsapp:${from}`,
-    To: `whatsapp:${normalizedTo}`,
-    Body: body,
+    ...fields,
   });
 
   const basicAuth = Buffer.from(`${accountSid}:${authToken}`).toString(
@@ -67,4 +66,43 @@ export async function sendWhatsAppMessage({
       `Twilio WhatsApp send failed (${response.status}): ${errText}`,
     );
   }
+}
+
+/**
+ * Sends a freeform WhatsApp message. Meta only allows this within an open
+ * 24-hour customer service window (e.g. sandbox testing) — business-initiated
+ * notifications outside that window must use sendWhatsAppTemplateMessage
+ * with an approved Content Template instead.
+ */
+export async function sendWhatsAppMessage({
+  to,
+  body,
+}: WhatsAppMessageInput): Promise<void> {
+  const normalizedTo = normalizeToE164(to);
+  if (!normalizedTo) {
+    throw new Error('Invalid recipient phone for WhatsApp');
+  }
+
+  await postToTwilioMessages({
+    To: `whatsapp:${normalizedTo}`,
+    Body: body,
+  });
+}
+
+/** Sends a WhatsApp message using a Meta-approved Content Template. */
+export async function sendWhatsAppTemplateMessage({
+  to,
+  contentSid,
+  contentVariables,
+}: WhatsAppTemplateMessageInput): Promise<void> {
+  const normalizedTo = normalizeToE164(to);
+  if (!normalizedTo) {
+    throw new Error('Invalid recipient phone for WhatsApp');
+  }
+
+  await postToTwilioMessages({
+    To: `whatsapp:${normalizedTo}`,
+    ContentSid: contentSid,
+    ContentVariables: JSON.stringify(contentVariables),
+  });
 }

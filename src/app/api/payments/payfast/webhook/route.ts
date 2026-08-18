@@ -5,7 +5,11 @@ import { sendResendEmail } from '@/lib/server/email';
 import { orderPaymentSuccessTemplate } from '@/lib/server/email';
 import { bookingPaymentSuccessTemplate } from '@/lib/server/email';
 import { additionalWorkPaymentSuccessTemplate } from '@/lib/server/email';
-import { sendWhatsAppMessage, normalizeToE164 } from '@/lib/server/whatsapp/twilio';
+import {
+  sendWhatsAppMessage,
+  sendWhatsAppTemplateMessage,
+  normalizeToE164,
+} from '@/lib/server/whatsapp/twilio';
 
 const SUBJECT_MAX_LENGTH = 70;
 
@@ -285,7 +289,20 @@ export async function POST(request: NextRequest) {
         if (workerProfile?.phone) {
           try {
             const workerPhone = normalizeToE164(workerProfile.phone);
-            if (workerPhone) {
+            const paymentReceivedTemplateSid =
+              process.env.TWILIO_TEMPLATE_PAYMENT_RECEIVED_SID;
+            if (workerPhone && paymentReceivedTemplateSid) {
+              await sendWhatsAppTemplateMessage({
+                to: workerPhone,
+                contentSid: paymentReceivedTemplateSid,
+                contentVariables: {
+                  '1': bookingId.slice(0, 8),
+                  '2': serviceName,
+                  '3': description,
+                  '4': fee.toFixed(2),
+                },
+              });
+            } else if (workerPhone) {
               await sendWhatsAppMessage({
                 to: workerPhone,
                 body: `Additional work payment received!\n\nBooking: ${bookingId.slice(0, 8)}\nService: ${serviceName}\nDescription: ${description}\nAmount: R${fee.toFixed(2)}\n\nThe customer has paid for additional work. Please proceed accordingly.\n\nReply STOP to opt out.`,
