@@ -7,7 +7,15 @@ import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import PhoneInput from 'react-phone-input-2';
-import { Camera } from 'lucide-react';
+import {
+  Camera,
+  Check,
+  UploadCloud,
+  FileText,
+  X,
+  ShieldCheck,
+  ChevronLeft,
+} from 'lucide-react';
 import { Button, Input, Label } from '@/components/ui';
 import { useToast } from '@/components/ui/use-toast';
 import {
@@ -21,7 +29,28 @@ import { Service, DocumentType } from '@/lib/types';
 import { MultiSelect } from '@/components/common/MultiSelect';
 import { useCreateWorker, useGetServices } from '@/lib/client/api';
 import { WorkerFormValues, workerFormSchema } from '@/lib/validations';
-import { uploadWorkerAvatarImage } from '@/lib/client/utils/uploadImage';
+import {
+  uploadWorkerAvatarImage,
+  uploadWorkerDocument,
+} from '@/lib/client/utils/uploadImage';
+
+const STEPS = [
+  { id: 1, title: 'Your details', hint: 'Personal info & services' },
+  { id: 2, title: 'Address', hint: 'Where you are based' },
+  { id: 3, title: 'Documents', hint: 'Verify your identity' },
+] as const;
+
+const DOC_TYPE_LABELS: Record<string, string> = {
+  [DocumentType.Identity]: 'Identity',
+  [DocumentType.Passport]: 'Passport',
+  [DocumentType.ProofOfResidency]: 'Proof of Residency',
+  [DocumentType.BusinessRegistration]: 'Business Registration',
+  [DocumentType.BankConfirmation]: 'Bank Confirmation',
+  [DocumentType.ShareholderId]: 'Shareholder ID',
+};
+
+const fieldError = 'mt-1 text-sm text-red-600';
+const fieldLabel = 'mb-1 block text-sm font-medium text-slate-700';
 
 const RegisterWorkerPage = () => {
   const router = useRouter();
@@ -41,8 +70,7 @@ const RegisterWorkerPage = () => {
   );
   const [profileImageError, setProfileImageError] = useState(false);
   const profileImageRef = useRef<HTMLInputElement>(null);
-
-  // Use imported workerFormSchema for validation
+  const documentInputRef = useRef<HTMLInputElement>(null);
 
   const {
     register,
@@ -51,7 +79,6 @@ const RegisterWorkerPage = () => {
     setValue,
     watch,
     trigger,
-    getValues,
     formState: { errors: formErrors },
   } = useForm<WorkerFormValues>({
     resolver: zodResolver(workerFormSchema),
@@ -82,16 +109,12 @@ const RegisterWorkerPage = () => {
         setProfileImageError(true);
         return;
       }
-      // Only validate step 1 fields
       const valid = await trigger(
         ['full_name', 'email', 'phone', 'whatsappConsent', 'service_ids'],
         { shouldFocus: true },
       );
-      if (valid) {
-        setStep(2);
-      }
+      if (valid) setStep(2);
     } else if (step === 2) {
-      // Only validate step 2 fields
       const valid = await trigger(
         [
           'address.label',
@@ -104,44 +127,55 @@ const RegisterWorkerPage = () => {
         ],
         { shouldFocus: true },
       );
-      if (valid) {
-        setStep(3);
-      }
+      if (valid) setStep(3);
     }
   };
+
   const handleBack = () => {
     if (step > 1) setStep(step - 1);
   };
 
-  // Helper to upload a document to backend API and get public URL
-  const uploadDocument = async (file: File, type: DocumentType) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('type', type);
-    const res = await fetch('/api/admin/upload-worker-document', {
-      method: 'POST',
-      body: formData,
-    });
-    if (!res.ok) {
-      const errorData = await res.json();
-      throw new Error(errorData.error || 'Failed to upload document');
+  // Upload documents directly to Supabase Storage from the browser.
+  // (Routing through an API endpoint hits Vercel's ~4.5MB body limit -> 413.)
+  const uploadDocument = (file: File, type: DocumentType) =>
+    uploadWorkerDocument(file, type);
+
+  const handleDocumentFile = (file: File | undefined) => {
+    if (!file || !selectedDocType) return;
+    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+      toast({
+        variant: 'destructive',
+        title: 'Invalid file',
+        description: 'Please upload an image or PDF.',
+      });
+      return;
     }
-    const { url } = await res.json();
-    return { type, file_url: url };
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        variant: 'destructive',
+        title: 'File too large',
+        description: 'Documents must be less than 5MB.',
+      });
+      return;
+    }
+    setDocuments((prev) => [
+      ...prev,
+      { file, type: selectedDocType as DocumentType },
+    ]);
+    if (documentInputRef.current) documentInputRef.current.value = '';
   };
 
   const onSubmit = async (data: WorkerFormValues) => {
     setIsSubmitting(true);
     try {
-      // 0. Upload profile image if provided
       let avatarUrl: string | undefined;
       if (profileImage) {
         try {
           avatarUrl = await uploadWorkerAvatarImage(profileImage);
         } catch {
           toast({
-            title: 'Image Upload Failed',
-            description: 'Could not upload profile image.',
+            title: 'Image upload failed',
+            description: 'Could not upload profile photo.',
             variant: 'destructive',
           });
           setIsSubmitting(false);
@@ -149,15 +183,14 @@ const RegisterWorkerPage = () => {
         }
       }
 
-      // 1. Upload all documents to backend and get URLs
       const uploadedDocs: Array<{ type: string; file_url: string }> = [];
       for (const doc of documents) {
         try {
           uploadedDocs.push(await uploadDocument(doc.file, doc.type));
         } catch {
           toast({
-            title: 'Document Upload Failed',
-            description: 'Could not upload document.',
+            title: 'Document upload failed',
+            description: 'Could not upload one of your documents.',
             variant: 'destructive',
           });
           setIsSubmitting(false);
@@ -165,7 +198,6 @@ const RegisterWorkerPage = () => {
         }
       }
 
-      // 2. Submit all data to backend
       await createWorkerMutation.mutateAsync({
         full_name: data.full_name,
         email: data.email,
@@ -182,6 +214,11 @@ const RegisterWorkerPage = () => {
         },
         documents: uploadedDocs,
       });
+
+      toast({
+        title: 'Application submitted',
+        description: 'Your worker account is now under review.',
+      });
       reset();
       setSelectedServiceIds([]);
       setDocuments([]);
@@ -191,7 +228,7 @@ const RegisterWorkerPage = () => {
     } catch (error) {
       console.error('Error creating worker:', error);
       toast({
-        title: 'Error',
+        title: 'Something went wrong',
         description: (error as Error)?.message || 'Failed to create worker.',
         variant: 'destructive',
       });
@@ -201,45 +238,83 @@ const RegisterWorkerPage = () => {
   };
 
   return (
-    <div className="py-10 flex justify-center">
-      <div className="sm:w-150 bg-card md:border md:rounded-lg md:p-8">
-        <div className="mb-6 sm:text-start text-center">
-          <h1 className="text-2xl font-bold">Worker Account</h1>
-          <p className="text-sm text-muted-foreground">
-            Create your worker account in 3 easy steps.
+    <div className="w-full max-w-2xl py-6 md:py-10">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        {/* Header */}
+        <div className="border-b border-slate-100 bg-slate-50/60 px-6 py-6 sm:px-8">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            Join the RUTE network
+          </span>
+          <h1 className="mt-3 text-xl font-semibold text-slate-900 sm:text-2xl">
+            Become a RUTE service provider
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Complete the steps below. Your application is reviewed before your
+            account goes live.
           </p>
         </div>
 
-        {/* Stepper UI */}
-        <div className="flex items-center justify-between mb-8">
-          <div
-            className={`flex-1 text-center ${step === 1 ? 'font-bold text-primary' : 'text-muted-foreground'}`}
-          >
-            1. Base Info
-          </div>
-          <div className="w-8 h-0.5 bg-gray-300 mx-2" />
-          <div
-            className={`flex-1 text-center ${step === 2 ? 'font-bold text-primary' : 'text-muted-foreground'}`}
-          >
-            2. Address
-          </div>
-          <div className="w-8 h-0.5 bg-gray-300 mx-2" />
-          <div
-            className={`flex-1 text-center ${step === 3 ? 'font-bold text-primary' : 'text-muted-foreground'}`}
-          >
-            3. Documents
-          </div>
+        {/* Stepper */}
+        <div className="px-6 pt-6 sm:px-8">
+          <ol className="flex items-center">
+            {STEPS.map((s, i) => {
+              const done = step > s.id;
+              const active = step === s.id;
+              return (
+                <li
+                  key={s.id}
+                  className={`flex items-center ${i < STEPS.length - 1 ? 'flex-1' : ''}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-sm font-semibold transition-colors ${
+                        done
+                          ? 'border-green-600 bg-green-600 text-white'
+                          : active
+                            ? 'border-green-600 bg-white text-green-700'
+                            : 'border-slate-300 bg-white text-slate-400'
+                      }`}
+                    >
+                      {done ? <Check className="h-4 w-4" /> : s.id}
+                    </span>
+                    <div className="hidden sm:block">
+                      <p
+                        className={`text-sm font-medium leading-none ${
+                          active || done ? 'text-slate-900' : 'text-slate-400'
+                        }`}
+                      >
+                        {s.title}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-400">{s.hint}</p>
+                    </div>
+                  </div>
+                  {i < STEPS.length - 1 && (
+                    <div
+                      className={`mx-3 h-0.5 flex-1 rounded ${
+                        done ? 'bg-green-600' : 'bg-slate-200'
+                      }`}
+                    />
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+          <p className="mt-3 text-sm font-medium text-slate-900 sm:hidden">
+            Step {step} of {STEPS.length} — {STEPS[step - 1].title}
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-          {/* Step 1: Base Info */}
+        <form onSubmit={handleSubmit(onSubmit)} className="px-6 py-6 sm:px-8">
+          {/* Step 1 */}
           {step === 1 && (
-            <div className="rounded-lg border border-dashed border-gray-200 p-4">
-              {/* Profile Image Upload */}
-              <div className="flex flex-col items-center gap-2 mb-5">
-                <div
-                  className="relative w-24 h-24 rounded-full overflow-hidden bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors"
+            <div className="space-y-8">
+              {/* Profile photo */}
+              <div className="flex flex-col items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-5 sm:flex-row sm:items-center sm:gap-5">
+                <button
+                  type="button"
                   onClick={() => profileImageRef.current?.click()}
+                  className="group relative h-24 w-24 shrink-0 overflow-hidden rounded-full border-2 border-dashed border-slate-300 bg-white transition-colors hover:border-green-500"
                 >
                   {profileImagePreview ? (
                     <Image
@@ -249,12 +324,12 @@ const RegisterWorkerPage = () => {
                       className="object-cover"
                     />
                   ) : (
-                    <div className="flex flex-col items-center gap-1 text-gray-400">
-                      <Camera className="w-6 h-6" />
-                      <span className="text-xs">Add Photo</span>
-                    </div>
+                    <span className="flex h-full flex-col items-center justify-center gap-1 text-slate-400 group-hover:text-green-600">
+                      <Camera className="h-6 w-6" />
+                      <span className="text-[11px] font-medium">Add photo</span>
+                    </span>
                   )}
-                </div>
+                </button>
                 <input
                   ref={profileImageRef}
                   type="file"
@@ -266,7 +341,7 @@ const RegisterWorkerPage = () => {
                     if (!file.type.startsWith('image/')) {
                       toast({
                         variant: 'destructive',
-                        title: 'Invalid File',
+                        title: 'Invalid file',
                         description: 'Please select an image file.',
                       });
                       return;
@@ -274,7 +349,7 @@ const RegisterWorkerPage = () => {
                     if (file.size > 5 * 1024 * 1024) {
                       toast({
                         variant: 'destructive',
-                        title: 'File Too Large',
+                        title: 'File too large',
                         description: 'Image must be less than 5MB.',
                       });
                       return;
@@ -287,33 +362,38 @@ const RegisterWorkerPage = () => {
                     reader.readAsDataURL(file);
                   }}
                 />
-                <p className="text-xs text-muted-foreground">Profile Photo *</p>
-                {profileImageError && (
-                  <p className="text-xs text-red-500">
-                    Please upload a profile photo.
+                <div className="text-center sm:text-left">
+                  <p className="text-sm font-medium text-slate-900">
+                    Profile photo <span className="text-red-500">*</span>
                   </p>
-                )}
-                <p className="text-xs text-amber-600 text-center">
-                  ⚠️ Your photo is very important. <br /> Kindly use a real,
-                  clear face photo.
-                </p>
-                {profileImagePreview && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setProfileImage(null);
-                      setProfileImagePreview(null);
-                    }}
-                    className="text-xs text-red-500 underline"
-                  >
-                    Remove
-                  </button>
-                )}
+                  <p className="mt-1 text-xs text-slate-500">
+                    Use a real, clear photo of your face. This is shown to
+                    customers and is important for trust.
+                  </p>
+                  {profileImagePreview && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProfileImage(null);
+                        setProfileImagePreview(null);
+                      }}
+                      className="mt-2 text-xs font-medium text-red-600 hover:underline"
+                    >
+                      Remove photo
+                    </button>
+                  )}
+                  {profileImageError && (
+                    <p className={fieldError}>Please upload a profile photo.</p>
+                  )}
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              {/* Details */}
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                 <div>
-                  <Label htmlFor="full_name">Full Name *</Label>
+                  <Label htmlFor="full_name" className={fieldLabel}>
+                    Full name <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     id="full_name"
                     placeholder="John Doe"
@@ -327,12 +407,14 @@ const RegisterWorkerPage = () => {
                     }}
                   />
                   {formErrors.full_name && (
-                    <p className="text-sm text-red-500 mt-1">
-                      {formErrors.full_name.message}
-                    </p>
+                    <p className={fieldError}>{formErrors.full_name.message}</p>
                   )}
+                </div>
 
-                  <Label htmlFor="email">Email *</Label>
+                <div>
+                  <Label htmlFor="email" className={fieldLabel}>
+                    Email <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     id="email"
                     type="email"
@@ -345,73 +427,38 @@ const RegisterWorkerPage = () => {
                     }}
                   />
                   {formErrors.email && (
-                    <p className="text-sm text-red-500 mt-1">
-                      {formErrors.email.message}
-                    </p>
+                    <p className={fieldError}>{formErrors.email.message}</p>
                   )}
                 </div>
+
                 <div>
-                  <Label htmlFor="phone">Phone</Label>
+                  <Label htmlFor="phone" className={fieldLabel}>
+                    Phone
+                  </Label>
                   <PhoneInput
                     country={'za'}
-                    inputProps={{
-                      name: 'phone',
-                      required: true,
-                      className:
-                        'h-10 w-full border rounded-md shadow-xs px-2 pl-12',
-                    }}
-                    value={getValues('phone')}
+                    inputProps={{ name: 'phone' }}
+                    inputClass="!h-10 !w-full !rounded-md !border-slate-300 !text-sm"
+                    buttonClass="!border-slate-300 !bg-slate-50"
+                    value={watch('phone')}
                     onChange={(value) =>
                       setValue('phone', value, { shouldDirty: true })
                     }
                     enableSearch
-                    containerClass="mb-2"
                   />
                   {formErrors.phone && (
-                    <p className="text-sm text-red-500 mt-1">
-                      {formErrors.phone.message}
-                    </p>
+                    <p className={fieldError}>{formErrors.phone.message}</p>
                   )}
-                  <label className="flex items-start gap-2 text-xs text-muted-foreground mb-2">
-                    <input
-                      type="checkbox"
-                      className="mt-0.5 h-4 w-4 shrink-0"
-                      checked={watch('whatsappConsent') || false}
-                      onChange={(e) => {
-                        setValue('whatsappConsent', e.target.checked, {
-                          shouldDirty: true,
-                        });
-                        trigger('whatsappConsent');
-                      }}
-                    />
-                    <span>
-                      Yes, sign me up to receive WhatsApp messages from Rute
-                      Home Services about job assignments and booking
-                      updates. Message frequency varies. Message and data
-                      rates may apply. Reply STOP to opt out or HELP for
-                      help. See our{' '}
-                      <Link href="/terms-and-conditions" className="underline">
-                        Terms and Conditions
-                      </Link>{' '}
-                      and{' '}
-                      <Link href="/privacy-policy" className="underline">
-                        Privacy Policy
-                      </Link>
-                      .
-                    </span>
-                  </label>
-                  {formErrors.whatsappConsent && (
-                    <p className="text-sm text-red-500 mt-1">
-                      {formErrors.whatsappConsent.message}
-                    </p>
-                  )}
-                  <Label className="block text-sm font-medium mb-1">
-                    Services *
+                </div>
+
+                <div>
+                  <Label className={fieldLabel}>
+                    Services you offer <span className="text-red-500">*</span>
                   </Label>
                   <MultiSelect
                     options={
                       (services as Service[] | undefined)?.map((s) => ({
-                        label: `${s.name} (${s.base_price}ZAR/${s.category?.charge_type || ''})`,
+                        label: `${s.name} (${s.base_price} ZAR/${s.category?.charge_type || ''})`,
                         value: s.id,
                       })) || []
                     }
@@ -421,223 +468,282 @@ const RegisterWorkerPage = () => {
                       setValue('service_ids', newSelected, {
                         shouldDirty: true,
                       });
+                      trigger('service_ids');
                     }}
                     placeholder="Select services"
                     disabled={servicesLoading || isSubmitting}
                   />
                   {formErrors.service_ids && (
-                    <div className="text-xs text-red-500 mt-1">
+                    <p className={fieldError}>
                       {formErrors.service_ids.message}
-                    </div>
+                    </p>
                   )}
                 </div>
               </div>
-            </div>
-          )}
 
-          {/* Step 2: Address Info */}
-          {step === 2 && (
-            <div className="rounded-lg border border-dashed border-gray-200 p-4">
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <div>
-                  <Label className="text-sm">Label</Label>
-                  <Select
-                    value={watch('address.label')}
-                    onValueChange={(value) =>
-                      setValue(
-                        'address.label',
-                        value as WorkerFormValues['address']['label'],
-                        { shouldValidate: true },
-                      )
-                    }
+              {/* WhatsApp consent */}
+              <label className="flex items-start gap-3 rounded-lg border border-slate-200 p-4 text-xs leading-relaxed text-slate-600">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-green-600"
+                  checked={watch('whatsappConsent') || false}
+                  onChange={(e) => {
+                    setValue('whatsappConsent', e.target.checked, {
+                      shouldDirty: true,
+                    });
+                    trigger('whatsappConsent');
+                  }}
+                />
+                <span>
+                  Yes, sign me up to receive WhatsApp messages from Rute Home
+                  Services about job assignments and booking updates. Message
+                  frequency varies. Message and data rates may apply. Reply STOP
+                  to opt out or HELP for help. See our{' '}
+                  <Link
+                    href="/terms-and-conditions"
+                    className="font-medium underline"
                   >
-                    <SelectTrigger className="h-10">
-                      <SelectValue placeholder="Select label" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="home">Home</SelectItem>
-                      <SelectItem value="office">Office</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="address.recipient_name">Recipient Name</Label>
-                  <Input
-                    id="address.recipient_name"
-                    placeholder="Recipient name"
-                    className="h-10"
-                    {...register('address.recipient_name')}
-                    onChange={(e) => {
-                      setValue('address.recipient_name', e.target.value, {
-                        shouldDirty: true,
-                      });
-                      trigger('address.recipient_name');
-                    }}
-                  />
-                  {formErrors.address?.recipient_name && (
-                    <p className="text-sm text-red-500 mt-1">
-                      {formErrors.address.recipient_name.message}
-                    </p>
+                    Terms and Conditions
+                  </Link>{' '}
+                  and{' '}
+                  <Link href="/privacy-policy" className="font-medium underline">
+                    Privacy Policy
+                  </Link>
+                  .
+                  {formErrors.whatsappConsent && (
+                    <span className="mt-1 block text-red-600">
+                      {formErrors.whatsappConsent.message}
+                    </span>
                   )}
-                </div>
-                <div>
-                  <Label htmlFor="address.phone">Address Phone *</Label>
-                  <PhoneInput
-                    country={'za'}
-                    inputProps={{
-                      name: 'address.phone',
-                      required: true,
-                      className: 'h-10 w-full border rounded px-2 pl-12',
-                    }}
-                    value={getValues('address.phone')}
-                    onChange={(value) => {
-                      setValue('address.phone', value, { shouldDirty: true });
-                      if (!value) {
-                        setValue('address.phone', value, {
-                          shouldValidate: true,
-                        });
-                      }
-                    }}
-                    enableSearch
-                    containerClass="mb-2"
-                  />
-                  {formErrors.address?.phone && (
-                    <p className="text-sm text-red-500 mt-1">
-                      {formErrors.address.phone.message}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <Label htmlFor="address.line1">Address Line 1 *</Label>
-                  <Input
-                    id="address.line1"
-                    placeholder="Street address"
-                    className="h-10"
-                    {...register('address.line1')}
-                    onChange={(e) => {
-                      setValue('address.line1', e.target.value, {
-                        shouldDirty: true,
-                      });
-                      trigger('address.line1');
-                    }}
-                  />
-                  {formErrors.address?.line1 && (
-                    <p className="text-sm text-red-500 mt-1">
-                      {formErrors.address.line1.message}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <Label htmlFor="address.line2">Address Line 2</Label>
-                  <Input
-                    id="address.line2"
-                    placeholder="Apartment, suite, etc."
-                    className="h-10"
-                    {...register('address.line2')}
-                    onChange={(e) => {
-                      setValue('address.line2', e.target.value, {
-                        shouldDirty: true,
-                      });
-                      trigger('address.line2');
-                    }}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="address.country">Country *</Label>
-                  <Input
-                    id="address.country"
-                    placeholder="Country"
-                    className="h-10"
-                    {...register('address.country')}
-                    onChange={(e) => {
-                      setValue('address.country', e.target.value, {
-                        shouldDirty: true,
-                      });
-                      trigger('address.country');
-                    }}
-                  />
-                  {formErrors.address?.country && (
-                    <p className="text-sm text-red-500 mt-1">
-                      {formErrors.address.country.message}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <Label htmlFor="address.state_province">
-                    Province/State *
-                  </Label>
-                  <Input
-                    id="address.state_province"
-                    placeholder="Province or state"
-                    className="h-10"
-                    {...register('address.state_province')}
-                    onChange={(e) => {
-                      setValue('address.state_province', e.target.value, {
-                        shouldDirty: true,
-                      });
-                      trigger('address.state_province');
-                    }}
-                  />
-                  {formErrors.address?.state_province && (
-                    <p className="text-sm text-red-500 mt-1">
-                      {formErrors.address.state_province.message}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <Label htmlFor="address.city">City *</Label>
-                  <Input
-                    id="address.city"
-                    placeholder="City"
-                    className="h-10"
-                    {...register('address.city')}
-                    onChange={(e) => {
-                      setValue('address.city', e.target.value, {
-                        shouldDirty: true,
-                      });
-                      trigger('address.city');
-                    }}
-                  />
-                  {formErrors.address?.city && (
-                    <p className="text-sm text-red-500 mt-1">
-                      {formErrors.address.city.message}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <Label htmlFor="address.postal_code">Postal Code *</Label>
-                  <Input
-                    id="address.postal_code"
-                    type="tel"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    placeholder="Postal code"
-                    className="h-10"
-                    {...register('address.postal_code')}
-                    onChange={(e) => {
-                      setValue('address.postal_code', e.target.value, {
-                        shouldDirty: true,
-                      });
-                      trigger('address.postal_code');
-                    }}
-                  />
-                  {formErrors.address?.postal_code && (
-                    <p className="text-sm text-red-500 mt-1">
-                      {formErrors.address.postal_code.message}
-                    </p>
-                  )}
-                </div>
+                </span>
+              </label>
+            </div>
+          )}
+
+          {/* Step 2 */}
+          {step === 2 && (
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <div>
+                <Label className={fieldLabel}>Address label</Label>
+                <Select
+                  value={watch('address.label')}
+                  onValueChange={(value) =>
+                    setValue(
+                      'address.label',
+                      value as WorkerFormValues['address']['label'],
+                      { shouldValidate: true },
+                    )
+                  }
+                >
+                  <SelectTrigger className="h-10 w-full">
+                    <SelectValue placeholder="Select label" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="home">Home</SelectItem>
+                    <SelectItem value="office">Office</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="address.recipient_name" className={fieldLabel}>
+                  Recipient name
+                </Label>
+                <Input
+                  id="address.recipient_name"
+                  placeholder="Recipient name"
+                  className="h-10"
+                  {...register('address.recipient_name')}
+                  onChange={(e) => {
+                    setValue('address.recipient_name', e.target.value, {
+                      shouldDirty: true,
+                    });
+                    trigger('address.recipient_name');
+                  }}
+                />
+                {formErrors.address?.recipient_name && (
+                  <p className={fieldError}>
+                    {formErrors.address.recipient_name.message}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="address.phone" className={fieldLabel}>
+                  Address phone <span className="text-red-500">*</span>
+                </Label>
+                <PhoneInput
+                  country={'za'}
+                  inputProps={{ name: 'address.phone' }}
+                  inputClass="!h-10 !w-full !rounded-md !border-slate-300 !text-sm"
+                  buttonClass="!border-slate-300 !bg-slate-50"
+                  value={watch('address.phone')}
+                  onChange={(value) =>
+                    setValue('address.phone', value, {
+                      shouldDirty: true,
+                      shouldValidate: !value,
+                    })
+                  }
+                  enableSearch
+                />
+                {formErrors.address?.phone && (
+                  <p className={fieldError}>
+                    {formErrors.address.phone.message}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="address.line1" className={fieldLabel}>
+                  Address line 1 <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="address.line1"
+                  placeholder="Street address"
+                  className="h-10"
+                  {...register('address.line1')}
+                  onChange={(e) => {
+                    setValue('address.line1', e.target.value, {
+                      shouldDirty: true,
+                    });
+                    trigger('address.line1');
+                  }}
+                />
+                {formErrors.address?.line1 && (
+                  <p className={fieldError}>
+                    {formErrors.address.line1.message}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="address.line2" className={fieldLabel}>
+                  Address line 2
+                </Label>
+                <Input
+                  id="address.line2"
+                  placeholder="Apartment, suite, etc."
+                  className="h-10"
+                  {...register('address.line2')}
+                  onChange={(e) => {
+                    setValue('address.line2', e.target.value, {
+                      shouldDirty: true,
+                    });
+                    trigger('address.line2');
+                  }}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="address.country" className={fieldLabel}>
+                  Country <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="address.country"
+                  placeholder="Country"
+                  className="h-10"
+                  {...register('address.country')}
+                  onChange={(e) => {
+                    setValue('address.country', e.target.value, {
+                      shouldDirty: true,
+                    });
+                    trigger('address.country');
+                  }}
+                />
+                {formErrors.address?.country && (
+                  <p className={fieldError}>
+                    {formErrors.address.country.message}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="address.state_province" className={fieldLabel}>
+                  Province / State <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="address.state_province"
+                  placeholder="Province or state"
+                  className="h-10"
+                  {...register('address.state_province')}
+                  onChange={(e) => {
+                    setValue('address.state_province', e.target.value, {
+                      shouldDirty: true,
+                    });
+                    trigger('address.state_province');
+                  }}
+                />
+                {formErrors.address?.state_province && (
+                  <p className={fieldError}>
+                    {formErrors.address.state_province.message}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="address.city" className={fieldLabel}>
+                  City <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="address.city"
+                  placeholder="City"
+                  className="h-10"
+                  {...register('address.city')}
+                  onChange={(e) => {
+                    setValue('address.city', e.target.value, {
+                      shouldDirty: true,
+                    });
+                    trigger('address.city');
+                  }}
+                />
+                {formErrors.address?.city && (
+                  <p className={fieldError}>
+                    {formErrors.address.city.message}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="address.postal_code" className={fieldLabel}>
+                  Postal code <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="address.postal_code"
+                  type="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder="Postal code"
+                  className="h-10"
+                  {...register('address.postal_code')}
+                  onChange={(e) => {
+                    setValue('address.postal_code', e.target.value, {
+                      shouldDirty: true,
+                    });
+                    trigger('address.postal_code');
+                  }}
+                />
+                {formErrors.address?.postal_code && (
+                  <p className={fieldError}>
+                    {formErrors.address.postal_code.message}
+                  </p>
+                )}
               </div>
             </div>
           )}
 
-          {/* Step 3: Document Upload */}
+          {/* Step 3 */}
           {step === 3 && (
-            <div className="rounded-lg border border-dashed border-gray-200 p-4">
-              <div className="grid grid-cols-1 gap-6 w-full">
+            <div className="space-y-5">
+              <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-4 text-xs text-slate-500">
+                Upload at least one identity document. Accepted formats: image or
+                PDF, up to 5MB each. All documents are kept private and used for
+                verification only.
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
                 <div>
-                  <Label>Select Document Type</Label>
+                  <Label className={fieldLabel}>Document type</Label>
                   <Select
                     value={selectedDocType}
                     onValueChange={(value) =>
@@ -645,134 +751,167 @@ const RegisterWorkerPage = () => {
                     }
                     disabled={isSubmitting}
                   >
-                    <SelectTrigger className="h-10">
+                    <SelectTrigger className="h-10 w-full">
                       <SelectValue placeholder="Select document type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={DocumentType.Identity}>
-                        Identity
-                      </SelectItem>
-                      <SelectItem value={DocumentType.Passport}>
-                        Passport
-                      </SelectItem>
-                      <SelectItem value={DocumentType.ProofOfResidency}>
-                        Proof of Residency
-                      </SelectItem>
-                      <SelectItem value={DocumentType.BusinessRegistration}>
-                        Business Registration
-                      </SelectItem>
-                      <SelectItem value={DocumentType.BankConfirmation}>
-                        Bank Confirmation
-                      </SelectItem>
-                      <SelectItem value={DocumentType.ShareholderId}>
-                        Shareholder ID
-                      </SelectItem>
+                      {Object.entries(DOC_TYPE_LABELS).map(([value, label]) => (
+                        <SelectItem key={value} value={value}>
+                          {label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
-                <div className={`${documents.length > 0 ? 'hidden' : ''}`}>
-                  <Label>Upload Document</Label>
-                  <Input
-                    type="file"
-                    accept="image/*,application/pdf"
-                    multiple={false}
-                    onChange={(e) => {
-                      const files = e.target.files;
-                      if (files && files[0] && selectedDocType) {
-                        setDocuments((prev) => [
-                          ...prev,
-                          {
-                            file: files[0],
-                            type: selectedDocType as DocumentType,
-                          },
-                        ]);
-                        // Do NOT reset selectedDocType here
-                      }
-                    }}
-                    className="mb-4"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Select document type before uploading.
-                  </p>
-                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-10"
+                  disabled={!selectedDocType || isSubmitting}
+                  onClick={() => documentInputRef.current?.click()}
+                >
+                  <UploadCloud className="mr-2 h-4 w-4" />
+                  Add document
+                </Button>
               </div>
-              {/* Preview selected files with type label */}
-              <div className="flex flex-wrap gap-4 mt-4">
-                {documents.map((doc, idx) => (
-                  <div
-                    key={idx}
-                    className="flex flex-col items-center border rounded p-2"
-                  >
-                    {doc.file.type.startsWith('image/') ? (
-                      <Image
-                        src={URL.createObjectURL(doc.file)}
-                        alt={doc.file.name}
-                        width={400}
-                        height={400}
-                        className="w-full object-cover rounded"
-                      />
-                    ) : (
-                      <span className="text-xs text-muted-foreground">PDF</span>
-                    )}
-                    <button
-                      type="button"
-                      className="mt-2 text-xs text-red-500 underline"
-                      onClick={() => {
-                        setDocuments((prev) =>
-                          prev.filter((_, i) => i !== idx),
-                        );
-                        // Do NOT reset selectedDocType here
-                      }}
-                      disabled={isSubmitting}
+
+              <label
+                onClick={(e) => {
+                  if (!selectedDocType) {
+                    e.preventDefault();
+                    toast({
+                      variant: 'destructive',
+                      title: 'Select a document type first',
+                    });
+                  }
+                }}
+                className={`flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed px-4 py-8 text-center transition-colors ${
+                  selectedDocType
+                    ? 'border-slate-300 hover:border-green-500 hover:bg-green-50/40'
+                    : 'border-slate-200 opacity-70'
+                }`}
+              >
+                <UploadCloud className="h-6 w-6 text-slate-400" />
+                <span className="text-sm font-medium text-slate-700">
+                  Click to upload
+                </span>
+                <span className="text-xs text-slate-400">
+                  {selectedDocType
+                    ? `Adding as: ${DOC_TYPE_LABELS[selectedDocType]}`
+                    : 'Choose a document type above to begin'}
+                </span>
+                <input
+                  ref={documentInputRef}
+                  type="file"
+                  accept="image/*,application/pdf"
+                  className="hidden"
+                  disabled={!selectedDocType}
+                  onChange={(e) => handleDocumentFile(e.target.files?.[0])}
+                />
+              </label>
+
+              {documents.length > 0 && (
+                <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200">
+                  {documents.map((doc, idx) => (
+                    <li
+                      key={idx}
+                      className="flex items-center gap-3 p-3 text-sm"
                     >
-                      Remove
-                    </button>
-                  </div>
-                ))}
-              </div>
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
+                        {doc.file.type.startsWith('image/') ? (
+                          <Camera className="h-4 w-4" />
+                        ) : (
+                          <FileText className="h-4 w-4" />
+                        )}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-medium text-slate-800">
+                          {doc.file.name}
+                        </span>
+                        <span className="text-xs text-slate-400">
+                          {DOC_TYPE_LABELS[doc.type] || doc.type} ·{' '}
+                          {(doc.file.size / 1024 / 1024).toFixed(2)} MB
+                        </span>
+                      </span>
+                      <button
+                        type="button"
+                        className="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                        onClick={() =>
+                          setDocuments((prev) =>
+                            prev.filter((_, i) => i !== idx),
+                          )
+                        }
+                        disabled={isSubmitting}
+                        aria-label="Remove document"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
 
-          {/* Navigation Buttons */}
-          <div
-            className={`flex justify-between gap-3 pt-4 ${step === 1 ? 'justify-end' : 'justify-between'}`}
-          >
-            {step > 1 && (
+          {/* Footer nav */}
+          <div className="mt-8 flex items-center justify-between gap-3 border-t border-slate-100 pt-5">
+            {step > 1 ? (
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 onClick={handleBack}
                 disabled={isSubmitting}
-                className="px-6"
+                className="text-slate-600"
               >
+                <ChevronLeft className="mr-1 h-4 w-4" />
                 Back
               </Button>
+            ) : (
+              <Link
+                href="/login"
+                className="text-sm font-medium text-slate-500 hover:text-slate-800"
+              >
+                Already registered? Sign in
+              </Link>
             )}
-            {step < 3 && (
+
+            {step < 3 ? (
               <Button
                 type="button"
                 onClick={handleNext}
                 disabled={isSubmitting}
                 className="px-6"
               >
-                Next
+                Continue
               </Button>
-            )}
-            {step === 3 && (
+            ) : (
               <Button
                 type="submit"
+                className="px-6"
                 disabled={
                   isSubmitting ||
                   documents.length === 0 ||
                   documents.some((doc) => !doc.type || !doc.file)
                 }
               >
-                {isSubmitting ? 'Creating...' : 'Create Worker'}
+                {isSubmitting ? 'Submitting…' : 'Submit application'}
               </Button>
             )}
           </div>
         </form>
       </div>
+
+      <p className="mt-4 text-center text-xs text-slate-400">
+        By submitting you agree to RUTE&apos;s{' '}
+        <Link href="/terms-and-conditions" className="underline">
+          Terms
+        </Link>{' '}
+        and{' '}
+        <Link href="/privacy-policy" className="underline">
+          Privacy Policy
+        </Link>
+        .
+      </p>
     </div>
   );
 };

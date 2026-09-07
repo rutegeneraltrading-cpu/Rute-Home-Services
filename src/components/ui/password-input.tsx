@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui';
 
 interface PasswordInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -15,6 +16,7 @@ export function PasswordInput({
   value,
   onChange,
   placeholder,
+  className,
   ...props
 }: PasswordInputProps) {
   const [showPassword, setShowPassword] = useState(false);
@@ -33,7 +35,7 @@ export function PasswordInput({
           onChange={onChange}
           placeholder={placeholder}
           {...props}
-          className="pr-10"
+          className={cn('pr-10', className)}
         />
         <button
           type="button"

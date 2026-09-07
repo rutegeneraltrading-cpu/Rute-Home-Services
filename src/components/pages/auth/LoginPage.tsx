@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { Mail, AlertCircle } from 'lucide-react';
 import { useSignIn } from '@/lib/client/api';
 import {
   getFirstZodFieldErrors,
@@ -71,50 +72,78 @@ export default function LoginPage({
     }
   };
 
+  const showChrome = !hideFooterLinks;
+
   return (
     <div
-      className={`w-full max-w-md rounded-lg border border-slate-200 bg-white md:p-8 p-6 shadow-lg mt-16 lg:mt-0 ${
+      className={`mt-16 w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:p-8 lg:mt-0 ${
         className || ''
       }`}
     >
-      <h1 className="text-2xl font-bold text-center mb-2">Welcome Back</h1>
-      <p className="text-center text-slate-600 mb-6">
-        Sign in to access your account
+      {showChrome && (
+        <Link
+          href="/"
+          className="mb-6 block text-center text-xl font-bold tracking-tight text-slate-900"
+        >
+          RUTE<span className="text-green-600">.</span>
+        </Link>
+      )}
+
+      <h1 className="text-center text-2xl font-semibold text-slate-900">
+        Welcome back
+      </h1>
+      <p className="mt-1 text-center text-sm text-slate-500">
+        Sign in to book services, track jobs and shop products.
       </p>
 
       {verificationRequired && (
-        <div className="mb-4 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
-          Please verify your email first. Check your inbox (and spam folder),
-          then sign in.
+        <div className="mt-5 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            Please verify your email first. Check your inbox (and spam folder),
+            then sign in.
+          </span>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">
+          <label className="mb-1 block text-sm font-medium text-slate-700">
             Email
           </label>
-          <Input
-            type="email"
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              if (errors.email) {
-                setErrors((prev) => ({ ...prev, email: undefined }));
-              }
-            }}
-            placeholder="you@example.com"
-            disabled={signInMutation.isPending}
-          />
+          <div className="relative">
+            <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              type="email"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (errors.email) {
+                  setErrors((prev) => ({ ...prev, email: undefined }));
+                }
+              }}
+              placeholder="you@example.com"
+              className="h-10 pl-9"
+              disabled={signInMutation.isPending}
+            />
+          </div>
           {errors.email && (
             <p className="mt-1 text-sm text-red-600">{errors.email}</p>
           )}
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">
-            Password
-          </label>
+          <div className="mb-1 flex items-center justify-between">
+            <label className="block text-sm font-medium text-slate-700">
+              Password
+            </label>
+            <Link
+              href="/forgot-password"
+              className="text-xs font-medium text-slate-500 hover:text-slate-900"
+            >
+              Forgot password?
+            </Link>
+          </div>
           <PasswordInput
             value={password}
             onChange={(e) => {
@@ -124,39 +153,43 @@ export default function LoginPage({
               }
             }}
             placeholder="••••••••"
+            className="h-10"
             disabled={signInMutation.isPending}
           />
           {errors.password && (
             <p className="mt-1 text-sm text-red-600">{errors.password}</p>
           )}
         </div>
-        <p className="text-start text-sm mt-2">
-          <Link
-            href="/forgot-password"
-            className="text-slate-600 font-medium hover:text-black"
-          >
-            Forgot your password?
-          </Link>
-        </p>
+
         <Button
           type="submit"
-          className="w-full cursor-pointer"
+          className="h-10 w-full"
           disabled={signInMutation.isPending}
         >
-          {signInMutation.isPending ? 'Signing in...' : 'Sign In'}
+          {signInMutation.isPending ? 'Signing in…' : 'Sign in'}
         </Button>
       </form>
 
-      {!hideFooterLinks && (
-        <p className="text-center text-slate-600 text-sm mt-4">
-          Don&apos;t have an account?{' '}
-          <Link
-            href="/signup"
-            className="text-slate-900 font-medium hover:underline"
-          >
-            Sign up
-          </Link>
-        </p>
+      {showChrome && (
+        <>
+          <p className="mt-5 text-center text-sm text-slate-500">
+            Don&apos;t have an account?{' '}
+            <Link
+              href="/signup"
+              className="font-medium text-slate-900 hover:underline"
+            >
+              Sign up
+            </Link>
+          </p>
+          <div className="mt-4 border-t border-slate-100 pt-4 text-center">
+            <Link
+              href="/register/worker"
+              className="text-sm font-medium text-green-700 hover:underline"
+            >
+              Want to offer services? Become a provider →
+            </Link>
+          </div>
+        </>
       )}
     </div>
   );

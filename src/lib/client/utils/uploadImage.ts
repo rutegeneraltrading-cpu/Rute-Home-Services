@@ -1,4 +1,55 @@
+import { createClient } from '@/lib/supabase/client';
+
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
+const WORKER_DOCUMENTS_BUCKET = 'worker_documents';
+
+/**
+ * Upload a worker document straight to Supabase Storage from the browser.
+ *
+ * This deliberately bypasses the Next.js API route: Vercel serverless functions
+ * cap the request body at ~4.5MB, so routing document uploads through an API
+ * endpoint fails with FUNCTION_PAYLOAD_TOO_LARGE (413) for typical ID scans /
+ * PDFs / phone photos, which in turn blocked worker creation entirely.
+ *
+ * The `worker_documents` bucket has a public INSERT policy, so the anon key can
+ * upload directly. Safe to call before the worker account exists.
+ */
+export async function uploadWorkerDocument(
+  file: File,
+  type: string,
+): Promise<{ type: string; file_url: string }> {
+  if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+    throw new Error('File must be an image or PDF');
+  }
+
+  if (file.size > MAX_FILE_SIZE) {
+    throw new Error('File size must be less than 5MB');
+  }
+
+  const supabase = createClient();
+  const ext = file.name.split('.').pop() || 'bin';
+  const random = Math.random().toString(36).substring(2, 8);
+  const filename = `worker-${type}-${Date.now()}-${random}.${ext}`;
+
+  const { error } = await supabase.storage
+    .from(WORKER_DOCUMENTS_BUCKET)
+    .upload(filename, file, {
+      contentType: file.type,
+      cacheControl: '3600',
+      upsert: false,
+    });
+
+  if (error) {
+    throw new Error(error.message || 'Failed to upload document');
+  }
+
+  const { data } = supabase.storage
+    .from(WORKER_DOCUMENTS_BUCKET)
+    .getPublicUrl(filename);
+
+  return { type, file_url: data.publicUrl };
+}
 
 export async function uploadProfileImage(file: File): Promise<string> {
   // Validate file on client side

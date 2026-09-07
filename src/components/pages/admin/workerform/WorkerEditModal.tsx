@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
+import { ChevronLeft, FileText, ExternalLink } from 'lucide-react';
 import { Service } from '@/lib/types/admin/services';
 import { MultiSelect } from '@/components/common/MultiSelect';
 import { Controller, useForm } from 'react-hook-form';
@@ -26,7 +28,18 @@ import {
 } from '@/components/ui/select';
 import { WorkerEditModalProps } from '@/lib/types';
 import { workerEditSchema, WorkerEditValues } from '@/lib/validations';
-import Image from 'next/image';
+import { WorkerStepper } from './WorkerStepper';
+
+const labelCls = 'mb-1 block text-sm font-medium text-slate-700';
+const errCls = 'mt-1 text-sm text-red-600';
+const phoneInputCls =
+  '!h-10 !w-full !rounded-md !border-slate-300 !text-sm !pl-12';
+
+const STATUS_BADGE: Record<string, string> = {
+  approved: 'bg-green-100 text-green-700',
+  pending: 'bg-amber-100 text-amber-700',
+  rejected: 'bg-red-100 text-red-700',
+};
 
 export function WorkerEditModal({
   open,
@@ -41,7 +54,6 @@ export function WorkerEditModal({
   );
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // Track document statuses
   const [documentStatuses, setDocumentStatuses] = useState<{
     [docId: string]: string;
   }>({});
@@ -81,7 +93,6 @@ export function WorkerEditModal({
         },
       });
       setSelectedServiceIds(worker.service_ids || []);
-      // Initialize documentStatuses from worker.worker_documents
       if (worker.worker_documents) {
         const initialStatuses: { [docId: string]: string } = {};
         worker.worker_documents.forEach((doc: any) => {
@@ -89,6 +100,7 @@ export function WorkerEditModal({
         });
         setDocumentStatuses(initialStatuses);
       }
+      setStep(1);
     }
   }, [worker, reset]);
 
@@ -123,7 +135,6 @@ export function WorkerEditModal({
     if (!worker) return;
     setIsSubmitting(true);
     try {
-      // Prepare worker_documents status updates
       let workerDocumentsPayload: Array<{ id: string; status: string }> = [];
       if (worker.worker_documents && Object.keys(documentStatuses).length > 0) {
         workerDocumentsPayload = worker.worker_documents.map((doc: any) => ({
@@ -155,412 +166,425 @@ export function WorkerEditModal({
   };
 
   if (!worker) return null;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Edit Worker</DialogTitle>
-          <DialogDescription>
-            Update worker details. Role cannot be changed.
-          </DialogDescription>
+      <DialogContent className="flex max-h-[92vh] flex-col gap-0 p-0 sm:max-w-xl">
+        <DialogHeader className="border-b border-slate-100 px-6 py-4">
+          <div className="flex items-center gap-3">
+            <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-slate-100">
+              {worker.avatar_url ? (
+                <Image
+                  src={worker.avatar_url}
+                  alt={worker.full_name}
+                  fill
+                  className="object-cover"
+                />
+              ) : (
+                <span className="flex h-full items-center justify-center text-sm font-semibold text-slate-500">
+                  {worker.full_name?.charAt(0)?.toUpperCase() || 'W'}
+                </span>
+              )}
+            </span>
+            <div>
+              <DialogTitle className="text-lg leading-tight">
+                Edit worker
+              </DialogTitle>
+              <DialogDescription className="text-xs">
+                {worker.email} · role cannot be changed
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
 
-        {/* Stepper UI */}
-        <div className="flex items-center justify-between mb-8">
-          <div
-            className={`flex-1 text-center ${step === 1 ? 'font-bold text-primary' : 'text-muted-foreground'}`}
-          >
-            1. Base Info
-          </div>
-          <div className="w-8 h-0.5 bg-gray-300 mx-2" />
-          <div
-            className={`flex-1 text-center ${step === 2 ? 'font-bold text-primary' : 'text-muted-foreground'}`}
-          >
-            2. Address
-          </div>
-          <div className="w-8 h-0.5 bg-gray-300 mx-2" />
-          <div
-            className={`flex-1 text-center ${step === 3 ? 'font-bold text-primary' : 'text-muted-foreground'}`}
-          >
-            3. Documents
-          </div>
+        <div className="border-b border-slate-100 px-6 py-4">
+          <WorkerStepper step={step} />
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {/* Step 1: Base Info */}
-          {step === 1 && (
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="full_name">Full Name *</Label>
-                <Input
-                  id="full_name"
-                  placeholder="John Doe"
-                  {...register('full_name')}
-                  className="mt-2"
-                  autoComplete="off"
-                />
-                {errors.full_name && (
-                  <p className="text-sm text-red-500 mt-1">
-                    {errors.full_name.message}
-                  </p>
-                )}
-              </div>
-              <div>
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  value={worker.email}
-                  disabled
-                  className="mt-2 bg-gray-50"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Email cannot be changed
-                </p>
-              </div>
-              <div>
-                <Label htmlFor="phone">Phone</Label>
-                <Input
-                  id="phone"
-                  placeholder="+27 11 123 4567"
-                  {...register('phone')}
-                />
-              </div>
-              <div>
-                <Label className="block text-sm font-medium mb-1">
-                  Services *
-                </Label>
-                <MultiSelect
-                  options={
-                    (services as Service[] | undefined)?.map((s) => ({
-                      label: `${s.name} (${s.base_price}ZAR/${s.category?.charge_type || ''})`,
-                      value: s.id,
-                    })) || []
-                  }
-                  value={selectedServiceIds}
-                  onChange={(newSelected) => {
-                    setSelectedServiceIds(newSelected);
-                    setValue('service_ids', newSelected, {
-                      shouldDirty: true,
-                    });
-                  }}
-                  placeholder="Select services"
-                  disabled={servicesLoading || updateWorkerMutation.isPending}
-                />
-                {errors.service_ids && (
-                  <p className="text-sm text-red-500 mt-1">
-                    {errors.service_ids.message}
-                  </p>
-                )}
-              </div>
-              <div>
-                <Label htmlFor="status">Status *</Label>
-                <Controller
-                  name="status"
-                  control={control}
-                  render={({ field }) => (
-                    <Select
-                      value={field.value}
-                      onValueChange={(value) => {
-                        field.onChange(value);
-                        setValue(
-                          'status',
-                          value as 'active' | 'inactive' | 'suspended',
-                          { shouldDirty: true },
-                        );
-                      }}
-                    >
-                      <SelectTrigger id="status" className="mt-2">
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="inactive">Inactive</SelectItem>
-                        <SelectItem value="suspended">Suspended</SelectItem>
-                      </SelectContent>
-                    </Select>
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          className="flex min-h-0 flex-1 flex-col"
+        >
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+            {/* Step 1 */}
+            {step === 1 && (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <Label htmlFor="full_name" className={labelCls}>
+                    Full name <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="full_name"
+                    placeholder="John Doe"
+                    className="h-10"
+                    autoComplete="off"
+                    {...register('full_name')}
+                  />
+                  {errors.full_name && (
+                    <p className={errCls}>{errors.full_name.message}</p>
                   )}
-                />
-                {errors.status && (
-                  <p className="text-sm text-red-500 mt-1">
-                    {errors.status.message}
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Step 2: Address Info */}
-          {step === 2 && (
-            <div className="space-y-4 rounded-lg border border-dashed border-gray-200 p-4">
-              <div>
-                <Label className="text-sm">Label</Label>
-                <Select
-                  value={watch('address.label')}
-                  onValueChange={(value) =>
-                    setValue(
-                      'address.label',
-                      value as WorkerEditValues['address']['label'],
-                      {
-                        shouldValidate: true,
+                </div>
+                <div>
+                  <Label htmlFor="email" className={labelCls}>
+                    Email
+                  </Label>
+                  <Input
+                    id="email"
+                    value={worker.email}
+                    disabled
+                    className="h-10 bg-slate-50"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="phone" className={labelCls}>
+                    Phone
+                  </Label>
+                  <Input
+                    id="phone"
+                    placeholder="+27 11 123 4567"
+                    className="h-10"
+                    {...register('phone')}
+                  />
+                </div>
+                <div>
+                  <Label className={labelCls}>
+                    Services <span className="text-red-500">*</span>
+                  </Label>
+                  <MultiSelect
+                    options={
+                      (services as Service[] | undefined)?.map((s) => ({
+                        label: `${s.name} (${s.base_price} ZAR/${s.category?.charge_type || ''})`,
+                        value: s.id,
+                      })) || []
+                    }
+                    value={selectedServiceIds}
+                    onChange={(newSelected) => {
+                      setSelectedServiceIds(newSelected);
+                      setValue('service_ids', newSelected, {
                         shouldDirty: true,
-                      },
-                    )
-                  }
-                >
-                  <SelectTrigger className="mt-2">
-                    <SelectValue placeholder="Select label" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="home">Home</SelectItem>
-                    <SelectItem value="office">Office</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="address.recipient_name">Recipient Name</Label>
-                <Input
-                  id="address.recipient_name"
-                  placeholder="Recipient name"
-                  {...register('address.recipient_name')}
-                />
-              </div>
-              <div>
-                <Label htmlFor="address.phone">Address Phone *</Label>
-                <Controller
-                  name="address.phone"
-                  control={control}
-                  render={({ field }) => (
-                    <PhoneInput
-                      country={'za'}
-                      inputProps={{
-                        name: field.name,
-                        className:
-                          'h-9 w-full border rounded-md shadow-xs px-2 pl-12',
-                      }}
-                      value={field.value || ''}
-                      onChange={(value) => field.onChange(value)}
-                      onBlur={field.onBlur}
-                      placeholder="+27 81 234 5678"
-                      enableSearch
-                      containerClass="mb-2"
-                    />
+                      });
+                    }}
+                    placeholder="Select services"
+                    disabled={servicesLoading || updateWorkerMutation.isPending}
+                  />
+                  {errors.service_ids && (
+                    <p className={errCls}>{errors.service_ids.message}</p>
                   )}
-                />
-                {errors.address?.phone && (
-                  <p className="text-sm text-red-500 mt-1">
-                    {errors.address.phone.message}
-                  </p>
-                )}
+                </div>
+                <div className="sm:col-span-2">
+                  <Label htmlFor="status" className={labelCls}>
+                    Account status <span className="text-red-500">*</span>
+                  </Label>
+                  <Controller
+                    name="status"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        value={field.value}
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          setValue(
+                            'status',
+                            value as 'active' | 'inactive' | 'suspended',
+                            { shouldDirty: true },
+                          );
+                        }}
+                      >
+                        <SelectTrigger id="status" className="h-10 w-full">
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="inactive">Inactive</SelectItem>
+                          <SelectItem value="suspended">Suspended</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  {errors.status && (
+                    <p className={errCls}>{errors.status.message}</p>
+                  )}
+                </div>
               </div>
-              <div>
-                <Label htmlFor="address.line1">Address Line 1 *</Label>
-                <Input
-                  id="address.line1"
-                  placeholder="Street address"
-                  {...register('address.line1')}
-                />
-                {errors.address?.line1 && (
-                  <p className="text-sm text-red-500 mt-1">
-                    {errors.address.line1.message}
-                  </p>
-                )}
-              </div>
-              <div>
-                <Label htmlFor="address.line2">Address Line 2</Label>
-                <Input
-                  id="address.line2"
-                  placeholder="Apartment, suite, etc."
-                  {...register('address.line2')}
-                />
-              </div>
-              <div>
-                <Label htmlFor="address.city">City *</Label>
-                <Input
-                  id="address.city"
-                  placeholder="City"
-                  {...register('address.city')}
-                />
-                {errors.address?.city && (
-                  <p className="text-sm text-red-500 mt-1">
-                    {errors.address.city.message}
-                  </p>
-                )}
-              </div>
-              <div>
-                <Label htmlFor="address.state_province">Province/State *</Label>
-                <Input
-                  id="address.state_province"
-                  placeholder="Province or state"
-                  {...register('address.state_province')}
-                />
-                {errors.address?.state_province && (
-                  <p className="text-sm text-red-500 mt-1">
-                    {errors.address.state_province.message}
-                  </p>
-                )}
-              </div>
-              <div>
-                <Label htmlFor="address.postal_code">Postal Code *</Label>
-                <Input
-                  id="address.postal_code"
-                  type="tel"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  placeholder="Postal code"
-                  {...register('address.postal_code')}
-                />
-                {errors.address?.postal_code && (
-                  <p className="text-sm text-red-500 mt-1">
-                    {errors.address.postal_code.message}
-                  </p>
-                )}
-              </div>
-              <div>
-                <Label htmlFor="address.country">Country *</Label>
-                <Input
-                  id="address.country"
-                  placeholder="Country"
-                  {...register('address.country')}
-                />
-                {errors.address?.country && (
-                  <p className="text-sm text-red-500 mt-1">
-                    {errors.address.country.message}
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
+            )}
 
-          {/* Step 3: Document Upload */}
-          {step === 3 && (
-            <div className="rounded-lg border border-dashed border-gray-200 p-4">
-              {worker?.worker_documents &&
-                worker.worker_documents.length > 0 && (
-                  <div>
-                    <div className="space-y-4">
-                      {worker.worker_documents.map((doc: any, idx: number) => (
-                        <div key={idx} className="flex flex-col gap-2">
-                          {/* Status Select */}
-                          <div>
-                            <Label htmlFor={`doc-status-${idx}`}>Status</Label>
-                            <Select
-                              value={documentStatuses[doc.id] || doc.status}
-                              onValueChange={(value) => {
-                                setDocumentStatuses((prev) => ({
-                                  ...prev,
-                                  [doc.id]: value,
-                                }));
-                              }}
-                              disabled={isSubmitting}
-                            >
-                              <SelectTrigger
-                                id={`doc-status-${idx}`}
-                                className="mt-1"
+            {/* Step 2 */}
+            {step === 2 && (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <Label className={labelCls}>Address label</Label>
+                  <Select
+                    value={watch('address.label')}
+                    onValueChange={(value) =>
+                      setValue(
+                        'address.label',
+                        value as WorkerEditValues['address']['label'],
+                        { shouldValidate: true, shouldDirty: true },
+                      )
+                    }
+                  >
+                    <SelectTrigger className="h-10 w-full">
+                      <SelectValue placeholder="Select label" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="home">Home</SelectItem>
+                      <SelectItem value="office">Office</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="address.recipient_name" className={labelCls}>
+                    Recipient name
+                  </Label>
+                  <Input
+                    id="address.recipient_name"
+                    placeholder="Recipient name"
+                    className="h-10"
+                    {...register('address.recipient_name')}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="address.phone" className={labelCls}>
+                    Address phone <span className="text-red-500">*</span>
+                  </Label>
+                  <Controller
+                    name="address.phone"
+                    control={control}
+                    render={({ field }) => (
+                      <PhoneInput
+                        country={'za'}
+                        inputProps={{ name: field.name }}
+                        inputClass={phoneInputCls}
+                        buttonClass="!border-slate-300 !bg-slate-50"
+                        value={field.value || ''}
+                        onChange={(value) => field.onChange(value)}
+                        onBlur={field.onBlur}
+                        enableSearch
+                      />
+                    )}
+                  />
+                  {errors.address?.phone && (
+                    <p className={errCls}>{errors.address.phone.message}</p>
+                  )}
+                </div>
+                <div>
+                  <Label htmlFor="address.line1" className={labelCls}>
+                    Address line 1 <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="address.line1"
+                    placeholder="Street address"
+                    className="h-10"
+                    {...register('address.line1')}
+                  />
+                  {errors.address?.line1 && (
+                    <p className={errCls}>{errors.address.line1.message}</p>
+                  )}
+                </div>
+                <div>
+                  <Label htmlFor="address.line2" className={labelCls}>
+                    Address line 2
+                  </Label>
+                  <Input
+                    id="address.line2"
+                    placeholder="Apartment, suite, etc."
+                    className="h-10"
+                    {...register('address.line2')}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="address.country" className={labelCls}>
+                    Country <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="address.country"
+                    placeholder="Country"
+                    className="h-10"
+                    {...register('address.country')}
+                  />
+                  {errors.address?.country && (
+                    <p className={errCls}>{errors.address.country.message}</p>
+                  )}
+                </div>
+                <div>
+                  <Label htmlFor="address.state_province" className={labelCls}>
+                    Province / State <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="address.state_province"
+                    placeholder="Province or state"
+                    className="h-10"
+                    {...register('address.state_province')}
+                  />
+                  {errors.address?.state_province && (
+                    <p className={errCls}>
+                      {errors.address.state_province.message}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <Label htmlFor="address.city" className={labelCls}>
+                    City <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="address.city"
+                    placeholder="City"
+                    className="h-10"
+                    {...register('address.city')}
+                  />
+                  {errors.address?.city && (
+                    <p className={errCls}>{errors.address.city.message}</p>
+                  )}
+                </div>
+                <div>
+                  <Label htmlFor="address.postal_code" className={labelCls}>
+                    Postal code <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="address.postal_code"
+                    type="tel"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="Postal code"
+                    className="h-10"
+                    {...register('address.postal_code')}
+                  />
+                  {errors.address?.postal_code && (
+                    <p className={errCls}>
+                      {errors.address.postal_code.message}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Step 3 */}
+            {step === 3 && (
+              <div className="space-y-4">
+                {worker.worker_documents &&
+                worker.worker_documents.length > 0 ? (
+                  <>
+                    <p className="text-xs text-slate-500">
+                      Review each document and set its verification status.
+                    </p>
+                    {worker.worker_documents.map((doc: any, idx: number) => {
+                      const currentStatus =
+                        documentStatuses[doc.id] || doc.status;
+                      const isImage = doc.file_url?.match(
+                        /\.(jpg|jpeg|png|gif|bmp|webp)$/i,
+                      );
+                      return (
+                        <div
+                          key={idx}
+                          className="rounded-xl border border-slate-200 p-4"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium capitalize text-slate-800">
+                                {String(doc.document_type).replace(/_/g, ' ')}
+                              </p>
+                              <span
+                                className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-medium capitalize ${
+                                  STATUS_BADGE[currentStatus] ||
+                                  'bg-slate-100 text-slate-600'
+                                }`}
                               >
-                                <SelectValue placeholder="Select status" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="pending">Pending</SelectItem>
-                                <SelectItem value="approved">
-                                  Approved
-                                </SelectItem>
-                                <SelectItem value="rejected">
-                                  Rejected
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
+                                {currentStatus}
+                              </span>
+                            </div>
+                            <div className="w-40 shrink-0">
+                              <Select
+                                value={currentStatus}
+                                onValueChange={(value) =>
+                                  setDocumentStatuses((prev) => ({
+                                    ...prev,
+                                    [doc.id]: value,
+                                  }))
+                                }
+                                disabled={isSubmitting}
+                              >
+                                <SelectTrigger className="h-9 w-full">
+                                  <SelectValue placeholder="Status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="pending">
+                                    Pending
+                                  </SelectItem>
+                                  <SelectItem value="approved">
+                                    Approved
+                                  </SelectItem>
+                                  <SelectItem value="rejected">
+                                    Rejected
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
                           </div>
-                          <div className="font-medium text-sm mt-2">
-                            Document Type: {doc.document_type}
-                          </div>
-                          {/* File Preview */}
+
                           {doc.file_url &&
-                          doc.file_url.match(
-                            /\.(jpg|jpeg|png|gif|bmp|webp)$/i,
-                          ) ? (
-                            <Image
-                              src={doc.file_url}
-                              alt={doc.document_type}
-                              width={400}
-                              height={400}
-                              className="w-full object-cover rounded border mt-2"
-                            />
-                          ) : (
-                            <a
-                              href={doc.file_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs underline text-blue-600 mt-2"
-                            >
-                              View File
-                            </a>
-                          )}
+                            (isImage ? (
+                              <div className="relative mt-3 h-48 w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                                <Image
+                                  src={doc.file_url}
+                                  alt={doc.document_type}
+                                  fill
+                                  className="object-contain"
+                                />
+                              </div>
+                            ) : (
+                              <a
+                                href={doc.file_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="mt-3 inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                              >
+                                <FileText className="h-4 w-4" />
+                                View document
+                                <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
+                              </a>
+                            ))}
                         </div>
-                      ))}
-                    </div>
+                      );
+                    })}
+                  </>
+                ) : (
+                  <div className="rounded-xl border border-dashed border-slate-200 p-8 text-center text-sm text-slate-400">
+                    No documents uploaded for this worker.
                   </div>
                 )}
-            </div>
-          )}
+              </div>
+            )}
+          </div>
 
-          {/* Worker Documents List & Status Update (always visible for admin) */}
-          {/* ...existing code... */}
-
-          {/* Navigation Buttons */}
-          <div
-            className={`flex justify-between gap-3 pt-4 ${step === 1 ? 'justify-end' : 'justify-between'}`}
-          >
-            {step > 1 && (
+          {/* Footer */}
+          <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-6 py-4">
+            {step > 1 ? (
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 onClick={handleBack}
                 disabled={isSubmitting}
-                className="px-6"
+                className="text-slate-600"
               >
+                <ChevronLeft className="mr-1 h-4 w-4" />
                 Back
               </Button>
+            ) : (
+              <span />
             )}
-            {step < 3 && (
+            {step < 3 ? (
               <Button
                 type="button"
                 onClick={handleNext}
                 disabled={isSubmitting}
                 className="px-6"
               >
-                Next
+                Continue
               </Button>
-            )}
-            {step === 3 && (
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <span className="flex items-center gap-2">
-                    <svg
-                      className="animate-spin h-4 w-4 text-white"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8v8z"
-                      ></path>
-                    </svg>
-                    Updating...
-                  </span>
-                ) : (
-                  'Update Worker'
-                )}
+            ) : (
+              <Button type="submit" className="px-6" disabled={isSubmitting}>
+                {isSubmitting ? 'Updating…' : 'Save changes'}
               </Button>
             )}
           </div>

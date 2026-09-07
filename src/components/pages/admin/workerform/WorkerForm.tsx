@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import Image from 'next/image';
-import { Camera } from 'lucide-react';
+import { Camera, UploadCloud, FileText, X, ChevronLeft } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -28,7 +28,27 @@ import { Service } from '@/lib/types/admin/services';
 import { MultiSelect } from '@/components/common/MultiSelect';
 import { useCreateWorker, useGetServices } from '@/lib/client/api';
 import { workerFormSchema, WorkerFormValues } from '@/lib/validations';
-import { uploadWorkerAvatarImage } from '@/lib/client/utils/uploadImage';
+import {
+  uploadWorkerAvatarImage,
+  uploadWorkerDocument,
+} from '@/lib/client/utils/uploadImage';
+import { WorkerStepper } from './WorkerStepper';
+
+const DOC_TYPES = [
+  { value: 'identity', label: 'Identity' },
+  { value: 'passport', label: 'Passport' },
+  { value: 'proof_of_residency', label: 'Proof of Residency' },
+  { value: 'business_registration', label: 'Business Registration' },
+  { value: 'bank_confirmation', label: 'Bank Confirmation' },
+  { value: 'shareholder_id', label: 'Shareholder ID' },
+];
+const docLabel = (v: string) =>
+  DOC_TYPES.find((d) => d.value === v)?.label || v;
+
+const labelCls = 'mb-1 block text-sm font-medium text-slate-700';
+const errCls = 'mt-1 text-sm text-red-600';
+const phoneInputCls =
+  '!h-10 !w-full !rounded-md !border-slate-300 !text-sm !pl-12';
 
 export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
   const createWorkerMutation = useCreateWorker();
@@ -46,6 +66,7 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
   );
   const [profileImageError, setProfileImageError] = useState(false);
   const profileImageRef = useRef<HTMLInputElement>(null);
+  const documentInputRef = useRef<HTMLInputElement>(null);
 
   const {
     register,
@@ -54,7 +75,6 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
     setValue,
     watch,
     trigger,
-    getValues,
     formState: { errors: formErrors },
   } = useForm<WorkerFormValues>({
     resolver: zodResolver(workerFormSchema),
@@ -109,27 +129,23 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
     if (step > 1) setStep(step - 1);
   };
 
-  // Document upload helper
-  const uploadDocument = async (file: File, type: string) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('type', type);
-    const res = await fetch('/api/admin/upload-worker-document', {
-      method: 'POST',
-      body: formData,
-    });
-    if (!res.ok) {
-      const errorData = await res.json();
-      throw new Error(errorData.error || 'Failed to upload document');
-    }
-    const { url } = await res.json();
-    return { type, file_url: url };
+  // Document upload helper — uploads straight to Supabase Storage from the
+  // browser to avoid Vercel's ~4.5MB API body limit (FUNCTION_PAYLOAD_TOO_LARGE).
+  const uploadDocument = (file: File, type: string) =>
+    uploadWorkerDocument(file, type);
+
+  const handleDocumentFile = (file: File | undefined) => {
+    if (!file || !selectedDocType) return;
+    if (!file.type.startsWith('image/') && file.type !== 'application/pdf')
+      return;
+    if (file.size > 5 * 1024 * 1024) return;
+    setDocuments((prev) => [...prev, { file, type: selectedDocType }]);
+    if (documentInputRef.current) documentInputRef.current.value = '';
   };
 
   const onSubmit = async (data: WorkerFormValues) => {
     setIsSubmitting(true);
     try {
-      // 0. Upload profile image if provided
       let avatarUrl: string | undefined;
       if (profileImage) {
         try {
@@ -141,7 +157,6 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
         }
       }
 
-      // 1. Upload all documents to backend and get URLs
       const uploadedDocs: Array<{ type: string; file_url: string }> = [];
       for (const doc of documents) {
         try {
@@ -153,7 +168,6 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
         }
       }
 
-      // 2. Submit all data to backend
       await createWorkerMutation.mutateAsync({
         full_name: data.full_name,
         email: data.email,
@@ -175,6 +189,7 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
       setDocuments([]);
       setProfileImage(null);
       setProfileImagePreview(null);
+      setStep(1);
       onSuccess?.();
       onOpenChange(false);
     } catch (error) {
@@ -186,505 +201,505 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Add New Worker</DialogTitle>
+      <DialogContent className="flex max-h-[92vh] flex-col gap-0 p-0 sm:max-w-xl">
+        <DialogHeader className="border-b border-slate-100 px-6 py-4">
+          <DialogTitle className="text-lg">Add new worker</DialogTitle>
           <DialogDescription>
-            Create a new worker account. Workers can accept service bookings.
+            Create a worker account. Workers can be assigned service bookings
+            once verified.
           </DialogDescription>
         </DialogHeader>
 
-        {/* Stepper UI */}
-        <div className="flex items-center justify-between mb-8">
-          <div
-            className={`flex-1 text-center ${step === 1 ? 'font-bold text-primary' : 'text-muted-foreground'}`}
-          >
-            1. Base Info
-          </div>
-          <div className="w-8 h-0.5 bg-gray-300 mx-2" />
-          <div
-            className={`flex-1 text-center ${step === 2 ? 'font-bold text-primary' : 'text-muted-foreground'}`}
-          >
-            2. Address
-          </div>
-          <div className="w-8 h-0.5 bg-gray-300 mx-2" />
-          <div
-            className={`flex-1 text-center ${step === 3 ? 'font-bold text-primary' : 'text-muted-foreground'}`}
-          >
-            3. Documents
-          </div>
+        <div className="border-b border-slate-100 px-6 py-4">
+          <WorkerStepper step={step} />
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {/* Step 1: Base Info */}
-          {step === 1 && (
-            <div className="space-y-4">
-              {/* Profile Image Upload */}
-              <div className="flex flex-col items-center gap-2 pb-2">
-                <div
-                  className="relative w-20 h-20 rounded-full overflow-hidden bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors"
-                  onClick={() => profileImageRef.current?.click()}
-                >
-                  {profileImagePreview ? (
-                    <Image
-                      src={profileImagePreview}
-                      alt="Profile preview"
-                      fill
-                      className="object-cover"
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center gap-1 text-gray-400">
-                      <Camera className="w-5 h-5" />
-                      <span className="text-xs">Add Photo</span>
-                    </div>
-                  )}
-                </div>
-                <input
-                  ref={profileImageRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    if (!file.type.startsWith('image/')) return;
-                    if (file.size > 5 * 1024 * 1024) return;
-                    setProfileImage(file);
-                    setProfileImageError(false);
-                    const reader = new FileReader();
-                    reader.onload = (ev) =>
-                      setProfileImagePreview(ev.target?.result as string);
-                    reader.readAsDataURL(file);
-                  }}
-                />
-                <p className="text-xs text-muted-foreground">Profile Photo *</p>
-                {profileImageError && (
-                  <p className="text-xs text-red-500">
-                    Please upload a profile photo.
-                  </p>
-                )}
-                <p className="text-xs text-amber-600 text-center">
-                  ⚠️ Your photo is very important. <br /> Kindly use a real,
-                  clear face photo.
-                </p>
-                {profileImagePreview && (
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          className="flex min-h-0 flex-1 flex-col"
+        >
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+            {/* Step 1 */}
+            {step === 1 && (
+              <div className="space-y-5">
+                <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
                   <button
                     type="button"
-                    onClick={() => {
-                      setProfileImage(null);
-                      setProfileImagePreview(null);
-                    }}
-                    className="text-xs text-red-500 underline"
+                    onClick={() => profileImageRef.current?.click()}
+                    className="group relative h-20 w-20 shrink-0 overflow-hidden rounded-full border-2 border-dashed border-slate-300 bg-white transition-colors hover:border-green-500"
                   >
-                    Remove
+                    {profileImagePreview ? (
+                      <Image
+                        src={profileImagePreview}
+                        alt="Profile preview"
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <span className="flex h-full flex-col items-center justify-center gap-1 text-slate-400 group-hover:text-green-600">
+                        <Camera className="h-5 w-5" />
+                        <span className="text-[10px] font-medium">Photo</span>
+                      </span>
+                    )}
                   </button>
-                )}
-              </div>
-              <div>
-                <Label className="block text-sm font-medium mb-1">
-                  Full Name *
-                </Label>
-                <Input
-                  id="full_name"
-                  placeholder="John Doe"
-                  {...register('full_name')}
-                  onChange={(e) => {
-                    setValue('full_name', e.target.value, {
-                      shouldDirty: true,
-                    });
-                    trigger('full_name');
-                  }}
-                />
-                {formErrors.full_name && (
-                  <p className="text-sm text-red-500 mt-1">
-                    {formErrors.full_name.message}
-                  </p>
-                )}
-              </div>
-              <div>
-                <Label className="block text-sm font-medium mb-1">
-                  Email *
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="john@example.com"
-                  {...register('email')}
-                  onChange={(e) => {
-                    setValue('email', e.target.value, { shouldDirty: true });
-                    trigger('email');
-                  }}
-                />
-                {formErrors.email && (
-                  <p className="text-sm text-red-500 mt-1">
-                    {formErrors.email.message}
-                  </p>
-                )}
-              </div>
-              <div>
-                <Label className="block text-sm font-medium mb-1">Phone</Label>
-                <PhoneInput
-                  country={'za'}
-                  inputProps={{
-                    name: 'phone',
-                    required: true,
-                    className:
-                      'h-9 w-full border rounded-md shadow-xs px-2 pl-12',
-                  }}
-                  value={getValues('phone')}
-                  onChange={(value) =>
-                    setValue('phone', value, { shouldDirty: true })
-                  }
-                  enableSearch
-                  containerClass="mb-2"
-                />
-                {formErrors.phone && (
-                  <p className="text-sm text-red-500 mt-1">
-                    {formErrors.phone.message}
-                  </p>
-                )}
-              </div>
-              <div>
-                <Label className="block text-sm font-medium mb-1">
-                  Services *
-                </Label>
-                <MultiSelect
-                  options={
-                    (services as Service[] | undefined)?.map((s) => ({
-                      label: `${s.name} (${s.base_price}ZAR/${s.category?.charge_type || ''})`,
-                      value: s.id,
-                    })) || []
-                  }
-                  value={selectedServiceIds}
-                  onChange={(newSelected) => {
-                    setSelectedServiceIds(newSelected);
-                    setValue('service_ids', newSelected, { shouldDirty: true });
-                  }}
-                  placeholder="Select services"
-                  disabled={servicesLoading || isSubmitting}
-                />
-                {formErrors.service_ids && (
-                  <div className="text-xs text-red-500 mt-1">
-                    {formErrors.service_ids.message}
+                  <input
+                    ref={profileImageRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (!file.type.startsWith('image/')) return;
+                      if (file.size > 5 * 1024 * 1024) return;
+                      setProfileImage(file);
+                      setProfileImageError(false);
+                      const reader = new FileReader();
+                      reader.onload = (ev) =>
+                        setProfileImagePreview(ev.target?.result as string);
+                      reader.readAsDataURL(file);
+                    }}
+                  />
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">
+                      Profile photo <span className="text-red-500">*</span>
+                    </p>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      Use a real, clear face photo. Shown to customers.
+                    </p>
+                    {profileImagePreview && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setProfileImage(null);
+                          setProfileImagePreview(null);
+                        }}
+                        className="mt-1 text-xs font-medium text-red-600 hover:underline"
+                      >
+                        Remove
+                      </button>
+                    )}
+                    {profileImageError && (
+                      <p className={errCls}>Please upload a profile photo.</p>
+                    )}
                   </div>
-                )}
-              </div>
-            </div>
-          )}
+                </div>
 
-          {/* Step 2: Address Info */}
-          {step === 2 && (
-            <div className="space-y-4 rounded-lg border border-dashed border-gray-200 p-4">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm font-semibold">Worker Address</Label>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <Label htmlFor="full_name" className={labelCls}>
+                      Full name <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="full_name"
+                      placeholder="John Doe"
+                      className="h-10"
+                      {...register('full_name')}
+                      onChange={(e) => {
+                        setValue('full_name', e.target.value, {
+                          shouldDirty: true,
+                        });
+                        trigger('full_name');
+                      }}
+                    />
+                    {formErrors.full_name && (
+                      <p className={errCls}>{formErrors.full_name.message}</p>
+                    )}
+                  </div>
+                  <div>
+                    <Label htmlFor="email" className={labelCls}>
+                      Email <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="john@example.com"
+                      className="h-10"
+                      {...register('email')}
+                      onChange={(e) => {
+                        setValue('email', e.target.value, {
+                          shouldDirty: true,
+                        });
+                        trigger('email');
+                      }}
+                    />
+                    {formErrors.email && (
+                      <p className={errCls}>{formErrors.email.message}</p>
+                    )}
+                  </div>
+                  <div>
+                    <Label className={labelCls}>Phone</Label>
+                    <PhoneInput
+                      country={'za'}
+                      inputProps={{ name: 'phone' }}
+                      inputClass={phoneInputCls}
+                      buttonClass="!border-slate-300 !bg-slate-50"
+                      value={watch('phone')}
+                      onChange={(value) =>
+                        setValue('phone', value, { shouldDirty: true })
+                      }
+                      enableSearch
+                    />
+                    {formErrors.phone && (
+                      <p className={errCls}>{formErrors.phone.message}</p>
+                    )}
+                  </div>
+                  <div>
+                    <Label className={labelCls}>
+                      Services <span className="text-red-500">*</span>
+                    </Label>
+                    <MultiSelect
+                      options={
+                        (services as Service[] | undefined)?.map((s) => ({
+                          label: `${s.name} (${s.base_price} ZAR/${s.category?.charge_type || ''})`,
+                          value: s.id,
+                        })) || []
+                      }
+                      value={selectedServiceIds}
+                      onChange={(newSelected) => {
+                        setSelectedServiceIds(newSelected);
+                        setValue('service_ids', newSelected, {
+                          shouldDirty: true,
+                        });
+                        trigger('service_ids');
+                      }}
+                      placeholder="Select services"
+                      disabled={servicesLoading || isSubmitting}
+                    />
+                    {formErrors.service_ids && (
+                      <p className={errCls}>
+                        {formErrors.service_ids.message}
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
-              <div>
-                <Label className="text-sm">Label</Label>
-                <Select
-                  value={watch('address.label')}
-                  onValueChange={(value) =>
-                    setValue(
-                      'address.label',
-                      value as WorkerFormValues['address']['label'],
-                      {
-                        shouldValidate: true,
-                      },
-                    )
-                  }
-                >
-                  <SelectTrigger className="mt-2">
-                    <SelectValue placeholder="Select label" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="home">Home</SelectItem>
-                    <SelectItem value="office">Office</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="address.recipient_name">Recipient Name</Label>
-                <Input
-                  id="address.recipient_name"
-                  placeholder="Recipient name"
-                  {...register('address.recipient_name')}
-                  onChange={(e) => {
-                    setValue('address.recipient_name', e.target.value, {
-                      shouldDirty: true,
-                    });
-                    trigger('address.recipient_name');
-                  }}
-                />
-              </div>
-              <div>
-                <Label htmlFor="address.phone">Address Phone *</Label>
-                <PhoneInput
-                  country={'za'}
-                  inputProps={{
-                    name: 'address.phone',
-                    required: true,
-                    className:
-                      'h-9 w-full border rounded-md shadow-xs px-2 pl-12',
-                  }}
-                  value={getValues('address.phone')}
-                  onChange={(value) => {
-                    setValue('address.phone', value, { shouldDirty: true });
-                    if (!value) {
-                      setValue('address.phone', value, {
-                        shouldValidate: true,
-                      });
-                    }
-                  }}
-                  enableSearch
-                  containerClass="mb-2"
-                />
-                {formErrors.address?.phone && (
-                  <p className="text-sm text-red-500 mt-1">
-                    {formErrors.address.phone.message}
-                  </p>
-                )}
-              </div>
-              <div>
-                <Label htmlFor="address.line1">Address Line 1 *</Label>
-                <Input
-                  id="address.line1"
-                  placeholder="Street address"
-                  {...register('address.line1')}
-                  onChange={(e) => {
-                    setValue('address.line1', e.target.value, {
-                      shouldDirty: true,
-                    });
-                    trigger('address.line1');
-                  }}
-                />
-                {formErrors.address?.line1 && (
-                  <p className="text-sm text-red-500 mt-1">
-                    {formErrors.address.line1.message}
-                  </p>
-                )}
-              </div>
-              <div>
-                <Label htmlFor="address.line2">Address Line 2</Label>
-                <Input
-                  id="address.line2"
-                  placeholder="Apartment, suite, etc."
-                  {...register('address.line2')}
-                  onChange={(e) => {
-                    setValue('address.line2', e.target.value, {
-                      shouldDirty: true,
-                    });
-                    trigger('address.line2');
-                  }}
-                />
-              </div>
-              <div>
-                <Label htmlFor="address.country">Country *</Label>
-                <Input
-                  id="address.country"
-                  placeholder="Country"
-                  {...register('address.country')}
-                  onChange={(e) => {
-                    setValue('address.country', e.target.value, {
-                      shouldDirty: true,
-                    });
-                    trigger('address.country');
-                  }}
-                />
-                {formErrors.address?.country && (
-                  <p className="text-sm text-red-500 mt-1">
-                    {formErrors.address.country.message}
-                  </p>
-                )}
-              </div>
-              <div>
-                <Label htmlFor="address.state_province">Province/State *</Label>
-                <Input
-                  id="address.state_province"
-                  placeholder="Province or state"
-                  {...register('address.state_province')}
-                  onChange={(e) => {
-                    setValue('address.state_province', e.target.value, {
-                      shouldDirty: true,
-                    });
-                    trigger('address.state_province');
-                  }}
-                />
-                {formErrors.address?.state_province && (
-                  <p className="text-sm text-red-500 mt-1">
-                    {formErrors.address.state_province.message}
-                  </p>
-                )}
-              </div>
-              <div>
-                <Label htmlFor="address.city">City *</Label>
-                <Input
-                  id="address.city"
-                  placeholder="City"
-                  {...register('address.city')}
-                  onChange={(e) => {
-                    setValue('address.city', e.target.value, {
-                      shouldDirty: true,
-                    });
-                    trigger('address.city');
-                  }}
-                />
-                {formErrors.address?.city && (
-                  <p className="text-sm text-red-500 mt-1">
-                    {formErrors.address.city.message}
-                  </p>
-                )}
-              </div>
-              <div>
-                <Label htmlFor="address.postal_code">Postal Code *</Label>
-                <Input
-                  id="address.postal_code"
-                  type="tel"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  placeholder="Postal code"
-                  {...register('address.postal_code')}
-                  onChange={(e) => {
-                    setValue('address.postal_code', e.target.value, {
-                      shouldDirty: true,
-                    });
-                    trigger('address.postal_code');
-                  }}
-                />
-                {formErrors.address?.postal_code && (
-                  <p className="text-sm text-red-500 mt-1">
-                    {formErrors.address.postal_code.message}
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
+            )}
 
-          {/* Step 3: Document Upload */}
-          {step === 3 && (
-            <div className="rounded-lg border border-dashed border-gray-200 p-4">
-              <div className="grid grid-cols-1 gap-6 w-full">
+            {/* Step 2 */}
+            {step === 2 && (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <Label>Select Document Type</Label>
+                  <Label className={labelCls}>Address label</Label>
                   <Select
-                    value={selectedDocType}
-                    onValueChange={(value) => setSelectedDocType(value)}
-                    disabled={isSubmitting}
+                    value={watch('address.label')}
+                    onValueChange={(value) =>
+                      setValue(
+                        'address.label',
+                        value as WorkerFormValues['address']['label'],
+                        { shouldValidate: true },
+                      )
+                    }
                   >
-                    <SelectTrigger className="h-10">
-                      <SelectValue placeholder="Select document type" />
+                    <SelectTrigger className="h-10 w-full">
+                      <SelectValue placeholder="Select label" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="identity">Identity</SelectItem>
-                      <SelectItem value="passport">Passport</SelectItem>
-                      <SelectItem value="proof_of_residency">
-                        Proof of Residency
-                      </SelectItem>
-                      <SelectItem value="business_registration">
-                        Business Registration
-                      </SelectItem>
-                      <SelectItem value="bank_confirmation">
-                        Bank Confirmation
-                      </SelectItem>
-                      <SelectItem value="shareholder_id">
-                        Shareholder ID
-                      </SelectItem>
+                      <SelectItem value="home">Home</SelectItem>
+                      <SelectItem value="office">Office</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                <div className={`${documents.length > 0 ? 'hidden' : ''}`}>
-                  <Label>Upload Document</Label>
+                <div>
+                  <Label htmlFor="address.recipient_name" className={labelCls}>
+                    Recipient name
+                  </Label>
                   <Input
-                    type="file"
-                    accept="image/*,application/pdf"
-                    disabled={isSubmitting}
+                    id="address.recipient_name"
+                    placeholder="Recipient name"
+                    className="h-10"
+                    {...register('address.recipient_name')}
                     onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file && selectedDocType) {
-                        setDocuments((prev) => [
-                          ...prev,
-                          { file, type: selectedDocType },
-                        ]);
-                        // Do NOT reset selectedDocType here
-                      }
+                      setValue('address.recipient_name', e.target.value, {
+                        shouldDirty: true,
+                      });
+                      trigger('address.recipient_name');
                     }}
                   />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Select document type before uploading.
-                  </p>
+                </div>
+                <div>
+                  <Label htmlFor="address.phone" className={labelCls}>
+                    Address phone <span className="text-red-500">*</span>
+                  </Label>
+                  <PhoneInput
+                    country={'za'}
+                    inputProps={{ name: 'address.phone' }}
+                    inputClass={phoneInputCls}
+                    buttonClass="!border-slate-300 !bg-slate-50"
+                    value={watch('address.phone')}
+                    onChange={(value) =>
+                      setValue('address.phone', value, {
+                        shouldDirty: true,
+                        shouldValidate: !value,
+                      })
+                    }
+                    enableSearch
+                  />
+                  {formErrors.address?.phone && (
+                    <p className={errCls}>
+                      {formErrors.address.phone.message}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <Label htmlFor="address.line1" className={labelCls}>
+                    Address line 1 <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="address.line1"
+                    placeholder="Street address"
+                    className="h-10"
+                    {...register('address.line1')}
+                    onChange={(e) => {
+                      setValue('address.line1', e.target.value, {
+                        shouldDirty: true,
+                      });
+                      trigger('address.line1');
+                    }}
+                  />
+                  {formErrors.address?.line1 && (
+                    <p className={errCls}>
+                      {formErrors.address.line1.message}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <Label htmlFor="address.line2" className={labelCls}>
+                    Address line 2
+                  </Label>
+                  <Input
+                    id="address.line2"
+                    placeholder="Apartment, suite, etc."
+                    className="h-10"
+                    {...register('address.line2')}
+                    onChange={(e) => {
+                      setValue('address.line2', e.target.value, {
+                        shouldDirty: true,
+                      });
+                      trigger('address.line2');
+                    }}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="address.country" className={labelCls}>
+                    Country <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="address.country"
+                    placeholder="Country"
+                    className="h-10"
+                    {...register('address.country')}
+                    onChange={(e) => {
+                      setValue('address.country', e.target.value, {
+                        shouldDirty: true,
+                      });
+                      trigger('address.country');
+                    }}
+                  />
+                  {formErrors.address?.country && (
+                    <p className={errCls}>
+                      {formErrors.address.country.message}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <Label htmlFor="address.state_province" className={labelCls}>
+                    Province / State <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="address.state_province"
+                    placeholder="Province or state"
+                    className="h-10"
+                    {...register('address.state_province')}
+                    onChange={(e) => {
+                      setValue('address.state_province', e.target.value, {
+                        shouldDirty: true,
+                      });
+                      trigger('address.state_province');
+                    }}
+                  />
+                  {formErrors.address?.state_province && (
+                    <p className={errCls}>
+                      {formErrors.address.state_province.message}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <Label htmlFor="address.city" className={labelCls}>
+                    City <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="address.city"
+                    placeholder="City"
+                    className="h-10"
+                    {...register('address.city')}
+                    onChange={(e) => {
+                      setValue('address.city', e.target.value, {
+                        shouldDirty: true,
+                      });
+                      trigger('address.city');
+                    }}
+                  />
+                  {formErrors.address?.city && (
+                    <p className={errCls}>{formErrors.address.city.message}</p>
+                  )}
+                </div>
+                <div>
+                  <Label htmlFor="address.postal_code" className={labelCls}>
+                    Postal code <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="address.postal_code"
+                    type="tel"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="Postal code"
+                    className="h-10"
+                    {...register('address.postal_code')}
+                    onChange={(e) => {
+                      setValue('address.postal_code', e.target.value, {
+                        shouldDirty: true,
+                      });
+                      trigger('address.postal_code');
+                    }}
+                  />
+                  {formErrors.address?.postal_code && (
+                    <p className={errCls}>
+                      {formErrors.address.postal_code.message}
+                    </p>
+                  )}
                 </div>
               </div>
-              {/* Preview selected files with type label */}
-              <div className="flex flex-wrap gap-4 mt-4">
-                {documents.map((doc, idx) => (
-                  <div
-                    key={idx}
-                    className="flex flex-col items-center border rounded p-2"
-                  >
-                    {doc.file.type.startsWith('image/') ? (
-                      <Image
-                        src={URL.createObjectURL(doc.file)}
-                        alt={doc.file.name}
-                        width={96}
-                        height={96}
-                        className="w-full object-cover rounded"
-                      />
-                    ) : (
-                      <span className="text-xs">PDF</span>
-                    )}
-                    <button
-                      type="button"
-                      className="mt-2 text-xs text-red-500 underline"
-                      onClick={() => {
-                        setDocuments((prev) =>
-                          prev.filter((_, i) => i !== idx),
-                        );
-                        // Do NOT reset selectedDocType here
-                      }}
+            )}
+
+            {/* Step 3 */}
+            {step === 3 && (
+              <div className="space-y-4">
+                <p className="rounded-lg border border-slate-200 bg-slate-50/60 p-3 text-xs text-slate-500">
+                  Attach at least one verification document (image or PDF, up to
+                  5MB each).
+                </p>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                  <div className="flex-1">
+                    <Label className={labelCls}>Document type</Label>
+                    <Select
+                      value={selectedDocType}
+                      onValueChange={(value) => setSelectedDocType(value)}
                       disabled={isSubmitting}
                     >
-                      Remove
-                    </button>
+                      <SelectTrigger className="h-10 w-full">
+                        <SelectValue placeholder="Select document type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DOC_TYPES.map((d) => (
+                          <SelectItem key={d.value} value={d.value}>
+                            {d.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-10"
+                    disabled={!selectedDocType || isSubmitting}
+                    onClick={() => documentInputRef.current?.click()}
+                  >
+                    <UploadCloud className="mr-2 h-4 w-4" />
+                    Add
+                  </Button>
+                  <input
+                    ref={documentInputRef}
+                    type="file"
+                    accept="image/*,application/pdf"
+                    className="hidden"
+                    disabled={!selectedDocType}
+                    onChange={(e) => handleDocumentFile(e.target.files?.[0])}
+                  />
+                </div>
 
-          {/* Navigation Buttons */}
-          <div
-            className={`flex justify-between gap-3 pt-4 ${step === 1 ? 'justify-end' : 'justify-between'}`}
-          >
-            {step > 1 && (
+                {documents.length > 0 && (
+                  <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200">
+                    {documents.map((doc, idx) => (
+                      <li
+                        key={idx}
+                        className="flex items-center gap-3 p-3 text-sm"
+                      >
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
+                          {doc.file.type.startsWith('image/') ? (
+                            <Camera className="h-4 w-4" />
+                          ) : (
+                            <FileText className="h-4 w-4" />
+                          )}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate font-medium text-slate-800">
+                            {doc.file.name}
+                          </span>
+                          <span className="text-xs text-slate-400">
+                            {docLabel(doc.type)} ·{' '}
+                            {(doc.file.size / 1024 / 1024).toFixed(2)} MB
+                          </span>
+                        </span>
+                        <button
+                          type="button"
+                          className="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                          onClick={() =>
+                            setDocuments((prev) =>
+                              prev.filter((_, i) => i !== idx),
+                            )
+                          }
+                          disabled={isSubmitting}
+                          aria-label="Remove document"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-6 py-4">
+            {step > 1 ? (
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 onClick={handleBack}
                 disabled={isSubmitting}
-                className="px-6"
+                className="text-slate-600"
               >
+                <ChevronLeft className="mr-1 h-4 w-4" />
                 Back
               </Button>
+            ) : (
+              <span />
             )}
-            {step < 3 && (
+            {step < 3 ? (
               <Button
                 type="button"
                 onClick={handleNext}
                 disabled={isSubmitting}
                 className="px-6"
               >
-                Next
+                Continue
               </Button>
-            )}
-            {step === 3 && (
+            ) : (
               <Button
                 type="submit"
+                className="px-6"
                 disabled={
                   isSubmitting ||
                   documents.length === 0 ||
                   documents.some((doc) => !doc.type || !doc.file)
                 }
               >
-                {isSubmitting ? 'Creating...' : 'Create Worker'}
+                {isSubmitting ? 'Creating…' : 'Create worker'}
               </Button>
             )}
           </div>
