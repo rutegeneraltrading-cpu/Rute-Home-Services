@@ -270,3 +270,5 @@ vercel deploy
 - AWS
 - DigitalOcean
 - Azure App Service
+
+Done
