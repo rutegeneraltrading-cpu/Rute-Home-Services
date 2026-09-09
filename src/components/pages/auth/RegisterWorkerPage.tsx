@@ -30,7 +30,7 @@ import { MultiSelect } from '@/components/common/MultiSelect';
 import { useCreateWorker, useGetServices } from '@/lib/client/api';
 import { WorkerFormValues, workerFormSchema } from '@/lib/validations';
 import {
-  uploadWorkerAvatarImage,
+  uploadWorkerAvatarDirect,
   uploadWorkerDocument,
 } from '@/lib/client/utils/uploadImage';
 
@@ -171,7 +171,7 @@ const RegisterWorkerPage = () => {
       let avatarUrl: string | undefined;
       if (profileImage) {
         try {
-          avatarUrl = await uploadWorkerAvatarImage(profileImage);
+          avatarUrl = await uploadWorkerAvatarDirect(profileImage);
         } catch {
           toast({
             title: 'Image upload failed',
@@ -234,6 +234,35 @@ const RegisterWorkerPage = () => {
       });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const onInvalid = (formValidationErrors: Record<string, unknown>) => {
+    console.warn('Worker registration validation failed:', formValidationErrors);
+    const firstMessage = Object.values(formValidationErrors)
+      .map((e) =>
+        e && typeof e === 'object' && 'message' in e
+          ? String((e as { message?: unknown }).message)
+          : '',
+      )
+      .find(Boolean);
+    toast({
+      variant: 'destructive',
+      title: 'Please review your details',
+      description:
+        firstMessage ||
+        'Some required fields are missing or invalid. Check every step.',
+    });
+    if (
+      formValidationErrors.full_name ||
+      formValidationErrors.email ||
+      formValidationErrors.phone ||
+      formValidationErrors.service_ids ||
+      formValidationErrors.whatsappConsent
+    ) {
+      setStep(1);
+    } else if (formValidationErrors.address) {
+      setStep(2);
     }
   };
 
@@ -305,7 +334,10 @@ const RegisterWorkerPage = () => {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="px-6 py-6 sm:px-8">
+        <form
+          onSubmit={handleSubmit(onSubmit, onInvalid)}
+          className="px-6 py-6 sm:px-8"
+        >
           {/* Step 1 */}
           {step === 1 && (
             <div className="space-y-8">

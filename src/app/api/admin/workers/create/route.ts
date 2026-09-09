@@ -102,24 +102,39 @@ export async function POST(request: NextRequest) {
     const { data: existingProfile, error: existingProfileError } =
       await supabaseAdmin
         .from('profiles')
-        .select('id')
+        .select('id, auth_id')
         .eq('email', normalizedEmail)
         .maybeSingle();
 
     if (existingProfileError) throw existingProfileError;
 
+    // If a profile already exists for this email, only reject when it is
+    // already a fully set-up worker. Otherwise treat it as a half-created
+    // record and continue (recovering from an earlier failed attempt).
     if (existingProfile) {
-      return NextResponse.json(
-        { error: 'Worker already exists with this email' },
-        { status: 409 },
-      );
+      const { data: existingWorkerForProfile, error: existingWorkerLookupError } =
+        await supabaseAdmin
+          .from('workers')
+          .select('id')
+          .eq('profile_id', existingProfile.id)
+          .maybeSingle();
+
+      if (existingWorkerLookupError) throw existingWorkerLookupError;
+
+      if (existingWorkerForProfile) {
+        return NextResponse.json(
+          { error: 'A worker already exists with this email address.' },
+          { status: 409 },
+        );
+      }
     }
 
+    // Look for an existing auth user with this email (from a previous attempt).
     let existingAuthUser = null as null | { id: string; email?: string };
     let page = 1;
     let hasMore = true;
 
-    while (hasMore && page <= 5 && !existingAuthUser) {
+    while (hasMore && page <= 10 && !existingAuthUser) {
       const { data: authUsers, error: existingAuthError } =
         await supabaseAdmin.auth.admin.listUsers({
           page,
@@ -140,38 +155,44 @@ export async function POST(request: NextRequest) {
       page += 1;
     }
 
-    if (existingAuthUser?.id) {
-      return NextResponse.json(
-        { error: 'Worker already exists with this email' },
-        { status: 409 },
-      );
+    let auth_id: string;
+
+    if (existingProfile?.auth_id || existingAuthUser?.id) {
+      // Reuse the auth user from the earlier attempt.
+      auth_id = (existingProfile?.auth_id || existingAuthUser?.id) as string;
+      console.log('Reusing existing auth user:', auth_id);
+    } else {
+      // Generate a strong random password for the worker
+      const tempPassword = crypto.randomBytes(16).toString('base64url');
+
+      console.log('Creating worker with email:', normalizedEmail);
+
+      // Step 1: Create auth user via admin client.
+      // NOTE: we intentionally do NOT pass a top-level `phone` here — that
+      // requires phone auth to be enabled on the project and fails otherwise.
+      // The phone number is still stored on profiles / workers / addresses.
+      const { data: authData, error: authError } =
+        await supabaseAdmin.auth.admin.createUser({
+          email: normalizedEmail,
+          password: tempPassword,
+          email_confirm: true,
+          user_metadata: {
+            full_name,
+            role: 'worker',
+            ...(normalizedPhone ? { phone: normalizedPhone } : {}),
+          },
+        });
+
+      if (authError || !authData?.user?.id) {
+        console.error('Auth creation error:', authError);
+        throw new Error(
+          authError?.message || 'Failed to create the worker login account.',
+        );
+      }
+
+      auth_id = authData.user.id;
+      console.log('Auth user created:', auth_id);
     }
-
-    // Generate a strong random password for the worker
-    const tempPassword = crypto.randomBytes(16).toString('base64url');
-
-    console.log('Creating worker with email:', email);
-
-    // Step 1: Create auth user via admin client
-    const { data: authData, error: authError } =
-      await supabaseAdmin.auth.admin.createUser({
-        email: normalizedEmail,
-        password: tempPassword,
-        ...(normalizedPhone ? { phone: normalizedPhone } : {}),
-        user_metadata: {
-          full_name,
-          role: 'worker',
-          ...(normalizedPhone ? { phone: normalizedPhone } : {}),
-        },
-      });
-
-    if (authError) {
-      console.error('Auth creation error:', authError);
-      throw new Error(authError.message || 'Failed to create auth user');
-    }
-
-    const auth_id = authData.user.id;
-    console.log('Auth user created:', auth_id);
 
     // Step 2: Create profile record
     const { data: profile, error: profileError } = await supabaseAdmin
@@ -337,7 +358,13 @@ export async function POST(request: NextRequest) {
     console.error('Error creating worker:', error);
 
     const errorMessage =
-      error instanceof Error ? error.message : 'Failed to create worker';
+      (error instanceof Error && error.message) ||
+      (typeof error === 'object' &&
+        error !== null &&
+        'message' in error &&
+        typeof (error as { message?: unknown }).message === 'string' &&
+        (error as { message: string }).message) ||
+      'Failed to create worker';
 
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }

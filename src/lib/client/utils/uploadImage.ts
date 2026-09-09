@@ -3,6 +3,83 @@ import { createClient } from '@/lib/supabase/client';
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 const WORKER_DOCUMENTS_BUCKET = 'worker_documents';
+const AVATARS_BUCKET = 'avatars';
+
+/**
+ * Downscale/recompress an image in the browser so large phone photos become
+ * small enough to upload reliably. Returns a JPEG blob. Falls back to the
+ * original file if anything goes wrong (e.g. HEIC that can't be decoded).
+ */
+async function downscaleImage(
+  file: File,
+  maxDimension = 1200,
+  quality = 0.85,
+): Promise<Blob> {
+  if (!file.type.startsWith('image/')) return file;
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
+    const width = Math.round(bitmap.width * scale);
+    const height = Math.round(bitmap.height * scale);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return file;
+    ctx.drawImage(bitmap, 0, 0, width, height);
+
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, 'image/jpeg', quality),
+    );
+    return blob && blob.size > 0 ? blob : file;
+  } catch {
+    return file;
+  }
+}
+
+/**
+ * Upload a worker profile photo straight to Supabase Storage from the browser.
+ *
+ * Bypasses the Next.js API route (Vercel's ~4.5MB body limit → 413 on big phone
+ * photos). The image is downscaled client-side first, then written to the public
+ * `avatars` bucket. Anon uploads are allowed for `worker-` prefixed files (see
+ * the `allow_public_worker_avatar_upload` migration), so this works before the
+ * worker's auth session exists.
+ */
+export async function uploadWorkerAvatarDirect(file: File): Promise<string> {
+  if (!file.type.startsWith('image/')) {
+    throw new Error('Profile photo must be an image');
+  }
+
+  const optimized = await downscaleImage(file, 1200, 0.85);
+
+  if (optimized.size > MAX_FILE_SIZE) {
+    throw new Error('Image is too large. Please use a smaller photo.');
+  }
+
+  const supabase = createClient();
+  const random = Math.random().toString(36).substring(2, 8);
+  const filename = `worker-${Date.now()}-${random}.jpg`;
+
+  const { error } = await supabase.storage
+    .from(AVATARS_BUCKET)
+    .upload(filename, optimized, {
+      contentType: 'image/jpeg',
+      cacheControl: '3600',
+      upsert: false,
+    });
+
+  if (error) {
+    throw new Error(error.message || 'Failed to upload profile photo');
+  }
+
+  const { data } = supabase.storage
+    .from(AVATARS_BUCKET)
+    .getPublicUrl(filename);
+
+  return data.publicUrl;
+}
 
 /**
  * Upload a worker document straight to Supabase Storage from the browser.

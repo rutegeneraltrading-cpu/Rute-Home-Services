@@ -41,7 +41,11 @@ class HTTPClient {
         const error = await response.json().catch(() => ({}));
         throw {
           status: response.status,
-          message: error.message || `HTTP ${response.status}`,
+          message:
+            error.message ||
+            error.error ||
+            error.error_description ||
+            `HTTP ${response.status}`,
           data: error,
         };
       }

@@ -29,7 +29,7 @@ import { MultiSelect } from '@/components/common/MultiSelect';
 import { useCreateWorker, useGetServices } from '@/lib/client/api';
 import { workerFormSchema, WorkerFormValues } from '@/lib/validations';
 import {
-  uploadWorkerAvatarImage,
+  uploadWorkerAvatarDirect,
   uploadWorkerDocument,
 } from '@/lib/client/utils/uploadImage';
 import { WorkerStepper } from './WorkerStepper';
@@ -83,6 +83,10 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
       email: '',
       phone: '',
       service_ids: [],
+      // Admin creates the account on the worker's behalf; the WhatsApp consent
+      // checkbox only lives on the public self-registration form, but the shared
+      // schema requires this field — default it so submit validation passes.
+      whatsappConsent: true,
       address: {
         label: 'home',
         recipient_name: '',
@@ -149,7 +153,7 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
       let avatarUrl: string | undefined;
       if (profileImage) {
         try {
-          avatarUrl = await uploadWorkerAvatarImage(profileImage);
+          avatarUrl = await uploadWorkerAvatarDirect(profileImage);
         } catch {
           alert('Image Upload Failed: Could not upload profile image.');
           setIsSubmitting(false);
@@ -199,6 +203,25 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
     }
   };
 
+  // Surface validation blockers instead of the submit doing nothing silently.
+  const onInvalid = (formValidationErrors: Record<string, unknown>) => {
+    console.warn('Worker form validation failed:', formValidationErrors);
+    const firstMessage = Object.values(formValidationErrors)
+      .map((e) =>
+        e && typeof e === 'object' && 'message' in e
+          ? String((e as { message?: unknown }).message)
+          : '',
+      )
+      .find(Boolean);
+    alert(
+      firstMessage
+        ? `Please fix: ${firstMessage}`
+        : 'Some required fields are missing or invalid. Please review all steps.',
+    );
+    if (formValidationErrors.full_name || formValidationErrors.email) setStep(1);
+    else if (formValidationErrors.address) setStep(2);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[92vh] flex-col gap-0 p-0 sm:max-w-xl">
@@ -215,7 +238,7 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
         </div>
 
         <form
-          onSubmit={handleSubmit(onSubmit)}
+          onSubmit={handleSubmit(onSubmit, onInvalid)}
           className="flex min-h-0 flex-1 flex-col"
         >
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
