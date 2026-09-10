@@ -47,7 +47,7 @@ export async function GET(
     const { data: workerServices } = await supabase
       .from('worker_services')
       .select(
-        `service_id, service:services (name, service_categories:category_id (name))`,
+        `service_id, service:services (name, base_price, service_categories:category_id (name, charge_type))`,
       )
       .eq('worker_id', workerId);
 
@@ -60,6 +60,18 @@ export async function GET(
     const serviceIds = (workerServices || [])
       .map((ws: any) => ws?.service_id)
       .filter(Boolean);
+    const serviceDetails = (workerServices || [])
+      .map((ws: any) =>
+        ws?.service
+          ? {
+              name: ws.service.name,
+              base_price: ws.service.base_price,
+              category_name: ws.service.service_categories?.name || '',
+              charge_type: ws.service.service_categories?.charge_type || '',
+            }
+          : null,
+      )
+      .filter(Boolean);
 
     const { data: primaryAddress } = await supabase
       .from('user_addresses')
@@ -67,6 +79,12 @@ export async function GET(
       .eq('profile_id', profile.id)
       .eq('is_primary', true)
       .maybeSingle();
+
+    const { data: workerDocuments } = await supabase
+      .from('worker_documents')
+      .select('id, document_type, file_url, status, uploaded_at')
+      .eq('worker_id', workerId)
+      .order('uploaded_at', { ascending: false });
 
     return NextResponse.json({
       worker: {
@@ -76,6 +94,8 @@ export async function GET(
         service_names: Array.from(new Set(serviceNames)),
         service_category_names: Array.from(new Set(categoryNames)),
         service_ids: Array.from(new Set(serviceIds)),
+        service_details: serviceDetails,
+        worker_documents: workerDocuments || [],
       },
     });
   } catch (error) {
@@ -184,9 +204,14 @@ export async function PUT(
       }
     }
 
-    // Update worker_documents status if provided
+    // Update worker_documents status if provided. Each entry must carry the
+    // document id so we update exactly that row (not every doc for the worker).
     if (Array.isArray(worker_documents) && worker_documents.length > 0) {
       for (const doc of worker_documents) {
+        if (!doc?.id) {
+          console.error('worker_documents update skipped: missing id', doc);
+          continue;
+        }
         if (!['pending', 'approved', 'rejected'].includes(doc.status)) {
           console.error('worker_documents update skipped: invalid status', doc);
           continue;
@@ -194,9 +219,10 @@ export async function PUT(
         const { data: updatedDoc, error: docUpdateError } = await supabase
           .from('worker_documents')
           .update({ status: doc.status })
+          .eq('id', doc.id)
           .eq('worker_id', workerId)
           .select()
-          .single();
+          .maybeSingle();
         if (docUpdateError) {
           console.error('worker_documents update error:', docUpdateError, doc);
           throw docUpdateError;

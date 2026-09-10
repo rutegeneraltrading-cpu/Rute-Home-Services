@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Edit2, Plus, Trash2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Edit2, Eye, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   WorkerForm,
@@ -18,6 +19,7 @@ import type { DataTableConfig, TableColumn, TableAction } from '@/lib/types';
 import type { WorkerProfileWithDetails } from '@/lib/client/api/workers/workers.api';
 
 const WorkersPage = () => {
+  const router = useRouter();
   const { data, isLoading } = useGetWorkers();
   const workers: WorkerProfileWithDetails[] = data?.workers || [];
   const deleteWorkerMutation = useDeleteWorker();
@@ -217,6 +219,14 @@ const WorkersPage = () => {
   ];
 
   const actions: TableAction[] = [
+    {
+      id: 'view',
+      label: 'View Details',
+      icon: Eye,
+      onClick: (item) => {
+        router.push(`/admin/workers/${String((item as WorkerProfileWithDetails).id)}`);
+      },
+    },
     {
       id: 'edit',
       label: 'Edit',

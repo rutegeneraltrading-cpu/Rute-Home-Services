@@ -335,7 +335,7 @@ const RegisterWorkerPage = () => {
         </div>
 
         <form
-          onSubmit={handleSubmit(onSubmit, onInvalid)}
+          onSubmit={(e) => e.preventDefault()}
           className="px-6 py-6 sm:px-8"
         >
           {/* Step 1 */}
@@ -909,6 +909,7 @@ const RegisterWorkerPage = () => {
 
             {step < 3 ? (
               <Button
+                key="next"
                 type="button"
                 onClick={handleNext}
                 disabled={isSubmitting}
@@ -918,7 +919,9 @@ const RegisterWorkerPage = () => {
               </Button>
             ) : (
               <Button
-                type="submit"
+                key="submit"
+                type="button"
+                onClick={() => handleSubmit(onSubmit, onInvalid)()}
                 className="px-6"
                 disabled={
                   isSubmitting ||

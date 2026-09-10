@@ -102,10 +102,10 @@ export function DataTable<T extends Record<string, any>>({
   const rows = table.getRowModel().rows;
   const pageCount = table.getPageCount();
   const currentPage = table.getState().pagination.pageIndex + 1;
+  const actionCount = config.actions?.length || 0;
+  const actionsColWidth = actionCount > 0 ? Math.max(96, actionCount * 44) : 0;
   const computedMinTableWidth =
-    (config.columns.length +
-      (config.actions && config.actions.length > 0 ? 1 : 0)) *
-    160;
+    config.columns.length * 160 + actionsColWidth;
   const minTableWidth = config.minTableWidth || computedMinTableWidth;
 
   return (
@@ -225,7 +225,10 @@ export function DataTable<T extends Record<string, any>>({
                     </TableHead>
                   ))}
                   {config.actions && config.actions.length > 0 && (
-                    <TableHead className="text-right whitespace-nowrap w-px">
+                    <TableHead
+                      className="text-right whitespace-nowrap"
+                      style={{ width: actionsColWidth }}
+                    >
                       Actions
                     </TableHead>
                   )}
@@ -296,8 +299,11 @@ export function DataTable<T extends Record<string, any>>({
 
                     {/* Actions column */}
                     {config.actions && config.actions.length > 0 && (
-                      <TableCell className="text-right w-px whitespace-nowrap">
-                        <div className="flex gap-1 justify-end flex-nowrap">
+                      <TableCell
+                        className="whitespace-nowrap"
+                        style={{ width: actionsColWidth }}
+                      >
+                        <div className="flex flex-nowrap justify-end gap-0.5">
                           {config.actions
                             .filter(
                               (action) =>
@@ -308,12 +314,13 @@ export function DataTable<T extends Record<string, any>>({
                               <Button
                                 key={action.id}
                                 variant="ghost"
-                                size="sm"
+                                size={action.icon ? 'icon-sm' : 'sm'}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   action.onClick(row.original);
                                 }}
                                 title={action.label}
+                                aria-label={action.label}
                               >
                                 {action.icon ? (
                                   <action.icon className="h-4 w-4" />

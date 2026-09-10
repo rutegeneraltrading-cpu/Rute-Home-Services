@@ -37,9 +37,10 @@ export async function GET() {
           )
         ),
         worker_documents:worker_documents (
+        id,
         document_type,
         file_url,
-        status  
+        status
         )
       `,
       )

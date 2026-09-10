@@ -238,7 +238,7 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
         </div>
 
         <form
-          onSubmit={handleSubmit(onSubmit, onInvalid)}
+          onSubmit={(e) => e.preventDefault()}
           className="flex min-h-0 flex-1 flex-col"
         >
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
@@ -705,6 +705,7 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
             )}
             {step < 3 ? (
               <Button
+                key="next"
                 type="button"
                 onClick={handleNext}
                 disabled={isSubmitting}
@@ -714,7 +715,9 @@ export function WorkerForm({ open, onOpenChange, onSuccess }: WorkerFormProps) {
               </Button>
             ) : (
               <Button
-                type="submit"
+                key="create"
+                type="button"
+                onClick={() => handleSubmit(onSubmit, onInvalid)()}
                 className="px-6"
                 disabled={
                   isSubmitting ||

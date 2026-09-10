@@ -18,10 +18,20 @@ export interface WorkerProfile {
   service_category_names?: string[];
   created_at: string;
   updated_at?: string;
+  rating_count?: number;
+  is_verified?: boolean;
+  service_details?: {
+    name: string;
+    base_price: number;
+    category_name: string;
+    charge_type: string;
+  }[];
   worker_documents?: Array<{
+    id?: string;
     document_type: string;
     file_url: string;
     status: 'pending' | 'approved' | 'rejected';
+    uploaded_at?: string;
   }>;
 }
 

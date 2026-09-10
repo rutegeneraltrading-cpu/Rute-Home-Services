@@ -349,6 +349,8 @@ export const ADMIN_NEW_PRODUCT_METADATA: Metadata =
   buildNoIndexMetadata('Add New Product');
 export const ADMIN_WORKERS_METADATA: Metadata =
   buildNoIndexMetadata('Manage Workers');
+export const ADMIN_WORKER_DETAIL_METADATA: Metadata =
+  buildNoIndexMetadata('Worker Detail');
 export const ADMIN_USERS_METADATA: Metadata =
   buildNoIndexMetadata('Manage Users');
 export const ADMIN_CONTACTS_METADATA: Metadata =

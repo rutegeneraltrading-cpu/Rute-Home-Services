@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { ChevronLeft, FileText, ExternalLink } from 'lucide-react';
 import { Service } from '@/lib/types/admin/services';
@@ -41,6 +41,34 @@ const STATUS_BADGE: Record<string, string> = {
   rejected: 'bg-red-100 text-red-700',
 };
 
+// Build a stable, comparable fingerprint of the editable values so we can tell
+// whether anything actually differs from what was loaded (react-hook-form's
+// `isDirty` stays true once a field is touched, even after it's reverted).
+const valuesFingerprint = (v: {
+  full_name?: string;
+  phone?: string;
+  status?: string;
+  service_ids?: string[];
+  address?: Record<string, string | boolean | undefined>;
+}) =>
+  JSON.stringify({
+    full_name: (v.full_name ?? '').trim(),
+    phone: (v.phone ?? '').trim(),
+    status: v.status ?? '',
+    service_ids: [...(v.service_ids ?? [])].sort(),
+    address: {
+      label: (v.address?.label as string) ?? 'home',
+      recipient_name: String(v.address?.recipient_name ?? '').trim(),
+      phone: String(v.address?.phone ?? '').trim(),
+      line1: String(v.address?.line1 ?? '').trim(),
+      line2: String(v.address?.line2 ?? '').trim(),
+      city: String(v.address?.city ?? '').trim(),
+      state_province: String(v.address?.state_province ?? '').trim(),
+      postal_code: String(v.address?.postal_code ?? '').trim(),
+      country: String(v.address?.country ?? 'ZA').trim(),
+    },
+  });
+
 export function WorkerEditModal({
   open,
   worker,
@@ -57,6 +85,10 @@ export function WorkerEditModal({
   const [documentStatuses, setDocumentStatuses] = useState<{
     [docId: string]: string;
   }>({});
+  const [initialDocStatuses, setInitialDocStatuses] = useState<{
+    [docId: string]: string;
+  }>({});
+  const baselineFingerprint = useRef<string>('');
 
   const {
     register,
@@ -71,9 +103,21 @@ export function WorkerEditModal({
     resolver: zodResolver(workerEditSchema),
   });
 
+  const watchedValues = watch();
+  const documentsChanged = Object.keys(documentStatuses).some(
+    (id) => documentStatuses[id] !== initialDocStatuses[id],
+  );
+  const formChanged =
+    baselineFingerprint.current !== '' &&
+    valuesFingerprint({
+      ...watchedValues,
+      service_ids: selectedServiceIds,
+    }) !== baselineFingerprint.current;
+  const hasChanges = formChanged || documentsChanged;
+
   useEffect(() => {
     if (worker) {
-      reset({
+      const resetPayload = {
         full_name: worker.full_name || '',
         phone: worker.phone || '',
         service_ids: worker.service_ids || [],
@@ -91,15 +135,18 @@ export function WorkerEditModal({
           country: worker.primary_address?.country || 'ZA',
           is_primary: true,
         },
-      });
+      };
+      reset(resetPayload);
+      baselineFingerprint.current = valuesFingerprint(resetPayload);
       setSelectedServiceIds(worker.service_ids || []);
+      const initialStatuses: { [docKey: string]: string } = {};
       if (worker.worker_documents) {
-        const initialStatuses: { [docId: string]: string } = {};
-        worker.worker_documents.forEach((doc: any) => {
-          if (doc.id) initialStatuses[doc.id] = doc.status;
+        worker.worker_documents.forEach((doc: any, idx: number) => {
+          initialStatuses[doc.id ?? `idx-${idx}`] = doc.status;
         });
-        setDocumentStatuses(initialStatuses);
       }
+      setDocumentStatuses(initialStatuses);
+      setInitialDocStatuses(initialStatuses);
       setStep(1);
     }
   }, [worker, reset]);
@@ -131,16 +178,45 @@ export function WorkerEditModal({
     if (step > 1) setStep(step - 1);
   };
 
+  // Surface validation blockers instead of the save doing nothing silently.
+  const onInvalid = (formValidationErrors: Record<string, unknown>) => {
+    console.warn('Worker edit validation failed:', formValidationErrors);
+    const firstMessage = Object.values(formValidationErrors)
+      .map((e) =>
+        e && typeof e === 'object' && 'message' in e
+          ? String((e as { message?: unknown }).message)
+          : '',
+      )
+      .find(Boolean);
+    alert(
+      firstMessage
+        ? `Please fix: ${firstMessage}`
+        : 'Some required fields are missing or invalid. Please review all steps.',
+    );
+    if (
+      formValidationErrors.full_name ||
+      formValidationErrors.phone ||
+      formValidationErrors.service_ids ||
+      formValidationErrors.status
+    ) {
+      setStep(1);
+    } else if (formValidationErrors.address) {
+      setStep(2);
+    }
+  };
+
   const onSubmit = async (data: WorkerEditValues) => {
     if (!worker) return;
     setIsSubmitting(true);
     try {
       let workerDocumentsPayload: Array<{ id: string; status: string }> = [];
       if (worker.worker_documents && Object.keys(documentStatuses).length > 0) {
-        workerDocumentsPayload = worker.worker_documents.map((doc: any) => ({
-          id: doc.id,
-          status: documentStatuses[doc.id] || doc.status,
-        }));
+        workerDocumentsPayload = worker.worker_documents
+          .map((doc: any, idx: number) => ({
+            id: doc.id,
+            status: documentStatuses[doc.id ?? `idx-${idx}`] || doc.status,
+          }))
+          .filter((d: { id?: string }) => d.id);
       }
       await updateWorkerMutation.mutateAsync({
         full_name: data.full_name,
@@ -202,7 +278,7 @@ export function WorkerEditModal({
         </div>
 
         <form
-          onSubmit={handleSubmit(onSubmit)}
+          onSubmit={(e) => e.preventDefault()}
           className="flex min-h-0 flex-1 flex-col"
         >
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
@@ -469,14 +545,15 @@ export function WorkerEditModal({
                       Review each document and set its verification status.
                     </p>
                     {worker.worker_documents.map((doc: any, idx: number) => {
+                      const docKey = doc.id ?? `idx-${idx}`;
                       const currentStatus =
-                        documentStatuses[doc.id] || doc.status;
+                        documentStatuses[docKey] || doc.status;
                       const isImage = doc.file_url?.match(
                         /\.(jpg|jpeg|png|gif|bmp|webp)$/i,
                       );
                       return (
                         <div
-                          key={idx}
+                          key={docKey}
                           className="rounded-xl border border-slate-200 p-4"
                         >
                           <div className="flex items-start justify-between gap-3">
@@ -499,7 +576,7 @@ export function WorkerEditModal({
                                 onValueChange={(value) =>
                                   setDocumentStatuses((prev) => ({
                                     ...prev,
-                                    [doc.id]: value,
+                                    [docKey]: value,
                                   }))
                                 }
                                 disabled={isSubmitting}
@@ -575,6 +652,7 @@ export function WorkerEditModal({
             )}
             {step < 3 ? (
               <Button
+                key="next"
                 type="button"
                 onClick={handleNext}
                 disabled={isSubmitting}
@@ -583,9 +661,20 @@ export function WorkerEditModal({
                 Continue
               </Button>
             ) : (
-              <Button type="submit" className="px-6" disabled={isSubmitting}>
-                {isSubmitting ? 'Updating…' : 'Save changes'}
-              </Button>
+              <div className="flex items-center gap-3">
+                {!hasChanges && !isSubmitting && (
+                  <span className="text-xs text-slate-400">No changes yet</span>
+                )}
+                <Button
+                  key="save"
+                  type="button"
+                  onClick={() => handleSubmit(onSubmit, onInvalid)()}
+                  className="px-6"
+                  disabled={isSubmitting || !hasChanges}
+                >
+                  {isSubmitting ? 'Updating…' : 'Save changes'}
+                </Button>
+              </div>
             )}
           </div>
         </form>
