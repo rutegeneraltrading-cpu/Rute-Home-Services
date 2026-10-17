@@ -32,6 +32,10 @@ export const serviceEditSchema = z.object({
   platform_fee: z.number().min(0, 'Platform fee must be 0 or greater'),
   priority_fee: z.number().min(0, 'Priority fee must be 0 or greater'),
   app_fee: z.number().min(0, 'App fee must be 0 or greater'),
+  insurance_fee_percent: z
+    .number()
+    .min(0, 'Insurance fee must be 0 or greater')
+    .max(100, 'Insurance fee can\'t exceed 100%'),
 });
 
 export type ServiceEditValues = z.infer<typeof serviceEditSchema>;
@@ -50,6 +54,10 @@ export const serviceSchema = z.object({
   platform_fee: z.number().min(0, 'Platform fee must be 0 or greater'),
   priority_fee: z.number().min(0, 'Priority fee must be 0 or greater'),
   app_fee: z.number().min(0, 'App fee must be 0 or greater'),
+  insurance_fee_percent: z
+    .number()
+    .min(0, 'Insurance fee must be 0 or greater')
+    .max(100, 'Insurance fee can\'t exceed 100%'),
 });
 
 export const optionEditSchema = z.object({

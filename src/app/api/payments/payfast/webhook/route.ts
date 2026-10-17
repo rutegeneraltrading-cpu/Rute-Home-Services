@@ -1,9 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { getPayFastService } from '@/lib/server/payfast/payfast.service';
+import { logBookingEvent } from '@/lib/server/bookingEvents';
 import { sendResendEmail } from '@/lib/server/email';
 import { orderPaymentSuccessTemplate } from '@/lib/server/email';
 import { bookingPaymentSuccessTemplate } from '@/lib/server/email';
+import { renderNotificationTemplate } from '@/lib/server/email';
 import { additionalWorkPaymentSuccessTemplate } from '@/lib/server/email';
 import {
   sendWhatsAppMessage,
@@ -67,6 +69,27 @@ function buildBookingServiceSubject(
   return fullName.length > SUBJECT_MAX_LENGTH
     ? fullName.substring(0, SUBJECT_MAX_LENGTH - 3) + '...'
     : fullName;
+}
+
+// Sanity-checks the amount PayFast says was actually paid (`amount_gross`)
+// against what our own record expects. The amount PayFast sends to this
+// booking/order's PayFast request is already sourced server-side from the
+// DB (never the client) at payment-link generation time, so under normal
+// operation this should always match — a mismatch here is a signal
+// something drifted (e.g. price edited between link generation and payment)
+// or a bug regression, not proof of fraud on its own (a genuinely-tampered
+// amount would fail signature validation before ever reaching this check).
+// So this logs/flags for admin review rather than blocking the payment —
+// refusing to confirm a booking/order PayFast has already charged the
+// customer for would leave a paying customer stuck, which is worse than a
+// false alarm. Tolerance absorbs harmless float/rounding differences.
+function checkPaidAmount(
+  expected: number,
+  webhookData: Record<string, string>,
+): { ok: boolean; received: number } {
+  const received = Number(webhookData.amount_gross);
+  const ok = Number.isFinite(received) && Math.abs(received - expected) <= 0.01;
+  return { ok, received };
 }
 
 export async function POST(request: NextRequest) {
@@ -137,20 +160,46 @@ export async function POST(request: NextRequest) {
       const wasAlreadyPaid = existingAdditionalWork.status === 'paid';
 
       if (dbPaymentStatus === 'paid' && !wasAlreadyPaid) {
-        const { error: updateAWError } = await supabase
+        const awAmountCheck = checkPaidAmount(
+          Number(existingAdditionalWork.fee || 0),
+          webhookData,
+        );
+        if (!awAmountCheck.ok) {
+          console.error(
+            `[PayFast ITN] Amount mismatch on additional work ${referenceId}: expected ${existingAdditionalWork.fee}, PayFast reported ${awAmountCheck.received}`,
+          );
+        }
+
+        // Atomic compare-and-swap: only this request's update can win the
+        // 'pending_payment' -> 'paid' transition. Guards against duplicate/
+        // concurrent PayFast ITN retries double-adding the fee to total_price
+        // below (the earlier `wasAlreadyPaid` check alone isn't enough since
+        // two concurrent requests can both read status as not-yet-paid).
+        const { data: claimedAW, error: updateAWError } = await supabase
           .from('booking_additional_works')
           .update({
             status: 'paid',
             payfast_transaction_id: transactionId,
             updated_at: new Date().toISOString(),
           })
-          .eq('id', referenceId);
+          .eq('id', referenceId)
+          .eq('status', 'pending_payment')
+          .select('id')
+          .maybeSingle();
 
         if (updateAWError) {
           console.error('Error updating additional work:', updateAWError);
           return NextResponse.json(
             { error: 'Failed to update additional work' },
             { status: 500 },
+          );
+        }
+
+        if (!claimedAW) {
+          // Lost the race to a concurrent/duplicate ITN — already handled.
+          return NextResponse.json(
+            { success: true, message: 'Additional work already processed' },
+            { status: 200 },
           );
         }
 
@@ -174,6 +223,25 @@ export async function POST(request: NextRequest) {
             .eq('id', existingAdditionalWork.booking_id);
         }
 
+        await logBookingEvent({
+          bookingId: existingAdditionalWork.booking_id,
+          eventType: 'additional_work_paid',
+          actorType: 'system',
+          description: awAmountCheck.ok
+            ? `Additional work paid: ${existingAdditionalWork.description}`
+            : `Additional work paid: ${existingAdditionalWork.description} — ⚠ amount mismatch: expected R${Number(existingAdditionalWork.fee).toFixed(2)}, PayFast reported R${awAmountCheck.received.toFixed(2)}`,
+          metadata: {
+            fee: existingAdditionalWork.fee,
+            payfast_transaction_id: transactionId,
+            amount_mismatch: !awAmountCheck.ok,
+            payfast_reported_amount: awAmountCheck.received,
+          },
+        });
+
+        // Notifications are slow (multiple DB lookups + email/WhatsApp sends).
+        // Run them after the response is sent so PayFast gets a fast 200 for
+        // the ITN — a slow response can make PayFast treat delivery as failed.
+        after(async () => {
         // Gather details for notifications
         const booking = Array.isArray(existingAdditionalWork.bookings)
           ? existingAdditionalWork.bookings[0]
@@ -194,10 +262,7 @@ export async function POST(request: NextRequest) {
         const description = existingAdditionalWork.description;
         const serviceName = service?.name || 'Service Booking';
 
-        const adminEmail =
-          process.env.ADMIN_BOOKING_EMAIL ||
-          process.env.AWS_SES_FROM_EMAIL ||
-          '';
+        const adminEmail = process.env.ADMIN_FROM || '';
 
         // Fetch assigned worker for WhatsApp notification
         const { data: workerAssignment } = await supabase
@@ -312,6 +377,7 @@ export async function POST(request: NextRequest) {
             console.error('Additional work WhatsApp to worker failed:', e);
           }
         }
+        });
       } else if (
         (dbPaymentStatus === 'failed' || paymentStatus === 'CANCELLED') &&
         !wasAlreadyPaid
@@ -346,6 +412,8 @@ export async function POST(request: NextRequest) {
     }
 
     const bookingWasPaidBefore = existingBooking?.payment_status === 'paid';
+    const bookingWasFailedBefore = existingBooking?.payment_status === 'failed';
+    const bookingWasPendingBefore = existingBooking?.payment_status === 'pending';
 
     // Update booking with payment information
     const { data: updatedBooking, error: updateError } = await supabase
@@ -371,17 +439,92 @@ export async function POST(request: NextRequest) {
     if (updatedBooking) {
       const bookingIsPaidNow = dbPaymentStatus === 'paid';
 
+      if (bookingIsPaidNow && !bookingWasPaidBefore) {
+        const bookingAmountCheck = checkPaidAmount(
+          Number(existingBooking?.total_price || 0),
+          webhookData,
+        );
+        if (!bookingAmountCheck.ok) {
+          console.error(
+            `[PayFast ITN] Amount mismatch on booking ${referenceId}: expected ${existingBooking?.total_price}, PayFast reported ${bookingAmountCheck.received}`,
+          );
+        }
+
+        await logBookingEvent({
+          bookingId: referenceId,
+          eventType: 'payment_confirmed',
+          actorType: 'system',
+          description: bookingAmountCheck.ok
+            ? 'Payment confirmed by PayFast'
+            : `Payment confirmed by PayFast — ⚠ amount mismatch: expected R${Number(existingBooking?.total_price || 0).toFixed(2)}, PayFast reported R${bookingAmountCheck.received.toFixed(2)}`,
+          metadata: {
+            payfast_transaction_id: transactionId,
+            amount_mismatch: !bookingAmountCheck.ok,
+            payfast_reported_amount: bookingAmountCheck.received,
+          },
+        });
+      } else if (dbPaymentStatus === 'failed' && !bookingWasFailedBefore) {
+        await logBookingEvent({
+          bookingId: referenceId,
+          eventType: 'payment_failed',
+          actorType: 'system',
+          description: 'Payment failed or was cancelled',
+        });
+
+        if (existingBooking) {
+          const profile = Array.isArray(existingBooking.profiles)
+            ? existingBooking.profiles[0]
+            : existingBooking.profiles;
+          const customerEmail = profile?.email;
+
+          if (customerEmail) {
+            after(async () => {
+              try {
+                await sendResendEmail({
+                  to: customerEmail,
+                  subject: 'Payment Unsuccessful - Your Rute Booking',
+                  html: renderNotificationTemplate({
+                    title: 'Payment Unsuccessful',
+                    notificationMessage:
+                      'Your payment for this booking was not completed. Your booking has not been confirmed — please try paying again from your bookings page.',
+                    sectionTitle: 'Booking details',
+                    details: [
+                      { label: 'Booking ID', value: referenceId },
+                      { label: 'Payment Status', value: 'Failed' },
+                    ],
+                    ctaLink: `${process.env.NEXT_PUBLIC_APP_URL}/user/bookings/${referenceId}`,
+                    ctaText: 'View My Booking',
+                    preheader: 'Your payment could not be completed.',
+                  }),
+                });
+              } catch (emailError) {
+                console.error(
+                  'Payment failed customer email failed:',
+                  emailError,
+                );
+              }
+            });
+          }
+        }
+      } else if (dbPaymentStatus === 'pending' && !bookingWasPendingBefore) {
+        await logBookingEvent({
+          bookingId: referenceId,
+          eventType: 'payment_pending',
+          actorType: 'system',
+          description: 'Payment is pending',
+        });
+      }
+
       if (bookingIsPaidNow && !bookingWasPaidBefore && existingBooking) {
+        // Run notifications after the response is sent — see comment above.
+        after(async () => {
         const profile = Array.isArray(existingBooking.profiles)
           ? existingBooking.profiles[0]
           : existingBooking.profiles;
 
         const customerName = profile?.full_name || 'Customer';
         const customerEmail = profile?.email || null;
-        const adminEmail =
-          process.env.ADMIN_BOOKING_EMAIL ||
-          process.env.AWS_SES_FROM_EMAIL ||
-          '';
+        const adminEmail = process.env.ADMIN_FROM || '';
         const paidAt = new Date().toLocaleString('en-ZA', {
           dateStyle: 'medium',
           timeStyle: 'short',
@@ -520,6 +663,7 @@ export async function POST(request: NextRequest) {
             );
           }
         }
+        });
       }
 
       return NextResponse.json(
@@ -570,14 +714,25 @@ export async function POST(request: NextRequest) {
     const isPaidNow = dbPaymentStatus === 'paid';
 
     if (isPaidNow && !wasPaidBefore && existingOrder) {
+      const orderAmountCheck = checkPaidAmount(
+        Number(existingOrder.total || 0),
+        webhookData,
+      );
+      if (!orderAmountCheck.ok) {
+        console.error(
+          `[PayFast ITN] Amount mismatch on order ${referenceId}: expected ${existingOrder.total}, PayFast reported ${orderAmountCheck.received}`,
+        );
+      }
+
+      // Run notifications after the response is sent — see comment above.
+      after(async () => {
       const profile = Array.isArray(existingOrder.profiles)
         ? existingOrder.profiles[0]
         : existingOrder.profiles;
 
       const customerName = profile?.full_name || 'Customer';
       const customerEmail = profile?.email || null;
-      const adminEmail =
-        process.env.ADMIN_ORDER_EMAIL || process.env.AWS_SES_FROM_EMAIL || '';
+      const adminEmail = process.env.ADMIN_FROM || '';
 
       // Fetch full order details for email
       const { data: orderDetails } = await supabase
@@ -689,6 +844,7 @@ export async function POST(request: NextRequest) {
           );
         }
       }
+      });
     }
 
     return NextResponse.json(

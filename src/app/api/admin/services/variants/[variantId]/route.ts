@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { requireAdmin } from '@/lib/server/requireAdmin';
 
 // GET single requirement (legacy variants endpoint)
 
@@ -32,6 +33,9 @@ export async function PUT(
   context: { params: Promise<{ variantId: string }> },
 ) {
   try {
+    const authError = await requireAdmin();
+    if (authError) return authError;
+
     const { variantId } = await context.params;
     const supabase = await createClient();
     const body = await request.json();
@@ -58,6 +62,9 @@ export async function DELETE(
   context: { params: Promise<{ variantId: string }> },
 ) {
   try {
+    const authError = await requireAdmin();
+    if (authError) return authError;
+
     const { variantId } = await context.params;
     const supabase = await createClient();
     const { error } = await supabase

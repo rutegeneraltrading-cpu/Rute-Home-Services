@@ -90,24 +90,39 @@ export function bookingUpdatedByCustomerTemplate(
     ${feeHtml}
   `;
 
+  const isUser = data.audience === 'user';
   const notificationMessage = isAdmin
     ? `Customer ${data.customerName} has updated their booking details.`
-    : `The customer has made changes to your assigned booking.`;
+    : isUser
+      ? `Your booking details have been updated as requested. Here's the current booking info.`
+      : `The customer has made changes to your assigned booking.`;
 
   return renderNotificationTemplate({
-    title: `Booking Updated by Customer`,
+    title: isUser ? 'Your Booking Was Updated' : 'Booking Updated by Customer',
     notificationMessage,
     sectionTitle: 'Update summary',
     details: [
       { label: 'Booking ID', value: data.bookingId },
-      { label: 'Customer', value: data.customerName },
-      { label: isAdmin ? 'Recipient' : 'Worker', value: data.recipientName },
+      ...(isUser
+        ? []
+        : [{ label: 'Customer', value: data.customerName }]),
+      ...(isAdmin
+        ? [{ label: 'Recipient', value: data.recipientName }]
+        : isUser
+          ? []
+          : [{ label: 'Worker', value: data.recipientName }]),
       { label: 'Updated At', value: data.updatedAt },
     ],
     ctaLink: isAdmin
       ? `${process.env.NEXT_PUBLIC_APP_URL}/admin/bookings/${data.bookingId}`
-      : `${process.env.NEXT_PUBLIC_APP_URL}/contact-us`,
-    ctaText: isAdmin ? 'View Booking in Admin' : 'Contact Support',
+      : isUser
+        ? `${process.env.NEXT_PUBLIC_APP_URL}/user/bookings/${data.bookingId}`
+        : `${process.env.NEXT_PUBLIC_APP_URL}/contact-us`,
+    ctaText: isAdmin
+      ? 'View Booking in Admin'
+      : isUser
+        ? 'View Booking'
+        : 'Contact Support',
     preheader: notificationMessage,
     customHtml,
   });

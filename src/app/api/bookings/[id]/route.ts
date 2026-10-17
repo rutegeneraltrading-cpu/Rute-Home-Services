@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { sendResendEmail } from '@/lib/server/email';
+import { renderNotificationTemplate } from '@/lib/server/email';
+import { logBookingEvent } from '@/lib/server/bookingEvents';
 import {
   sendWhatsAppMessage,
   sendWhatsAppTemplateMessage,
@@ -40,6 +42,8 @@ interface UpdateBookingPayload {
   auto_assign?: boolean;
   assignment_status?: AssignmentStatus;
   assignments?: { worker_id: string; status: AssignmentStatus }[];
+  refund_reason?: string;
+  refund_amount?: number;
 }
 
 const BOOKING_STATUS_VALUES: BookingStatus[] = [
@@ -184,6 +188,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
       { data: optionsData },
       { data: variantsData },
       { data: bookingRating },
+      { data: bookingEvents },
     ] = await Promise.all([
       supabaseAdmin
         .from('profiles')
@@ -225,6 +230,11 @@ export async function GET(_request: NextRequest, { params }: Params) {
         .select('rating, review, created_at, updated_at')
         .eq('booking_id', booking.id)
         .maybeSingle(),
+      supabaseAdmin
+        .from('booking_events')
+        .select('id, event_type, actor_type, actor_label, description, created_at')
+        .eq('booking_id', booking.id)
+        .order('created_at', { ascending: false }),
     ]);
 
     // Get platform_fee for main service
@@ -417,6 +427,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
           bookingRating?.updated_at || bookingRating?.created_at || null,
         selected_option_details: selectedOptionDetails,
         selected_variant_details: selectedVariantDetails,
+        events: bookingEvents || [],
       },
     });
   } catch (error) {
@@ -463,6 +474,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
     // Support multi-worker assignment: assignments: {worker_id, status}[]
     const hasAssignmentsArray = Array.isArray(body.assignments);
+    const assignmentFailures: string[] = [];
     if (
       typeof body.status === 'undefined' &&
       typeof body.payment_status === 'undefined' &&
@@ -504,7 +516,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       // Cancel assignments not in new list
       for (const [worker_id, status] of currentMap.entries()) {
         if (!incomingMap.has(worker_id) && status !== 'cancelled') {
-          await supabaseAdmin
+          const { error: unassignError } = await supabaseAdmin
             .from('booking_assignments')
             .update({
               status: 'cancelled',
@@ -512,10 +524,26 @@ export async function PATCH(request: NextRequest, { params }: Params) {
             })
             .eq('booking_id', id)
             .eq('worker_id', worker_id);
+
+          if (unassignError) {
+            console.error('booking_assignments cancel failed:', unassignError, {
+              booking_id: id,
+              worker_id,
+            });
+          } else {
+            await logBookingEvent({
+              bookingId: id,
+              eventType: 'worker_assigned',
+              actorType: 'admin',
+              description: 'Worker removed from booking',
+            });
+          }
         }
       }
 
-      // Upsert or update assignments
+      // Upsert or update assignments. Track failures (e.g. an invalid
+      // worker_id that violates the FK) so we neither log a false
+      // "worker assigned" event nor silently pretend the request succeeded.
       for (const { worker_id, status } of body.assignments ?? []) {
         const nowIso = new Date().toISOString();
         const assignmentUpdate: Record<string, unknown> = { status };
@@ -554,14 +582,44 @@ export async function PATCH(request: NextRequest, { params }: Params) {
           assignmentUpdate.completed_at = null;
           assignmentUpdate.cancelled_at = nowIso;
         }
-        await supabaseAdmin.from('booking_assignments').upsert(
-          {
-            booking_id: id,
-            worker_id,
-            ...assignmentUpdate,
-          },
-          { onConflict: 'booking_id,worker_id' },
-        );
+        const { error: assignmentUpsertError } = await supabaseAdmin
+          .from('booking_assignments')
+          .upsert(
+            {
+              booking_id: id,
+              worker_id,
+              ...assignmentUpdate,
+            },
+            { onConflict: 'booking_id,worker_id' },
+          );
+
+        if (assignmentUpsertError) {
+          console.error(
+            'booking_assignments upsert failed:',
+            assignmentUpsertError,
+            { booking_id: id, worker_id, status },
+          );
+          assignmentFailures.push(worker_id);
+          continue;
+        }
+
+        // Log it: a brand-new worker on this booking vs. an existing
+        // assignment's status changing (e.g. admin marks it accepted).
+        if (!currentMap.has(worker_id)) {
+          await logBookingEvent({
+            bookingId: id,
+            eventType: 'worker_assigned',
+            actorType: 'admin',
+            description: 'Worker assigned to booking',
+          });
+        } else if (currentMap.get(worker_id) !== status) {
+          await logBookingEvent({
+            bookingId: id,
+            eventType: 'worker_assigned',
+            actorType: 'admin',
+            description: `Worker assignment status changed to ${status}`,
+          });
+        }
       }
     }
 
@@ -595,13 +653,30 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     const { data: booking, error: bookingError } = await supabaseAdmin
       .from('bookings')
       .select(
-        'id, user_id, service_id, booking_date, booking_time, total_duration, status, address, unit_or_flat, notes',
+        'id, user_id, service_id, booking_date, booking_time, total_duration, status, payment_status, total_price, address, unit_or_flat, notes',
       )
       .eq('id', id)
       .single();
 
     if (bookingError || !booking) {
       return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+    }
+
+    // A refund only makes sense against money that was actually collected.
+    // Without this, admin could "refund" a booking that was never paid,
+    // creating a false financial record — exactly what refund tracking
+    // exists to prevent.
+    if (
+      body.payment_status === 'refunded' &&
+      booking.payment_status !== 'paid' &&
+      booking.payment_status !== 'refunded'
+    ) {
+      return NextResponse.json(
+        {
+          error: `Cannot refund a booking with payment status "${booking.payment_status}" — only a paid booking can be refunded.`,
+        },
+        { status: 400 },
+      );
     }
 
     const { data: customerProfile } = await supabaseAdmin
@@ -891,6 +966,95 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         { error: 'Failed to fetch updated booking' },
         { status: 500 },
       );
+    }
+
+    // Log the event history for this change. Worker assignment and a
+    // status change can happen in the same request; log both when they do.
+    if (didAssignWorker) {
+      await logBookingEvent({
+        bookingId: id,
+        eventType: 'worker_assigned',
+        actorType: 'admin',
+        description: 'Worker assigned to booking',
+      });
+    }
+    const newStatus = updatePayload.status as string | undefined;
+    if (newStatus && newStatus !== previousBookingStatus) {
+      const statusEventMap: Record<string, 'in_progress' | 'completed' | 'cancelled'> = {
+        in_progress: 'in_progress',
+        completed: 'completed',
+        cancelled: 'cancelled',
+      };
+      const eventType = statusEventMap[newStatus];
+      if (eventType) {
+        await logBookingEvent({
+          bookingId: id,
+          eventType,
+          actorType: 'admin',
+          description: `Booking marked as ${newStatus.replace('_', ' ')}`,
+        });
+      }
+    }
+
+    // Refund tracking: admin set payment_status to 'refunded' and it wasn't
+    // already. Record who/when/why/how much, and tell the customer.
+    const newPaymentStatus = updatePayload.payment_status as string | undefined;
+    if (newPaymentStatus === 'refunded' && booking.payment_status !== 'refunded') {
+      const refundReason = body.refund_reason?.trim() || 'No reason provided';
+      const fullAmount = Number(booking.total_price || 0);
+      // Defaults to a full refund; admin may enter a smaller amount for a
+      // partial refund. Capped at the booking's total so it can never
+      // record refunding more than was actually paid.
+      const refundAmount =
+        typeof body.refund_amount === 'number' &&
+        Number.isFinite(body.refund_amount) &&
+        body.refund_amount > 0
+          ? Math.min(body.refund_amount, fullAmount)
+          : fullAmount;
+      const isPartialRefund = refundAmount < fullAmount;
+
+      await logBookingEvent({
+        bookingId: id,
+        eventType: 'refunded',
+        actorType: 'admin',
+        description: `${isPartialRefund ? 'Partial refund' : 'Refund'} recorded: R${refundAmount.toFixed(2)}${isPartialRefund ? ` of R${fullAmount.toFixed(2)}` : ''} — ${refundReason}`,
+        metadata: {
+          amount: refundAmount,
+          full_amount: fullAmount,
+          partial: isPartialRefund,
+          reason: refundReason,
+        },
+      });
+
+      if (customerProfile?.email) {
+        try {
+          await sendResendEmail({
+            to: customerProfile.email,
+            subject: isPartialRefund
+              ? 'Partial Refund Confirmed - Your Rute Booking'
+              : 'Refund Confirmed - Your Rute Booking',
+            html: renderNotificationTemplate({
+              title: isPartialRefund ? 'Partial Refund Confirmed' : 'Refund Confirmed',
+              notificationMessage:
+                'A refund has been recorded for your booking. If you paid by card, it may take a few days to reflect in your account.',
+              sectionTitle: 'Refund details',
+              details: [
+                { label: 'Booking ID', value: id },
+                { label: 'Amount Refunded', value: `R${refundAmount.toFixed(2)}` },
+                ...(isPartialRefund
+                  ? [{ label: 'Original Total', value: `R${fullAmount.toFixed(2)}` }]
+                  : []),
+                { label: 'Reason', value: refundReason },
+              ],
+              ctaLink: `${process.env.NEXT_PUBLIC_APP_URL}/user/bookings/${id}`,
+              ctaText: 'View My Booking',
+              preheader: 'A refund has been recorded for your booking.',
+            }),
+          });
+        } catch (emailError) {
+          console.error('Refund confirmation email failed:', emailError);
+        }
+      }
     }
 
     // If booking status is being set to completed, update all relevant worker assignments to completed
@@ -1413,7 +1577,14 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       }
     }
 
-    return NextResponse.json({ booking: updatedBooking });
+    return NextResponse.json({
+      booking: updatedBooking,
+      ...(assignmentFailures.length > 0
+        ? {
+            warning: `Could not assign ${assignmentFailures.length} worker(s) — the worker ID may no longer be valid.`,
+          }
+        : {}),
+    });
   } catch (error) {
     console.error('Update booking error:', error);
     return NextResponse.json(

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { requireAdmin } from '@/lib/server/requireAdmin';
 
 // GET single requirement
 export async function GET(
@@ -32,6 +33,9 @@ export async function PUT(
   context: { params: Promise<{ requirementId: string }> },
 ) {
   try {
+    const authError = await requireAdmin();
+    if (authError) return authError;
+
     const { requirementId } = await context.params;
     const supabase = await createClient();
     const body = await request.json();
@@ -59,6 +63,9 @@ export async function DELETE(
   context: { params: Promise<{ requirementId: string }> },
 ) {
   try {
+    const authError = await requireAdmin();
+    if (authError) return authError;
+
     const { requirementId } = await context.params;
     const supabase = await createClient();
 

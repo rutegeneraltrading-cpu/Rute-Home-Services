@@ -4,34 +4,52 @@ import { getPayFastService } from '@/lib/server/payfast/payfast.service';
 
 interface OrderPaymentRedirectRequest {
   order_id: string;
-  user_id: string;
   first_name: string;
   last_name: string;
   email: string;
   phone?: string;
-  total: number;
 }
 
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
 
-    const body: OrderPaymentRedirectRequest = await request.json();
-    const { order_id, user_id, total, first_name, last_name, email, phone } =
-      body;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    if (!order_id || !user_id || !first_name || !last_name || !email) {
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('auth_id', user.id)
+      .single();
+
+    if (!profile) {
+      return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
+    }
+
+    const body: OrderPaymentRedirectRequest = await request.json();
+    const { order_id, first_name, last_name, email, phone } = body;
+
+    if (!order_id || !first_name || !last_name || !email) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 },
       );
     }
 
+    // The amount is always read from the order record — never from the
+    // client, which could otherwise request a payment link for less than
+    // the order actually costs.
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .select('id, user_id, total')
       .eq('id', order_id)
-      .eq('user_id', user_id)
+      .eq('user_id', profile.id)
       .single();
 
     if (orderError || !order) {
@@ -43,7 +61,7 @@ export async function POST(request: NextRequest) {
 
     const paymentData = payfast.buildPaymentData(
       order_id,
-      Number.isFinite(total) ? total : Number(order.total),
+      Number(order.total),
       first_name,
       last_name,
       email,

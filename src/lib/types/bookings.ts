@@ -113,8 +113,20 @@ export interface Booking {
   updated_at: string;
   priority_status?: boolean;
   priority_fee?: number;
+  app_fee?: number;
   insurance?: boolean;
+  insurance_fee?: number;
   additional_works?: BookingAdditionalWork[];
+  events?: BookingEvent[];
+}
+
+export interface BookingEvent {
+  id: string;
+  event_type: string;
+  actor_type: 'system' | 'admin' | 'worker' | 'customer';
+  actor_label?: string | null;
+  description?: string | null;
+  created_at: string;
 }
 
 export interface CreateBookingDTO {
@@ -133,6 +145,7 @@ export interface CreateBookingDTO {
   priority_fee?: number;
   app_fee?: number;
   insurance?: boolean;
+  insurance_fee?: number;
 }
 
 export interface UpdateBookingDTO {
@@ -142,6 +155,8 @@ export interface UpdateBookingDTO {
   auto_assign?: boolean;
   assignment_status?: BookingAssignmentStatus;
   assignments?: { worker_id: string; status: BookingAssignmentStatus }[];
+  refund_reason?: string;
+  refund_amount?: number;
 }
 
 export interface UserUpdateBookingDTO {

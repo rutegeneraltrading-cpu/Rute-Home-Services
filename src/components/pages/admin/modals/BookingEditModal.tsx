@@ -60,6 +60,10 @@ export function BookingEditModal({
   });
   // Only store selected worker IDs for new assignments (not yet saved)
   const [selectedWorkerIds, setSelectedWorkerIds] = useState<string[]>([]);
+  // Only asked for when payment status is being set to 'refunded'.
+  // Pre-filled with the full total — editable down for a partial refund.
+  const [refundReason, setRefundReason] = useState('');
+  const [refundAmount, setRefundAmount] = useState('');
   // Only store assignments that are already saved in DB
   const [assignments, setAssignments] = useState<BookingAssignment[]>([]);
   // Track last saved assignments for change detection
@@ -76,6 +80,7 @@ export function BookingEditModal({
     control,
     handleSubmit,
     reset,
+    watch,
   } = useForm<BookingStatusFormValues>({
     defaultValues: {
       status: booking ? booking.status : 'pending',
@@ -88,6 +93,10 @@ export function BookingEditModal({
       setAssignments(assigned as BookingAssignment[]);
       setLastSavedAssignments(assigned as BookingAssignment[]);
       setSelectedWorkerIds([]);
+      setRefundReason('');
+      setRefundAmount(
+        booking.total_price != null ? String(booking.total_price) : '',
+      );
       setSavingSection(null);
       reset({
         status: booking.status,
@@ -104,6 +113,15 @@ export function BookingEditModal({
     const payload = {
       status: data.status,
       payment_status: data.payment_status,
+      ...(data.payment_status === 'refunded'
+        ? {
+            refund_reason: refundReason.trim() || undefined,
+            refund_amount:
+              refundAmount.trim() && !Number.isNaN(Number(refundAmount))
+                ? Number(refundAmount)
+                : undefined,
+          }
+        : {}),
     };
     setSavingSection('status');
     updateBookingMutation.mutate(payload, {
@@ -220,6 +238,50 @@ export function BookingEditModal({
                 )}
               />
             </div>
+            {watch('status') === 'cancelled' &&
+              watch('payment_status') === 'paid' && (
+                <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  This booking was paid for. If a refund is owed, set Payment
+                  Status to Refunded too — the customer isn&apos;t notified
+                  of a refund until you do.
+                </p>
+              )}
+            {watch('payment_status') === 'refunded' && (
+              <div className="space-y-3">
+                <div>
+                  <Label htmlFor="refund-amount">Refund amount (R)</Label>
+                  <input
+                    id="refund-amount"
+                    type="number"
+                    min={0}
+                    max={booking.total_price}
+                    step="0.01"
+                    value={refundAmount}
+                    onChange={(e) => setRefundAmount(e.target.value)}
+                    className="mt-2 w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
+                    disabled={updateBookingMutation.isPending}
+                  />
+                  <p className="mt-1 text-xs text-slate-500">
+                    Defaults to the full R{Number(booking.total_price).toFixed(2)} — lower it for a partial refund.
+                  </p>
+                </div>
+                <div>
+                  <Label htmlFor="refund-reason">Refund reason</Label>
+                  <textarea
+                    id="refund-reason"
+                    value={refundReason}
+                    onChange={(e) => setRefundReason(e.target.value)}
+                    rows={2}
+                    placeholder="Why is this booking being refunded?"
+                    className="mt-2 w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
+                    disabled={updateBookingMutation.isPending}
+                  />
+                  <p className="mt-1 text-xs text-slate-500">
+                    Recorded on the booking and emailed to the customer.
+                  </p>
+                </div>
+              </div>
+            )}
             <div className="flex justify-end mt-2">
               <Button
                 type="button"

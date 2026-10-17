@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { CreateBookingDTO } from '@/lib/types/bookings';
+import { logBookingEvent } from '@/lib/server/bookingEvents';
 // import { sendResendEmail } from '@/lib/server/email';
 // import { bookingCreatedTemplate } from '@/lib/server/email';
 
@@ -290,6 +291,7 @@ export async function POST(request: NextRequest) {
       priority_fee,
       app_fee,
       insurance,
+      insurance_fee,
     } = body;
 
     // Validate required fields
@@ -344,12 +346,20 @@ export async function POST(request: NextRequest) {
           priority_fee: priority_fee || null,
           app_fee: app_fee || null,
           insurance: insurance ?? false,
+          insurance_fee: insurance_fee || null,
         },
       ])
       .select()
       .single();
 
     if (error) throw error;
+
+    await logBookingEvent({
+      bookingId: data.id,
+      eventType: 'created',
+      actorType: 'customer',
+      description: 'Booking created',
+    });
 
     const { data: serviceData } = await supabase
       .from('services')

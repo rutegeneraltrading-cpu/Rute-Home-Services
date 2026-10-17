@@ -41,6 +41,8 @@ export interface Order {
   total: number;
   payment_status: OrderPaymentStatus;
   payfast_transaction_id?: string | null;
+  refund_reason?: string | null;
+  refund_amount?: number | null;
   notes?: string | null;
   created_at: string;
   updated_at: string;
@@ -111,4 +113,6 @@ export interface OrderPaymentData {
 export interface UpdateOrderDTO {
   status?: OrderStatus;
   payment_status?: OrderPaymentStatus;
+  refund_reason?: string;
+  refund_amount?: number;
 }

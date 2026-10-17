@@ -169,7 +169,12 @@ async function fetchUserContext() {
           return `- Order #${o.id.slice(0, 8)}: Status: ${o.status} | Payment: ${o.payment_status} | Total: R${o.total} | Items: ${itemsList || 'N/A'} | Date: ${new Date(o.created_at).toLocaleDateString('en-ZA')}`;
         }).join('\n');
 
-    return { name: profile.full_name || 'Customer', bookingsText, ordersText };
+    return {
+      profileId: profile.id,
+      name: profile.full_name || 'Customer',
+      bookingsText,
+      ordersText,
+    };
   } catch (err) {
     console.error('fetchUserContext error:', err);
     return null;
@@ -179,13 +184,14 @@ async function fetchUserContext() {
 async function saveChatHistory(
   sessionId: string,
   role: string,
-  content: string
+  content: string,
+  userId: string | null
 ) {
   try {
     const supabase = await createAdminClient();
     await supabase
       .from('chat_sessions')
-      .insert({ session_id: sessionId, role, content });
+      .insert({ session_id: sessionId, role, content, user_id: userId });
   } catch {
     // Non-critical — don't fail the request if history save fails
   }
@@ -313,11 +319,12 @@ ${PRIVACY_POLICY_TEXT}${userSection}`;
 
     // Save to Supabase chat history (non-blocking)
     if (sessionId) {
+      const userId = userContext?.profileId || null;
       const lastUserMsg = messages.filter((m) => m.role === 'user').slice(-1)[0];
       if (lastUserMsg) {
-        saveChatHistory(sessionId, 'user', lastUserMsg.content);
+        saveChatHistory(sessionId, 'user', lastUserMsg.content, userId);
       }
-      saveChatHistory(sessionId, 'assistant', aiMessage);
+      saveChatHistory(sessionId, 'assistant', aiMessage, userId);
     }
 
     return NextResponse.json({ message: aiMessage, role: 'assistant' });

@@ -2,6 +2,7 @@ import { NextResponse, NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase';
 import { sendResendEmail } from '@/lib/server/email';
 import { workerVerificationTemplate } from '@/lib/server/email';
+import { requireAdmin } from '@/lib/server/requireAdmin';
 
 const E164_PHONE_REGEX = /^\+[1-9]\d{7,14}$/;
 
@@ -18,6 +19,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const authError = await requireAdmin();
+    if (authError) return authError;
+
     const { id } = await params;
     const supabase = await createAdminClient();
     const workerId = id;
@@ -112,6 +116,9 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const authError = await requireAdmin();
+    if (authError) return authError;
+
     const { id } = await params;
     const supabase = await createAdminClient();
     const workerId = id;
@@ -436,6 +443,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const authError = await requireAdmin();
+    if (authError) return authError;
+
     const { id } = await params;
     const supabase = await createAdminClient();
     const workerId = id;
@@ -496,6 +506,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const authError = await requireAdmin();
+    if (authError) return authError;
+
     const { id } = await params;
     const supabase = await createAdminClient();
     const adminClient = await createAdminClient();

@@ -98,6 +98,7 @@ const ReviewPaymentStep = ({
     : serviceData?.base_price || 0;
 
   const appFee = Number(serviceData?.app_fee || 0);
+  const insuranceFeePercent = Number(serviceData?.insurance_fee_percent || 0);
 
   const baseTotal =
     distanceCost +
@@ -106,8 +107,14 @@ const ReviewPaymentStep = ({
       (sum, requirement) => sum + requirement.price,
       0,
     );
+  const insuranceFee = isInsured
+    ? (baseTotal * insuranceFeePercent) / 100
+    : 0;
   const totalPrice =
-    baseTotal + (isPriorityBooking ? priorityFee || 0 : 0) + appFee;
+    baseTotal +
+    (isPriorityBooking ? priorityFee || 0 : 0) +
+    appFee +
+    insuranceFee;
 
   const totalDuration =
     (serviceData?.duration_minutes || 0) +
@@ -154,6 +161,7 @@ const ReviewPaymentStep = ({
         priority_fee: isPriorityBooking ? priorityFee : undefined,
         app_fee: appFee > 0 ? appFee : undefined,
         insurance: isInsured,
+        insurance_fee: isInsured ? insuranceFee : undefined,
       };
 
       const booking = await createBookingMutation.mutateAsync(bookingData);
@@ -171,7 +179,12 @@ const ReviewPaymentStep = ({
         service_description: serviceData.description || '',
       };
 
-      payFastPaymentMutation.mutate(paymentData);
+      // Awaited (not fire-and-forget): on success this redirects the whole
+      // page via window.location.href, so isProcessing never matters again.
+      // On failure, the surrounding catch below runs and clears it — without
+      // this, a failed payment-URL request left the user stuck on a
+      // full-screen spinner forever, with no way to retry or go back.
+      await payFastPaymentMutation.mutateAsync(paymentData);
     } catch (error) {
       setIsProcessing(false);
       console.error('Error during payment:', error);
@@ -268,6 +281,16 @@ const ReviewPaymentStep = ({
                 <span className="text-sm text-slate-600 shrink-0">App Fee</span>
                 <span className="text-sm font-semibold text-slate-900">
                   +R{appFee.toFixed(2)}
+                </span>
+              </div>
+            )}
+            {isInsured && insuranceFee > 0 && (
+              <div className="flex justify-between items-center gap-3 py-2">
+                <span className="text-sm text-slate-600 shrink-0">
+                  Insurance Protection ({insuranceFeePercent}%)
+                </span>
+                <span className="text-sm font-semibold text-slate-900">
+                  +R{insuranceFee.toFixed(2)}
                 </span>
               </div>
             )}
@@ -438,7 +461,8 @@ const ReviewPaymentStep = ({
               Add Insurance Protection
             </p>
             <p className="text-xs text-slate-500 mt-0.5">
-              Protect your booking against unexpected damages.
+              Protect your booking against unexpected damages (
+              {insuranceFeePercent}% of the service price).
             </p>
           </div>
           <Switch

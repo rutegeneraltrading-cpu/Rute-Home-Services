@@ -1,19 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { requireAdmin } from '@/lib/server/requireAdmin';
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const authError = await requireAdmin();
+    if (authError) return authError;
 
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const supabase = await createClient();
 
     const { id } = await params;
     const body = await request.json();
@@ -29,6 +26,7 @@ export async function PUT(
       platform_fee,
       priority_fee,
       app_fee,
+      insurance_fee_percent,
     } = body;
 
     if (!name || !slug || !category_id || base_price === undefined) {
@@ -50,6 +48,7 @@ export async function PUT(
         is_active: is_active !== false,
         priority_fee: priority_fee,
         app_fee: app_fee ?? 0,
+        insurance_fee_percent: insurance_fee_percent ?? 5,
       })
       .eq('id', id)
       .select()
@@ -72,15 +71,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const authError = await requireAdmin();
+    if (authError) return authError;
+
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const { id } = await params;
 
     const { error: optionsError } = await supabase

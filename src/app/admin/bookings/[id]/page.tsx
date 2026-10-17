@@ -7,18 +7,37 @@ import {
   CalendarDays,
   Clock3,
   CreditCard,
+  History,
   MapPin,
+  PlusCircle,
   User,
   Wrench,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui';
 import { Loading } from '@/components/common';
-import { useGetBooking } from '@/lib/client/api/bookings/bookings.query';
+import {
+  useGetBooking,
+  useGetAdditionalWorks,
+} from '@/lib/client/api/bookings/bookings.query';
 import type {
   BookingOptionDetail,
   BookingVariantDetail,
 } from '@/lib/types/bookings';
+
+const eventTypeLabel: Record<string, string> = {
+  created: 'Booking created',
+  payment_confirmed: 'Payment confirmed',
+  payment_failed: 'Payment failed',
+  payment_pending: 'Payment pending',
+  worker_assigned: 'Worker assigned',
+  updated: 'Booking updated by customer',
+  additional_work_paid: 'Additional work paid',
+  in_progress: 'Work started',
+  completed: 'Booking completed',
+  cancelled: 'Booking cancelled',
+  refunded: 'Refunded',
+};
 
 const statusColor: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-700',
@@ -52,6 +71,7 @@ const BookingDetails = () => {
   const bookingId = params?.id;
 
   const { data: booking, isLoading, isError } = useGetBooking(bookingId || '');
+  const { data: additionalWorks = [] } = useGetAdditionalWorks(bookingId || '');
 
   const selectedOptions: BookingOptionDetail[] = Array.isArray(
     booking?.selected_option_details,
@@ -334,12 +354,11 @@ const BookingDetails = () => {
                     </span>
                   </p>
                   {booking.priority_status &&
-                    Number(serviceDetails?.priority_fee ?? 0) > 0 && (
+                    Number(booking.priority_fee ?? 0) > 0 && (
                       <p className="text-slate-700">
                         Priority Fee:{' '}
                         <span className="font-semibold">
-                          R
-                          {Number(serviceDetails?.priority_fee ?? 0).toFixed(2)}
+                          R{Number(booking.priority_fee ?? 0).toFixed(2)}
                         </span>
                       </p>
                     )}
@@ -587,6 +606,20 @@ const BookingDetails = () => {
                 <span>Total Price</span>
                 <span>R{Number(booking.total_price || 0).toFixed(2)}</span>
               </div>
+              {Number(booking.app_fee ?? 0) > 0 && (
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-slate-600">App Fee</span>
+                  <span>R{Number(booking.app_fee || 0).toFixed(2)}</span>
+                </div>
+              )}
+              {booking.insurance && (
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-slate-600">Insurance Protection</span>
+                  <span>
+                    R{Number(booking.insurance_fee || 0).toFixed(2)}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between items-center text-sm">
                 <span className="text-slate-600">Damage Deduction</span>
                 <span>Only if damage occurs</span>
@@ -637,8 +670,57 @@ const BookingDetails = () => {
                 {booking.customer_name || 'N/A'}
               </p>
               <p className="text-slate-600">
+                {booking.customer_email || 'N/A'}
+              </p>
+              <p className="text-slate-600">
                 {booking.customer_phone || 'N/A'}
               </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <PlusCircle className="h-4 w-4" /> Additional Work
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              {Array.isArray(additionalWorks) && additionalWorks.length > 0 ? (
+                <ul className="space-y-2">
+                  {additionalWorks.map((aw) => (
+                    <li
+                      key={aw.id}
+                      className="border rounded-lg p-3 bg-slate-50 space-y-1"
+                    >
+                      <p className="text-slate-700 text-xs">
+                        {aw.description}
+                      </p>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-semibold text-slate-900">
+                          R{Number(aw.fee).toFixed(2)}
+                        </span>
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${
+                            aw.status === 'paid'
+                              ? 'bg-green-100 text-green-700'
+                              : aw.status === 'pending_payment'
+                                ? 'bg-yellow-100 text-yellow-700'
+                                : 'bg-gray-100 text-gray-500'
+                          }`}
+                        >
+                          {aw.status === 'pending_payment'
+                            ? 'Pending Payment'
+                            : aw.status}
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <span className="text-slate-500">
+                  No additional work requested
+                </span>
+              )}
             </CardContent>
           </Card>
 
@@ -684,6 +766,41 @@ const BookingDetails = () => {
                 </ol>
               ) : (
                 <span className="text-slate-500">No workers assigned</span>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <History className="h-4 w-4" /> Activity
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {Array.isArray(booking.events) && booking.events.length > 0 ? (
+                <ol className="space-y-3">
+                  {booking.events.map((e) => (
+                    <li key={e.id} className="flex gap-3 text-sm">
+                      <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400" />
+                      <div>
+                        <p className="font-medium text-slate-900">
+                          {eventTypeLabel[e.event_type] || e.event_type}
+                        </p>
+                        {e.description && (
+                          <p className="text-slate-500">{e.description}</p>
+                        )}
+                        <p className="text-xs text-slate-400">
+                          {new Date(e.created_at).toLocaleString()}
+                          {e.actor_label ? ` · ${e.actor_label}` : ''}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <span className="text-sm text-slate-500">
+                  No activity recorded yet
+                </span>
               )}
             </CardContent>
           </Card>

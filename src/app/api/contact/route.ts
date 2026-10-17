@@ -42,8 +42,7 @@ export async function POST(request: NextRequest) {
 
     if (error) throw error;
 
-    const adminEmail =
-      process.env.ADMIN_CONTACT_EMAIL || process.env.AWS_SES_FROM_EMAIL;
+    const adminEmail = process.env.ADMIN_FROM;
 
     if (adminEmail) {
       try {

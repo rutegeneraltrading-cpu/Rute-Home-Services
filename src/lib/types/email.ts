@@ -201,6 +201,6 @@ export interface BookingUpdatedByCustomerEmailData {
   notes?: string;
   bookingDate: string;
   bookingTime: string;
-  audience: 'admin' | 'worker';
+  audience: 'admin' | 'worker' | 'user';
   updatedAt: string;
 }

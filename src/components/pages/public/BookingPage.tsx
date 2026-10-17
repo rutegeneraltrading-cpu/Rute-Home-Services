@@ -3,7 +3,6 @@
 import { useState, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import AddOptionsStep from './Booking/AddOptionsStep';
-import AddDetailsStep from './Booking/AddDetailsStep';
 import AddressDateStep from './Booking/AddressDateStep';
 import AddRequirementsStep from './Booking/AddRequirementsStep';
 import ReviewPaymentStep from './Booking/ReviewPaymentStep';
@@ -162,7 +161,9 @@ const BookingPage = () => {
       selectService: isCategoryFlow ? stepNo++ : null,
       requirements: hasRequirementsStep ? stepNo++ : null,
       options: hasOptions ? stepNo++ : null,
-      additionalDetails: stepNo++,
+      // Notes used to be its own step here — folded into the address/date
+      // step instead (it's always-optional, so a dedicated step just added
+      // an extra click to every single booking).
       address: stepNo++,
       review: stepNo++,
     };
@@ -226,18 +227,11 @@ const BookingPage = () => {
       });
     }
     baseSteps.push({
-      id: stepMap.additionalDetails,
-      name: 'Notes',
-      shortName: 'Notes',
-      description:
-        'Add any additional details or instructions for your booking.',
-    });
-    baseSteps.push({
       id: stepMap.address,
       name: 'Address, Date & Time',
       shortName: 'Schedule',
       description:
-        'Provide the address and select a date and time for the booking.',
+        'Provide the address, any notes, and select a date and time for the booking.',
     });
     baseSteps.push({
       id: stepMap.review,
@@ -261,7 +255,15 @@ const BookingPage = () => {
     (!!selectedServiceSlug && !serviceLoading && !serviceData) ||
     (!categoryLoading && !categoryData);
 
-  if (categoryLoading) return <Loading />;
+  // Gate on data still loading BEFORE evaluating "not found" — otherwise a
+  // direct service link (/booking?service=slug, the common entry point from
+  // a "Book Now" button) briefly shows "Data not found" while serviceData is
+  // still fetching, since categoryData (derived from serviceData.category)
+  // is empty until then and categoryLoading never turns true in this flow
+  // (its query is only enabled for the category flow).
+  if (categoryLoading || (serviceLoading && !isCategoryFlow)) {
+    return <Loading />;
+  }
 
   if (shouldShowNotFound) {
     return (
@@ -289,8 +291,6 @@ const BookingPage = () => {
   }
 
   const resolvedCategoryData = categoryData as NonNullable<typeof categoryData>;
-
-  if (serviceLoading && !isCategoryFlow) return <Loading />;
 
   return (
     <div className="py-10 md:py-16 bg-slate-50 min-h-screen">
@@ -475,7 +475,6 @@ const BookingPage = () => {
                           setCurrentStep(
                             stepMap.requirements ||
                               stepMap.options ||
-                              stepMap.additionalDetails ||
                               stepMap.address,
                           );
                         }}
@@ -509,7 +508,7 @@ const BookingPage = () => {
                       optionsData={optionsData}
                       selectedOptions={selectedOptions}
                       setSelectedOptions={setSelectedOptions}
-                      onNext={() => setCurrentStep(stepMap.additionalDetails)}
+                      onNext={() => setCurrentStep(stepMap.address)}
                       onBack={
                         stepMap.requirements
                           ? () => {
@@ -547,9 +546,7 @@ const BookingPage = () => {
                         selectedRequirements={selectedRequirements}
                         setSelectedRequirements={setSelectedRequirements}
                         onNext={() =>
-                          setCurrentStep(
-                            stepMap.options || stepMap.additionalDetails,
-                          )
+                          setCurrentStep(stepMap.options || stepMap.address)
                         }
                         onBack={() =>
                           setCurrentStep(stepMap.selectService || 1)
@@ -559,28 +556,14 @@ const BookingPage = () => {
                   </>
                 )}
 
-              {currentStep === stepMap.additionalDetails && (
-                <AddDetailsStep
-                  details={additionalDetails}
-                  setDetails={setAdditionalDetails}
-                  onNext={() => setCurrentStep(stepMap.address)}
-                  onBack={() =>
-                    setCurrentStep(
-                      stepMap.options ||
-                        stepMap.requirements ||
-                        stepMap.selectService ||
-                        1,
-                    )
-                  }
-                />
-              )}
-
               {serviceData && currentStep === stepMap.address && (
                 <AddressDateStep
                   serviceId={serviceData.id}
                   totalDurationMinutes={totalDurationMinutes}
                   addressDateData={addressDateData}
                   setAddressDateData={setAddressDateData}
+                  additionalDetails={additionalDetails}
+                  setAdditionalDetails={setAdditionalDetails}
                   isPriorityBooking={isPriorityBooking}
                   setIsPriorityBooking={setIsPriorityBooking}
                   distanceKm={distanceKm}
@@ -589,8 +572,7 @@ const BookingPage = () => {
                   onNext={() => setCurrentStep(stepMap.review)}
                   onBack={() =>
                     setCurrentStep(
-                      stepMap.additionalDetails ||
-                        stepMap.options ||
+                      stepMap.options ||
                         stepMap.requirements ||
                         stepMap.selectService ||
                         stepMap.address,

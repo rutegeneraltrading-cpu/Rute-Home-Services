@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { requireAdmin } from '@/lib/server/requireAdmin';
 
 // GET all requirements (with joins for admin)
 export async function GET() {
@@ -30,6 +31,9 @@ export async function GET() {
 // CREATE requirement
 export async function POST(request: NextRequest) {
   try {
+    const authError = await requireAdmin();
+    if (authError) return authError;
+
     const supabase = await createClient();
     const body = await request.json();
     const {

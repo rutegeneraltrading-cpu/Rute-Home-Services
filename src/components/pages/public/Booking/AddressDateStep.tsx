@@ -29,6 +29,8 @@ interface AddressDateStepProps {
     date: string;
     time: string;
   }) => void;
+  additionalDetails: { notes: string };
+  setAdditionalDetails: (details: { notes: string }) => void;
   isPriorityBooking: boolean;
   setIsPriorityBooking: (val: boolean) => void;
   serviceData: any;
@@ -53,6 +55,8 @@ const AddressDateStep = ({
   totalDurationMinutes,
   addressDateData,
   setAddressDateData,
+  additionalDetails,
+  setAdditionalDetails,
   isPriorityBooking,
   setIsPriorityBooking,
   serviceData,
@@ -101,10 +105,16 @@ const AddressDateStep = ({
   const [serviceAreaError, setServiceAreaError] = useState<string>('');
   const [availabilityError, setAvailabilityError] = useState<string>('');
   const [hasSetDefaultTime, setHasSetDefaultTime] = useState<boolean>(false);
-  const { isLoaded } = useJsApiLoader({
+  const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
     libraries: ['places', 'routes'],
   });
+  // If Google Maps fails to load (bad/missing key, quota, blocked network,
+  // ad-blocker), address autocomplete can never fire, so the fields below
+  // would otherwise stay permanently disabled with no explanation and no
+  // way to ever get past this step. Fall back to manual entry instead —
+  // we can't auto-verify the area, so we flag it for a human to check.
+  const mapsUnavailable = Boolean(loadError);
 
   // Set tomorrow's date as default on mount
   useEffect(() => {
@@ -441,14 +451,25 @@ const AddressDateStep = ({
       return;
     }
     // ...existing code for normal address...
-    if (!isGoogleLocationSelected) {
-      if (!serviceAreaError) {
-        setLocationError('Please select your address from Google suggestions.');
+    if (mapsUnavailable) {
+      // Address lookup is down — fall back to the address they typed
+      // manually instead of blocking the booking entirely.
+      if (!addressDateData.address.trim()) {
+        setLocationError('Please enter your address.');
+        return;
       }
-      return;
-    }
-    if (serviceAreaError) {
-      return;
+    } else {
+      if (!isGoogleLocationSelected) {
+        if (!serviceAreaError) {
+          setLocationError(
+            'Please select your address from Google suggestions.',
+          );
+        }
+        return;
+      }
+      if (serviceAreaError) {
+        return;
+      }
     }
     if (!addressDateData.date) {
       setAvailabilityError('Please select a date first.');
@@ -470,6 +491,17 @@ const AddressDateStep = ({
     <div className="border rounded-lg p-4 sm:p-5 bg-white">
       {isMovingRemovals ? (
         <>
+          {mapsUnavailable && (
+            <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+              We couldn&apos;t load the map service, which this service needs
+              to calculate distance-based pricing. Please try again in a few
+              minutes, or{' '}
+              <a href="/contact-us" className="underline">
+                contact us
+              </a>{' '}
+              to book this manually.
+            </div>
+          )}
           <FormItem className="mb-6">
             <FormLabel>To</FormLabel>
             <FormControl>
@@ -573,7 +605,11 @@ const AddressDateStep = ({
             <Input
               ref={inputRef}
               type="text"
-              placeholder="Type your address and select from suggestions"
+              placeholder={
+                mapsUnavailable
+                  ? 'Type your full address'
+                  : 'Type your address and select from suggestions'
+              }
               value={addressDateData.address}
               onChange={(e) => {
                 setAddressDateData({
@@ -586,9 +622,17 @@ const AddressDateStep = ({
                 if (locationError) setLocationError('');
                 if (serviceAreaError) setServiceAreaError('');
               }}
-              disabled={!isLoaded}
+              disabled={!isLoaded && !mapsUnavailable}
             />
           </FormControl>
+          {mapsUnavailable && (
+            <p className="text-sm text-amber-600 mt-2">
+              We couldn&apos;t load address lookup, so suggestions aren&apos;t
+              available right now. You can still type your address manually —
+              we&apos;ll confirm it&apos;s within our service area before
+              assigning a worker.
+            </p>
+          )}
           {locationError && (
             <p className="text-sm text-red-600 mt-2">{locationError}</p>
           )}
@@ -614,6 +658,21 @@ const AddressDateStep = ({
         </FormControl>
       </FormItem>
       <FormItem className="mb-6">
+        <FormLabel>Notes (Optional)</FormLabel>
+        <FormControl>
+          <textarea
+            id="booking-notes"
+            value={additionalDetails.notes}
+            onChange={(e) =>
+              setAdditionalDetails({ notes: e.target.value })
+            }
+            placeholder="e.g. Please ring the bell, parking is in basement, call before arrival."
+            rows={3}
+            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-800"
+          />
+        </FormControl>
+      </FormItem>
+      <FormItem className="mb-6">
         <FormLabel>Date</FormLabel>
         <FormControl>
           <Input
@@ -621,13 +680,20 @@ const AddressDateStep = ({
             min={minDate}
             value={addressDateData.date}
             onChange={(e) => {
+              const newDate = e.target.value;
               setAddressDateData({
                 ...addressDateData,
-                date: e.target.value,
+                date: newDate,
                 time: '',
               });
               setHasSetDefaultTime(false); // Reset so 9:00AM can be auto-selected again
               if (availabilityError) setAvailabilityError('');
+              // Instant Booking only applies to today — its toggle disappears
+              // for any other date, so the fee it carries must be cleared
+              // too, or it would silently keep charging after the UI hides it.
+              if (newDate !== todayStr && isPriorityBooking) {
+                setIsPriorityBooking(false);
+              }
             }}
           />
         </FormControl>
@@ -737,8 +803,8 @@ const AddressDateStep = ({
                   !isCalculatingDistance
                 )
               : !(
-                  isGoogleLocationSelected &&
-                  !serviceAreaError &&
+                  (mapsUnavailable ||
+                    (isGoogleLocationSelected && !serviceAreaError)) &&
                   addressDateData.address &&
                   addressDateData.date &&
                   selectedTime

@@ -94,16 +94,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body: CreateOrderPayload = await request.json();
-    const {
-      items,
-      address_id,
-      new_address,
-      subtotal,
-      tax,
-      shipping,
-      total,
-      notes,
-    } = body;
+    const { items, address_id, new_address, tax, shipping, notes } = body;
 
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
@@ -126,17 +117,82 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (
-      !Number.isFinite(subtotal) ||
-      !Number.isFinite(tax) ||
-      !Number.isFinite(shipping) ||
-      !Number.isFinite(total)
-    ) {
+    if (!Number.isFinite(tax) || !Number.isFinite(shipping)) {
       return NextResponse.json(
         { error: 'Invalid amount values' },
         { status: 400 },
       );
     }
+
+    // Prices, quantities, and the subtotal/total are never trusted from the
+    // client — they're recomputed here from the real `products` row, so a
+    // tampered request body (e.g. price set to 0.01) can't under-charge an
+    // order.
+    const productIds = Array.from(
+      new Set(items.map((item) => item.product_id).filter(Boolean)),
+    );
+
+    if (productIds.length === 0) {
+      return NextResponse.json({ error: 'Invalid order items' }, { status: 400 });
+    }
+
+    const { data: productsData, error: productsError } = await supabase
+      .from('products')
+      .select('id, price, sale_price, stock, is_active')
+      .in('id', productIds);
+
+    if (productsError) {
+      console.error('Products lookup error:', productsError);
+      return NextResponse.json(
+        { error: 'Failed to validate order items' },
+        { status: 500 },
+      );
+    }
+
+    const productMap = new Map((productsData || []).map((p) => [p.id, p]));
+    const verifiedItems: OrderItemPayload[] = [];
+
+    for (const item of items) {
+      const product = productMap.get(item.product_id);
+      const quantity = Number(item.quantity);
+
+      if (!product || !product.is_active) {
+        return NextResponse.json(
+          { error: 'One or more items are no longer available' },
+          { status: 400 },
+        );
+      }
+
+      if (!Number.isInteger(quantity) || quantity < 1) {
+        return NextResponse.json(
+          { error: 'Invalid item quantity' },
+          { status: 400 },
+        );
+      }
+
+      if (quantity > Number(product.stock ?? 0)) {
+        return NextResponse.json(
+          { error: 'One or more items exceed available stock' },
+          { status: 409 },
+        );
+      }
+
+      const effectivePrice = Number(
+        product.sale_price ?? product.price ?? 0,
+      );
+
+      verifiedItems.push({
+        product_id: item.product_id,
+        quantity,
+        price: effectivePrice,
+      });
+    }
+
+    const verifiedSubtotal = verifiedItems.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0,
+    );
+    const verifiedTotal = verifiedSubtotal + tax + shipping;
 
     if (!address_id && !new_address) {
       return NextResponse.json(
@@ -206,29 +262,34 @@ export async function POST(request: NextRequest) {
       resolvedAddressId = createdAddress.id;
     }
 
-    // Create order
-    const { data: order, error: orderError } = await supabase
-      .from('orders')
-      .insert({
-        user_id: profile.id,
-        items: items.map((item) => ({
-          product_id: item.product_id,
-          quantity: item.quantity,
-          price: item.price,
-        })),
-        address_id: resolvedAddressId,
-        status: 'pending',
-        subtotal,
-        tax,
-        shipping,
-        total,
-        payment_status: 'pending',
-        notes: notes || null,
-      })
-      .select()
-      .single();
+    // Create the order and decrement stock atomically in a single DB
+    // transaction (see migration `create_atomic_order_creation_function`).
+    // This is the authoritative stock guard — it closes the race the
+    // earlier per-item `quantity > stock` check above can't: two concurrent
+    // requests for the last unit can both pass that check, but only one can
+    // win the atomic decrement inside the function.
+    const adminSupabase = await createAdminClient();
+    const { data: order, error: orderError } = await adminSupabase.rpc(
+      'create_order_atomic',
+      {
+        p_user_id: profile.id,
+        p_items: verifiedItems,
+        p_address_id: resolvedAddressId,
+        p_subtotal: verifiedSubtotal,
+        p_tax: tax,
+        p_shipping: shipping,
+        p_total: verifiedTotal,
+        p_notes: notes || null,
+      },
+    );
 
     if (orderError) {
+      if (String(orderError.message || '').includes('INSUFFICIENT_STOCK')) {
+        return NextResponse.json(
+          { error: 'One or more items are no longer in stock' },
+          { status: 409 },
+        );
+      }
       console.error('Order creation error:', orderError);
       return NextResponse.json(
         { error: 'Failed to create order' },

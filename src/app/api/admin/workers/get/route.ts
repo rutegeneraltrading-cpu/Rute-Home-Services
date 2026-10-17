@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
+import { requireAdmin } from '@/lib/server/requireAdmin';
 
 export async function GET() {
   try {
+    const authError = await requireAdmin();
+    if (authError) return authError;
+
     const supabase = await createAdminClient();
 
     // Get all workers with their profile data

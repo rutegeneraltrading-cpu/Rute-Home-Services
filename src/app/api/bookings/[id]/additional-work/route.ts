@@ -21,7 +21,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
 
     const { data: profile } = await supabase
       .from('profiles')
-      .select('id')
+      .select('id, role')
       .eq('auth_id', user.id)
       .single();
 
@@ -29,19 +29,23 @@ export async function GET(_request: NextRequest, { params }: Params) {
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
     }
 
-    // Verify booking belongs to this user
-    const { data: booking } = await supabase
+    const supabaseAdmin = await createAdminClient();
+
+    // Admins can view any booking's additional works; customers only their own
+    let bookingQuery = supabaseAdmin
       .from('bookings')
       .select('id')
-      .eq('id', bookingId)
-      .eq('user_id', profile.id)
-      .single();
+      .eq('id', bookingId);
+    if (profile.role !== 'admin') {
+      bookingQuery = bookingQuery.eq('user_id', profile.id);
+    }
+    const { data: booking } = await bookingQuery.single();
 
     if (!booking) {
       return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
     }
 
-    const { data: additionalWorks, error } = await supabase
+    const { data: additionalWorks, error } = await supabaseAdmin
       .from('booking_additional_works')
       .select('*')
       .eq('booking_id', bookingId)

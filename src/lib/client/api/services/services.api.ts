@@ -73,6 +73,7 @@ export interface Service {
   platform_fee: number;
   priority_fee?: number;
   app_fee?: number;
+  insurance_fee_percent?: number;
 }
 
 export interface CreateServiceDTO {
@@ -85,6 +86,7 @@ export interface CreateServiceDTO {
   platform_fee: number;
   priority_fee: number;
   app_fee: number;
+  insurance_fee_percent?: number;
 }
 
 export interface UpdateServiceDTO {
@@ -98,6 +100,7 @@ export interface UpdateServiceDTO {
   platform_fee?: number;
   priority_fee?: number;
   app_fee?: number;
+  insurance_fee_percent?: number;
 }
 
 export interface ServiceOption {

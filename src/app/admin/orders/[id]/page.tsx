@@ -193,6 +193,22 @@ const SingleOrderPage = () => {
                 <span>Total</span>
                 <span>R{Number(order.total).toFixed(2)}</span>
               </div>
+              {order.payment_status === 'refunded' &&
+                order.refund_amount != null && (
+                  <div className="pt-2 border-t text-sm space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">Refunded</span>
+                      <span className="font-semibold">
+                        R{Number(order.refund_amount).toFixed(2)}
+                      </span>
+                    </div>
+                    {order.refund_reason && (
+                      <p className="text-xs text-slate-500">
+                        Reason: {order.refund_reason}
+                      </p>
+                    )}
+                  </div>
+                )}
               {order.payfast_transaction_id && (
                 <div className="pt-2 border-t text-xs text-slate-600 flex items-start gap-2">
                   <CreditCard className="h-4 w-4 mt-0.5" />

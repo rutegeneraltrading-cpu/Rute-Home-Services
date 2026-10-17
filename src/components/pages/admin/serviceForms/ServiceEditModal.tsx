@@ -52,6 +52,10 @@ export function ServiceEditModal({
       priority_fee:
         service?.priority_fee !== undefined ? service.priority_fee : 0,
       app_fee: service?.app_fee !== undefined ? service.app_fee : 0,
+      insurance_fee_percent:
+        service?.insurance_fee_percent !== undefined
+          ? service.insurance_fee_percent
+          : 5,
     }),
     [service],
   );
@@ -88,6 +92,7 @@ export function ServiceEditModal({
         platform_fee: data.platform_fee,
         priority_fee: data.priority_fee,
         app_fee: data.app_fee,
+        insurance_fee_percent: data.insurance_fee_percent,
       },
       {
         onSuccess: () => {
@@ -220,6 +225,28 @@ export function ServiceEditModal({
             )}
             <p className="text-xs text-muted-foreground mt-1">
               Fixed app fee charged per booking for this service.
+            </p>
+          </div>
+          <div>
+            <Label htmlFor="insurance_fee_percent">Insurance Fee (%)</Label>
+            <Input
+              id="insurance_fee_percent"
+              type="number"
+              step="0.01"
+              min="0"
+              max="100"
+              placeholder="5"
+              {...register('insurance_fee_percent', { valueAsNumber: true })}
+              className="mt-2"
+            />
+            {errors.insurance_fee_percent && (
+              <p className="text-sm text-red-500 mt-1">
+                {errors.insurance_fee_percent.message}
+              </p>
+            )}
+            <p className="text-xs text-muted-foreground mt-1">
+              Percentage of the booking price charged when a customer opts in
+              to insurance protection.
             </p>
           </div>
           <div>

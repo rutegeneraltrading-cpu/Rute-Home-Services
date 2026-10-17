@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { sendResendEmail } from '@/lib/server/email';
-import { orderStatusUpdateTemplate } from '@/lib/server/email';
+import { orderStatusUpdateTemplate, renderNotificationTemplate } from '@/lib/server/email';
 import { createAdminClient } from '@/lib/supabase';
 
 const MAX_TITLE_LENGTH = 70;
@@ -223,7 +223,7 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const { status, payment_status } = body;
+    const { status, payment_status, refund_reason, refund_amount } = body;
 
     if (!status && !payment_status) {
       return NextResponse.json(
@@ -232,15 +232,83 @@ export async function PATCH(
       );
     }
 
-    const updateData: Record<string, string> = {};
-    if (status) updateData.status = status;
-    if (payment_status) updateData.payment_status = payment_status;
+    const VALID_ORDER_STATUSES = [
+      'pending',
+      'confirmed',
+      'processing',
+      'shipped',
+      'delivered',
+      'cancelled',
+    ];
+    const VALID_PAYMENT_STATUSES = [
+      'pending',
+      'paid',
+      'failed',
+      'refunded',
+      'cancelled',
+    ];
+
+    if (status && !VALID_ORDER_STATUSES.includes(status)) {
+      return NextResponse.json({ error: 'Invalid status value' }, { status: 400 });
+    }
+    if (payment_status && !VALID_PAYMENT_STATUSES.includes(payment_status)) {
+      return NextResponse.json(
+        { error: 'Invalid payment_status value' },
+        { status: 400 },
+      );
+    }
 
     const { data: existingOrder } = await supabase
       .from('orders')
-      .select('id, user_id, status')
+      .select('id, user_id, status, payment_status, total')
       .eq('id', orderId)
       .maybeSingle();
+
+    if (!existingOrder) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+    }
+
+    // A refund only makes sense against money that was actually collected —
+    // otherwise admin could "refund" an order that was never paid, creating
+    // a false financial record.
+    if (
+      payment_status === 'refunded' &&
+      existingOrder.payment_status !== 'paid' &&
+      existingOrder.payment_status !== 'refunded'
+    ) {
+      return NextResponse.json(
+        {
+          error: `Cannot refund an order with payment status "${existingOrder.payment_status}" — only a paid order can be refunded.`,
+        },
+        { status: 400 },
+      );
+    }
+
+    const fullAmount = Number(existingOrder.total || 0);
+    const isNewRefund =
+      payment_status === 'refunded' && existingOrder.payment_status !== 'refunded';
+    // Defaults to a full refund; admin may enter a smaller amount for a
+    // partial refund. Capped at the order's total so it can never record
+    // refunding more than was actually paid.
+    const refundAmount = isNewRefund
+      ? typeof refund_amount === 'number' &&
+        Number.isFinite(refund_amount) &&
+        refund_amount > 0
+        ? Math.min(refund_amount, fullAmount)
+        : fullAmount
+      : null;
+    const isPartialRefund = refundAmount !== null && refundAmount < fullAmount;
+    const refundReason = isNewRefund
+      ? String(refund_reason || '').trim() || 'No reason provided'
+      : null;
+
+    const updateData: Record<string, string | number> = {};
+    if (status) updateData.status = status;
+    if (payment_status) updateData.payment_status = payment_status;
+    if (isNewRefund) {
+      updateData.refund_amount = refundAmount as number;
+      updateData.refund_reason = refundReason as string;
+    }
 
     const { data: order, error: updateError } = await supabase
       .from('orders')
@@ -255,6 +323,49 @@ export async function PATCH(
         { error: 'Failed to update order' },
         { status: 500 },
       );
+    }
+
+    if (isNewRefund) {
+      const { data: refundCustomerProfile } = await supabase
+        .from('profiles')
+        .select('full_name, email')
+        .eq('id', order.user_id)
+        .maybeSingle();
+
+      if (refundCustomerProfile?.email) {
+        try {
+          await sendResendEmail({
+            to: refundCustomerProfile.email,
+            subject: isPartialRefund
+              ? 'Partial Refund Confirmed - Your Rute Order'
+              : 'Refund Confirmed - Your Rute Order',
+            html: renderNotificationTemplate({
+              title: isPartialRefund
+                ? 'Partial Refund Confirmed'
+                : 'Refund Confirmed',
+              notificationMessage:
+                'A refund has been recorded for your order. If you paid by card, it may take a few days to reflect in your account.',
+              sectionTitle: 'Refund details',
+              details: [
+                { label: 'Order ID', value: orderId },
+                {
+                  label: 'Amount Refunded',
+                  value: `R${(refundAmount as number).toFixed(2)}`,
+                },
+                ...(isPartialRefund
+                  ? [{ label: 'Original Total', value: `R${fullAmount.toFixed(2)}` }]
+                  : []),
+                { label: 'Reason', value: refundReason as string },
+              ],
+              ctaLink: `${process.env.NEXT_PUBLIC_APP_URL}/user/orders/${orderId}`,
+              ctaText: 'View My Order',
+              preheader: 'A refund has been recorded for your order.',
+            }),
+          });
+        } catch (emailError) {
+          console.error('Order refund confirmation email failed:', emailError);
+        }
+      }
     }
 
     const previousStatus = String(existingOrder?.status || 'pending');

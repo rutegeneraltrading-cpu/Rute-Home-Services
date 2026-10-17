@@ -8,6 +8,7 @@ import {
   CalendarDays,
   Clock3,
   CreditCard,
+  History,
   MapPin,
   PlusCircle,
   User,
@@ -38,6 +39,20 @@ import type {
   BookingOptionDetail,
   BookingVariantDetail,
 } from '@/lib/types/bookings';
+
+const eventTypeLabel: Record<string, string> = {
+  created: 'Booking created',
+  payment_confirmed: 'Payment confirmed',
+  payment_failed: 'Payment failed',
+  payment_pending: 'Payment pending',
+  worker_assigned: 'Worker assigned',
+  updated: 'Booking updated',
+  additional_work_paid: 'Additional work paid',
+  in_progress: 'Work started',
+  completed: 'Booking completed',
+  cancelled: 'Booking cancelled',
+  refunded: 'Refunded',
+};
 
 const statusColor: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-700',
@@ -446,12 +461,11 @@ const BookingDetailsPage = () => {
                     </span>
                   </p>
                   {booking.priority_status &&
-                    Number(serviceDetails?.priority_fee ?? 0) > 0 && (
+                    Number(booking.priority_fee ?? 0) > 0 && (
                       <p className="text-slate-700">
                         Priority Fee:{' '}
                         <span className="font-semibold">
-                          R
-                          {Number(serviceDetails?.priority_fee ?? 0).toFixed(2)}
+                          R{Number(booking.priority_fee ?? 0).toFixed(2)}
                         </span>
                       </p>
                     )}
@@ -596,6 +610,20 @@ const BookingDetailsPage = () => {
                 <span>Total Price</span>
                 <span>R{Number(booking.total_price || 0).toFixed(2)}</span>
               </div>
+              {Number(booking.app_fee ?? 0) > 0 && (
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-slate-600">App Fee</span>
+                  <span>R{Number(booking.app_fee || 0).toFixed(2)}</span>
+                </div>
+              )}
+              {booking.insurance && (
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-slate-600">Insurance Protection</span>
+                  <span>
+                    R{Number(booking.insurance_fee || 0).toFixed(2)}
+                  </span>
+                </div>
+              )}
               {booking.payfast_transaction_id && (
                 <div className="pt-2 border-t text-xs text-slate-600 flex items-start gap-2">
                   <CreditCard className="h-4 w-4 mt-0.5" />
@@ -713,6 +741,40 @@ const BookingDetailsPage = () => {
             </CardContent>
           </Card>
         )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <History className="h-4 w-4" /> Activity
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {Array.isArray(booking.events) && booking.events.length > 0 ? (
+              <ol className="space-y-3">
+                {booking.events.map((e) => (
+                  <li key={e.id} className="flex gap-3 text-sm">
+                    <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400" />
+                    <div>
+                      <p className="font-medium text-slate-900">
+                        {eventTypeLabel[e.event_type] || e.event_type}
+                      </p>
+                      {e.description && (
+                        <p className="text-slate-500">{e.description}</p>
+                      )}
+                      <p className="text-xs text-slate-400">
+                        {new Date(e.created_at).toLocaleString()}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <span className="text-sm text-slate-500">
+                No activity recorded yet
+              </span>
+            )}
+          </CardContent>
+        </Card>
         </div>
       </div>
 

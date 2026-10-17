@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { sendResendEmail } from '@/lib/server/email';
 import { bookingUpdatedByCustomerTemplate } from '@/lib/server/email';
+import { logBookingEvent } from '@/lib/server/bookingEvents';
 
 const EDIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour in milliseconds
 
@@ -203,6 +204,17 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       updatePayload.booking_time = body.booking_time;
     }
 
+    const changedFieldLabels: Record<string, string> = {
+      notes: 'notes',
+      address: 'address',
+      unit_or_flat: 'unit/flat',
+      booking_date: 'date',
+      booking_time: 'time',
+    };
+    const changedFields = Object.keys(updatePayload)
+      .filter((key) => key !== 'updated_at')
+      .map((key) => changedFieldLabels[key] || key);
+
     // Persist the update
     const { error: updateError } = await supabaseAdmin
       .from('bookings')
@@ -215,6 +227,14 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         { status: 500 },
       );
     }
+
+    await logBookingEvent({
+      bookingId: id,
+      eventType: 'updated',
+      actorType: 'customer',
+      actorLabel: profile.full_name || 'Customer',
+      description: `Customer updated ${changedFields.join(', ')}`,
+    });
 
     // Fetch updated booking
     const { data: updatedBooking } = await supabaseAdmin
@@ -277,9 +297,29 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       .limit(1)
       .maybeSingle();
 
+    // Send confirmation email to the customer themselves
+    if (profile.email) {
+      try {
+        await sendResendEmail({
+          to: profile.email,
+          subject: `Your Booking Was Updated — ${serviceName}${serviceCategory ? ` (${serviceCategory})` : ''}`,
+          html: bookingUpdatedByCustomerTemplate({
+            recipientName: customerName,
+            customerName,
+            bookingId: id,
+            service: serviceDetail,
+            ...currentValues,
+            audience: 'user',
+            updatedAt,
+          }),
+        });
+      } catch (emailError) {
+        console.error('Booking updated customer email failed:', emailError);
+      }
+    }
+
     // Send email to admin
-    const adminEmail =
-      process.env.ADMIN_BOOKING_EMAIL || process.env.AWS_SES_FROM_EMAIL;
+    const adminEmail = process.env.ADMIN_FROM;
 
     if (adminEmail) {
       try {

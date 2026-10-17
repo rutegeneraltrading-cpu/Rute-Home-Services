@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -62,6 +62,11 @@ export function OrderEditModal({
 }: OrderEditModalProps) {
   const updateOrderMutation = useUpdateOrder(order?.id || '');
 
+  // Only asked for when payment status is being set to 'refunded'.
+  // Pre-filled with the full total — editable down for a partial refund.
+  const [refundReason, setRefundReason] = useState('');
+  const [refundAmount, setRefundAmount] = useState('');
+
   const {
     setValue,
     watch,
@@ -82,13 +87,28 @@ export function OrderEditModal({
         status: order.status,
         payment_status: order.payment_status,
       });
+      setRefundReason('');
+      setRefundAmount(order.total != null ? String(order.total) : '');
     }
   }, [order, reset]);
 
   const onSubmit = async (data: OrderEditValues) => {
     if (!order) return;
 
-    updateOrderMutation.mutate(data, {
+    const payload = {
+      ...data,
+      ...(data.payment_status === 'refunded'
+        ? {
+            refund_reason: refundReason.trim() || undefined,
+            refund_amount:
+              refundAmount.trim() && !Number.isNaN(Number(refundAmount))
+                ? Number(refundAmount)
+                : undefined,
+          }
+        : {}),
+    };
+
+    updateOrderMutation.mutate(payload, {
       onSuccess: () => {
         onSuccess?.();
         onOpenChange(false);
@@ -159,6 +179,44 @@ export function OrderEditModal({
               </SelectContent>
             </Select>
           </div>
+
+          {watch('payment_status') === 'refunded' && (
+            <div className="space-y-3">
+              <div>
+                <Label htmlFor="order-refund-amount">Refund amount (R)</Label>
+                <input
+                  id="order-refund-amount"
+                  type="number"
+                  min={0}
+                  max={order.total}
+                  step="0.01"
+                  value={refundAmount}
+                  onChange={(e) => setRefundAmount(e.target.value)}
+                  className="mt-2 w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
+                  disabled={isSubmitting}
+                />
+                <p className="mt-1 text-xs text-slate-500">
+                  Defaults to the full R{Number(order.total).toFixed(2)} —
+                  lower it for a partial refund.
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="order-refund-reason">Refund reason</Label>
+                <textarea
+                  id="order-refund-reason"
+                  value={refundReason}
+                  onChange={(e) => setRefundReason(e.target.value)}
+                  rows={2}
+                  placeholder="Why is this order being refunded?"
+                  className="mt-2 w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
+                  disabled={isSubmitting}
+                />
+                <p className="mt-1 text-xs text-slate-500">
+                  Recorded on the order and emailed to the customer.
+                </p>
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button

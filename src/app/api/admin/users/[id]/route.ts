@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase';
+import { requireAdmin } from '@/lib/server/requireAdmin';
 // import { sendResendEmail } from '@/lib/server/email';
 // import { userStatusChangeTemplate } from '@/lib/server/email';
 
@@ -12,6 +13,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const authError = await requireAdmin();
+    if (authError) return authError;
+
     const { id } = await params;
     const supabase = await createAdminClient();
 
@@ -51,6 +55,9 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const authError = await requireAdmin();
+    if (authError) return authError;
+
     const { id } = await params;
     const body = await request.json();
     const { full_name, status } = body;
@@ -116,6 +123,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const adminCheckError = await requireAdmin();
+    if (adminCheckError) return adminCheckError;
+
     const { id } = await params;
     const supabase = await createAdminClient();
 
@@ -128,10 +138,10 @@ export async function DELETE(
     if (profileError) throw profileError;
 
     // Then, delete from auth (admin API)
-    const { error: authError } = await supabase.auth.admin.deleteUser(id);
+    const { error: deleteAuthError } = await supabase.auth.admin.deleteUser(id);
 
-    if (authError) {
-      console.error('Error deleting user from auth:', authError);
+    if (deleteAuthError) {
+      console.error('Error deleting user from auth:', deleteAuthError);
       // Don't throw - profile is already deleted
     }
 

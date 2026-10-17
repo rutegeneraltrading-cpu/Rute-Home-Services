@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { requireAdmin } from '@/lib/server/requireAdmin';
 
 export async function GET() {
   try {
@@ -31,6 +32,9 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const authError = await requireAdmin();
+    if (authError) return authError;
+
     const supabase = await createClient();
 
     const body = await request.json();
@@ -44,6 +48,7 @@ export async function POST(request: NextRequest) {
       platform_fee,
       priority_fee,
       app_fee,
+      insurance_fee_percent,
     } = body;
     console.log('Received data for new service:', body);
     // Validate required fields
@@ -69,6 +74,7 @@ export async function POST(request: NextRequest) {
           platform_fee,
           priority_fee,
           app_fee: app_fee ?? 0,
+          insurance_fee_percent: insurance_fee_percent ?? 5,
         },
       ])
       .select()

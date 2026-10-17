@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase';
+import { validatePassword } from '@/lib/server/validatePassword';
 
 const normalizeToE164 = (value: unknown): string => {
   const raw = String(value ?? '').trim();
@@ -21,11 +22,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (password.length < 6) {
-      return NextResponse.json(
-        { error: 'Password must be at least 6 characters' },
-        { status: 400 },
-      );
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      return NextResponse.json({ error: passwordError }, { status: 400 });
     }
 
     const normalizedEmail = email.trim().toLowerCase();
@@ -64,6 +63,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Failed to create user' },
         { status: 500 },
+      );
+    }
+
+    // Supabase's documented anti-enumeration behavior: signUp() with an email
+    // that already belongs to a confirmed user returns success (no authError)
+    // with that user's real id but an empty `identities` array (no new
+    // identity linked, no email sent). Without this check, the code below
+    // would overwrite an existing account's phone/name using attacker-
+    // supplied values with no authentication at all.
+    if (
+      Array.isArray(authData.user.identities) &&
+      authData.user.identities.length === 0
+    ) {
+      return NextResponse.json(
+        { error: 'An account with this email already exists.' },
+        { status: 409 },
       );
     }
 

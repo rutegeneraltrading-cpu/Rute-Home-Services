@@ -26,6 +26,7 @@ export interface ServiceItem {
   platform_fee?: number;
   priority_fee?: number;
   app_fee?: number;
+  insurance_fee_percent?: number;
 }
 
 export interface ServiceEditModalProps {
@@ -49,6 +50,7 @@ export type ServiceFormValues = {
   platform_fee: number;
   priority_fee: number;
   app_fee: number;
+  insurance_fee_percent: number;
 };
 
 export interface ServiceOptionItem {
@@ -110,6 +112,7 @@ export interface Service {
   updated_at: string;
   priority_fee?: number;
   app_fee?: number;
+  insurance_fee_percent?: number;
   category?: {
     id: string;
     name: string;
@@ -129,6 +132,7 @@ export interface CreateServiceDTO {
   platform_fee?: number;
   priority_fee?: number;
   app_fee?: number;
+  insurance_fee_percent?: number;
 }
 
 export interface ServiceOption {
