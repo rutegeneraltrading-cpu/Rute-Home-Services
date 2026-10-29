@@ -107,14 +107,16 @@ const ReviewPaymentStep = ({
       (sum, requirement) => sum + requirement.price,
       0,
     );
+  // Insurance is a % of what the customer is actually being charged before
+  // insurance (base + options/requirements + priority fee + app fee), not
+  // just the bare base/options total — otherwise a service with an app fee
+  // would undercharge insurance relative to the real total.
+  const preInsuranceTotal =
+    baseTotal + (isPriorityBooking ? priorityFee || 0 : 0) + appFee;
   const insuranceFee = isInsured
-    ? (baseTotal * insuranceFeePercent) / 100
+    ? (preInsuranceTotal * insuranceFeePercent) / 100
     : 0;
-  const totalPrice =
-    baseTotal +
-    (isPriorityBooking ? priorityFee || 0 : 0) +
-    appFee +
-    insuranceFee;
+  const totalPrice = preInsuranceTotal + insuranceFee;
 
   const totalDuration =
     (serviceData?.duration_minutes || 0) +
